@@ -40,6 +40,19 @@
     });
     document.querySelector('#total-price').textContent = getTotal;
   };
+  
+  const delItem = () => {
+    document.querySelectorAll('.delItem').forEach((e, i) => {
+      e.addEventListener('click', function (e) {
+        if (document.querySelectorAll('[data-item]').length > 2) {
+          console.log('del', document.querySelectorAll('[data-item]').length);
+          this.parentElement.parentElement.remove();
+          setTotal();
+        }
+      });
+    });
+  };
+
   const updateDom = () => {
     document.querySelectorAll('[data-item]').forEach((element, index) => {
       element.querySelector('[name=price]').addEventListener('change', (ev) => {
@@ -54,20 +67,11 @@
           setTotal();
         });
 
-      if (index > 1) {
-        element
-          .querySelector('.delItem')
-          .addEventListener('click', function (e) {
-            this.parentElement.parentElement.remove();
-            setTotal();
-          });
-      }
+      delItem();
     });
   };
 
   const createItem = (data) => {
-    console.log('createItem', data);
-
     return data.map(
       (e) =>
         `
@@ -145,6 +149,16 @@
         message: '^手機格式錯誤',
       },
     },
+    item: {
+      presence: {
+        message: '^項目名稱不得為空',
+      },
+    },
+    price: {
+      presence: {
+        message: '^單價名稱不得為空',
+      },
+    },
   };
 
   const resetFormInput = (formInput) => {
@@ -179,6 +193,7 @@
   };
 
   const handleFormSubmit = (form, input) => {
+    console.log('handleFormSubmit', form, formData());
     const errors = validate(form, constraints);
     if (!errors) {
       return true;
@@ -212,7 +227,6 @@
   modal.addEventListener('show.bs.modal', function (e) {
     if (!handleFormSubmit(form)) {
       e.preventDefault();
-      console.log('this', this);
       this.querySelector('.modal-title').textContent = '';
       this.querySelector('.modal-body').textContent = '';
     } else {
@@ -220,7 +234,7 @@
       const modalTitle = document.querySelector('.modal-title');
       const modalBody = document.querySelector('.modal-body');
 
-      modalTitle.append(data.company);
+      modalTitle.append(data.company + '-報價單');
       modalBody.insertAdjacentHTML('beforeend', createModal(data));
     }
   });
@@ -231,4 +245,37 @@
     this.querySelector('.modal-body').textContent = '';
   });
 
+  // Print
+  const printScreen = (print) => {
+    const printArea = print.innerHTML;
+    const printPage = window.open('', 'Printing...', '');
+    printPage.document.open();
+    printPage.document.write(
+      `<html>
+        <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>報價單產生器</title>
+          <link rel="stylesheet" href="https://unpkg.com/@tabler/core@latest/dist/css/tabler.min.css"/>
+        </head>
+        <body onload='window.print();window.close()'>`
+    );
+    printPage.document.write(printArea);
+    printPage.document.close('</body></html>');
+  };
+
+  document.querySelector('#print').addEventListener('click', function () {
+    const now = new Date().toLocaleDateString();
+    const printHtml = document.querySelector('.modal-dialog .modal-content');
+
+    const newPrintHtml = printHtml.cloneNode(true);
+    newPrintHtml.querySelector('.modal-footer').remove();
+    newPrintHtml.insertAdjacentHTML(
+      'beforeend',
+      `<p style="text-align: right;">報價時間：${now}</p>`
+    );
+
+    printScreen(newPrintHtml);
+  });
 })();

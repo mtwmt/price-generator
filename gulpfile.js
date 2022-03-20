@@ -8,14 +8,8 @@ const autoprefixer = require('gulp-autoprefixer');
 const babel = require('gulp-babel');
 const prettier = require('gulp-prettier');
 const sourcemaps = require('gulp-sourcemaps');
-// const ghPages = require('gulp-gh-pages');
+const ghPages = require('gulp-gh-pages');
 
-
-// gulp.task('deploy', () => {
-//   return gulp.src('./public/**/*').pipe($.ghPages());
-// });
-
-// exports.deploy = deploy;
 
 function css() {
   return src('src/scss/**/*.scss')
@@ -66,3 +60,9 @@ function watchList() {
 }
 
 exports.watch = watchList;
+
+function deploy() {
+  return src('dist/**/*').pipe(ghPages());
+}
+
+exports.deploy = deploy;
