@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>報價單</title>
+    <link rel="stylesheet" href="css/price.css" />
+  </head>
+  <body>
+    <main>
+      <h1>JAVdic 報價單</h1>
+      <table class="info">
+        <tr>
+          <th>報價人員</th>
+          <td>Mandy</td>
+        </tr>
+        <tr>
+          <th>聯絡電話</th>
+          <td>0927353336</td>
+        </tr>
+        <tr>
+          <th>Mail</th>
+          <td>mtwmt@hotmail.com</td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <th colspan="4">切版報價</th>
+        </tr>
+        <tr>
+          <th>項目</th>
+          <th>單價</th>
+          <th>數量 / 頁</th>
+          <th>金額</th>
+        </tr>
+        <tr>
+          <td class="text-left">首頁</td>
+          <td>$6000</td>
+          <td>1</td>
+          <td class="price">6000</td>
+        </tr>
+        <tr>
+          <td class="text-left">內頁-列表(主架構頁)</td>
+          <td>$3000</td>
+          <td>1</td>
+          <td class="price">3000</td>
+        </tr>
+        <tr>
+          <td class="text-left">內頁-列表(上面列表頁延伸之頁面)</td>
+          <td>$1000</td>
+          <td>3</td>
+          <td class="price">3000</td>
+        </tr>
+        <tr>
+          <td class="text-left">內頁-內容頁</td>
+          <td>$3000</td>
+          <td>2</td>
+          <td class="price">6000</td>
+        </tr>
+      </table>
+      <table>
+        <tr>
+          <th colspan="3">JQ 互動效果報價</th>
+        </tr>
+        <tr>
+          <th>項目</th>
+          <th>頁面</th>
+          <th width="80px">金額</th>
+        </tr>
+        <tr>
+          <td class="text-left">置頂功能</td>
+          <td class="text-left">全站</td>
+          <td class="price">500</td>
+        </tr>
+        <tr>
+          <td class="text-left">亮 / 暗 主題切換</td>
+          <td class="text-left">全站</td>
+          <td class="price">3000</td>
+        </tr>
+        <tr>
+          <td class="text-left">更多 縮合</td>
+          <td class="text-left">全站</td>
+          <td class="price">500</td>
+        </tr>
+        <tr>
+          <td class="text-left">內頁點小圖放大(lightBox)</td>
+          <td class="text-left">內頁</td>
+          <td class="price">1000</td>
+        </tr>
+      </table>
+      <table class="total">
+        <tr>
+          <th>備註</th>
+          <td>
+            <ul>
+              <!-- <li>預估工作日：三天 (需含六日)</li> -->
+              <li>相容於 IE10 以上，含 RWD</li>
+              <li><span style="color: red; font-weight: bold;">僅製作上述報價之內容</span>，若有其他之需求，則另行報價、工時另計</li>
+            </ul>
+          </td>
+        </tr>
+        <tr>
+          <th>總計</th>
+          <td id="total-price"></td>
+        </tr>
+      </table>
+    </main>
+  </body>
+</html>
+
+<script>
+  const price = document.querySelectorAll('.price');
+
+  let total = 0;
+  price.forEach(p => {
+    total += +p.textContent;
+  });
+
+  document.querySelector('#total-price').append(total);
+</script>
