@@ -1,36 +1,17 @@
 (function () {
-  const modal = document.querySelector('#modal');
-  const form = document.querySelector('form#form');
-  const inputs = document.querySelectorAll('input, textarea, select');
-  const formData = function () {
-    const data = {
-      company: document.querySelector('[name=company]').value,
-      name: document.querySelector('[name=name]').value,
-      phone: document.querySelector('[name=phone]').value,
-      email: document.querySelector('[name=email]').value,
-      description: document.querySelector('[name=description]').value,
-      items: [],
-    };
+  const $modal = document.querySelector('#modal');
+  const $form = document.querySelector('form#form');
+  const $inputs = document.querySelectorAll('input, textarea, select');
 
-    document.querySelectorAll('[data-item]').forEach((element, index) => {
-      if (index === 0) {
-        return;
-      }
-      data.items.push({
-        category: element.querySelector('[name=category]').value,
-        item: element.querySelector('[name=item]').value,
-        price: element.querySelector('[name=price]').value,
-        number: element.querySelector('[name=number]').value,
-        amount: element.querySelector('[name=amount]').value,
-      });
-    });
-
-    return data;
+  const setNumFormat = (num) => {
+    num = num + '';
+    return num.replace(/\B(?=(?:\d{3})+(?!\d))/g, ',');
   };
-  const setAmount = (element) => {
-    const price = element.querySelector('[name=price]').value || 0;
-    const number = element.querySelector('[name=number]').value || 1;
-    element.querySelector('[name=amount]').value = price * number;
+
+  const setAmount = (item, index) => {
+    const price = item.querySelector(`[name=price${index}]`).value || 0;
+    const count = item.querySelector(`[name=count${index}]`).value || 1;
+    item.querySelector('[name=amount]').value = price * count;
   };
   const setTotal = () => {
     const total = document.querySelectorAll('[name=amount]');
@@ -38,37 +19,63 @@
     total.forEach((e) => {
       getTotal += +e.value;
     });
-    document.querySelector('#total-price').textContent = getTotal;
+    document.querySelector('#total-price').textContent = setNumFormat(getTotal);
   };
-  
-  const delItem = () => {
-    document.querySelectorAll('.delItem').forEach((e, i) => {
-      e.addEventListener('click', function (e) {
-        if (document.querySelectorAll('[data-item]').length > 2) {
-          console.log('del', document.querySelectorAll('[data-item]').length);
-          this.parentElement.parentElement.remove();
-          setTotal();
-        }
-      });
+
+  const delItem = (row) => {
+    row.querySelector('.delItem').addEventListener('click', function (e) {
+      if (document.querySelectorAll('[data-item]').length > 2) {
+        this.parentElement.parentElement.remove();
+        setTotal();
+      }
     });
   };
 
-  const updateDom = () => {
-    document.querySelectorAll('[data-item]').forEach((element, index) => {
-      element.querySelector('[name=price]').addEventListener('change', (ev) => {
-        setAmount(element);
+  const updateItemRow = (row, index) => {
+    row.querySelector('[name=category]').name = `category${index}`;
+    row.querySelector('[name=item]').name = `item${index}`;
+    row.querySelector('[name=price]').name = `price${index}`;
+    row.querySelector('[name=count]').name = `count${index}`;
+    row.querySelector('[name=unit]').name = `unit${index}`;
+
+    constraints = {
+      ...constraints,
+      [`item${index}`]: {
+        presence: {
+          message: '^項目名稱不得為空',
+        },
+      },
+      [`price${index}`]: {
+        presence: {
+          message: '^單價名稱不得為空',
+        },
+      },
+    };
+
+    row
+      .querySelector(`[name=item${index}]`)
+      .addEventListener('change', function () {
+        const errors = validate($form, constraints) || {};
+        showErrorsForInput(this, errors[this.name]);
+      });
+
+    row
+      .querySelector(`[name=price${index}]`)
+      .addEventListener('change', function () {
+        setAmount(row, index);
+        setTotal();
+        const errors = validate($form, constraints) || {};
+        showErrorsForInput(this, errors[this.name]);
+      });
+
+    row
+      .querySelector(`[name=count${index}]`)
+      .addEventListener('change', function () {
+        setAmount(row, index);
         setTotal();
       });
 
-      element
-        .querySelector('[name=number]')
-        .addEventListener('change', (ev) => {
-          setAmount(element);
-          setTotal();
-        });
-
-      delItem();
-    });
+    delItem(row);
   };
 
   const createItem = (data) => {
@@ -79,7 +86,7 @@
           <td class="text-left">${e.category}</td>
           <td class="text-left">${e.item}</td>
           <td>${e.price}</td>
-          <td>${e.number}</td>
+          <td>${e.count} ${!!e.unit ? '/' : ''} ${e.unit}</td>
           <td class="price">${e.amount}</td>
         </tr> 
       `
@@ -108,7 +115,7 @@
               <th>類別</th>
               <th>項目</th>
               <th>單價</th>
-              <th>數量 / 頁</th>
+              <th>數量</th>
               <th>金額</th>
             </tr>
           </thead>
@@ -121,7 +128,7 @@
   };
 
   // validate form
-  const constraints = {
+  let constraints = {
     company: {
       presence: {
         message: '^請輸入業主名稱',
@@ -193,7 +200,6 @@
   };
 
   const handleFormSubmit = (form, input) => {
-    console.log('handleFormSubmit', form, formData());
     const errors = validate(form, constraints);
     if (!errors) {
       return true;
@@ -203,29 +209,71 @@
     return false;
   };
 
-  updateDom();
+  const formData = function () {
+    const data = {
+      company: document.querySelector('[name=company]').value,
+      name: document.querySelector('[name=name]').value,
+      phone: document.querySelector('[name=phone]').value,
+      email: document.querySelector('[name=email]').value,
+      description: document.querySelector('[name=description]').value,
+      items: [],
+    };
 
-  for (var i = 0; i < inputs.length; ++i) {
-    inputs.item(i).addEventListener('change', function (ev) {
-      const errors = validate(form, constraints) || {};
-
-      showErrorsForInput(this, errors[this.name]);
+    document.querySelectorAll('[data-item]').forEach((element, index) => {
+      if (index === 0) {
+        return;
+      }
+      if (index === 1) {
+        data.items.push({
+          category: element.querySelector(`[name=category`).value,
+          item: element.querySelector(`[name=item`).value,
+          price: element.querySelector(`[name=price`).value,
+          count: element.querySelector(`[name=count`).value,
+          unit: element.querySelector(`[name=unit`).value,
+          amount: element.querySelector(`[name=amount]`).value,
+        });
+      } else {
+        data.items.push({
+          category: element.querySelector(`[name=category${index - 1}]`).value,
+          item: element.querySelector(`[name=item${index - 1}]`).value,
+          price: element.querySelector(`[name=price${index - 1}]`).value,
+          count: element.querySelector(`[name=count${index - 1}]`).value,
+          unit: element.querySelector(`[name=unit${index - 1}]`).value,
+          amount: element.querySelector(`[name=amount]`).value,
+        });
+      }
     });
-  }
+
+    return data;
+  };
+
+  // document init ==============
+
+  $inputs.forEach((e, i) => {
+    e.addEventListener('change', (ev) => {
+      const errors = validate($form, constraints) || {};
+      showErrorsForInput(e, errors[e.name]);
+    });
+  });
+
+  document.querySelectorAll('[data-item]').forEach((e) => {
+    updateItemRow(e, '');
+  });
 
   // add item row
   document.querySelector('#addItem').addEventListener('click', function (e) {
     e.preventDefault();
     const row = document.querySelector('[data-item]');
     const newRow = row.cloneNode(true);
+    const itemLength = document.querySelectorAll('[data-item]').length - 1;
     newRow.style.display = 'flex';
     document.querySelector('[data-items]').append(newRow);
-    updateDom();
+    updateItemRow(newRow, itemLength);
   });
 
   // on Submit
-  modal.addEventListener('show.bs.modal', function (e) {
-    if (!handleFormSubmit(form)) {
+  $modal.addEventListener('show.bs.modal', function (e) {
+    if (!handleFormSubmit($form)) {
       e.preventDefault();
       this.querySelector('.modal-title').textContent = '';
       this.querySelector('.modal-body').textContent = '';
@@ -239,13 +287,13 @@
     }
   });
 
-  modal.addEventListener('hidden.bs.modal', function (e) {
+  $modal.addEventListener('hidden.bs.modal', function (e) {
     e.preventDefault();
     this.querySelector('.modal-title').textContent = '';
     this.querySelector('.modal-body').textContent = '';
   });
 
-  // Print
+  // Print ==============
   const printScreen = (print) => {
     const printArea = print.innerHTML;
     const printPage = window.open('', 'Printing...', '');
