@@ -23,16 +23,16 @@
       gtag('config', 'UA-149155162-1');
     </script>
   </head>
-  <body class="theme-light">
+  <body>
     <div class="page">
       <div class="page-wrapper">
-        <div class="container-md">
+        <div class="container">
           <div class="page-header">
             <h1>報價單產生器</h1>
           </div>
         </div>
         <div class="page-body">
-          <div class="container-md">
+          <div class="container">
             <form id="form">
               <div class="card">
                 <div class="card-body">
@@ -120,8 +120,9 @@
                     </label>
 
                     <div data-items style="clear: both">
-                      <div data-item style="display: none" class="row g-2 mb-2">
-                        <div class="col">
+                      
+                      <div data-item style="display: none" class="row g-2 mb-4 mb-md-2">
+                        <div class="col-6 col-md">
                           <input
                             type="text"
                             class="form-control"
@@ -129,7 +130,7 @@
                             placeholder="請輸入類別"
                           />
                         </div>
-                        <div class="col">
+                        <div class="col-6 col-md">
                           <input
                             type="text"
                             class="form-control"
@@ -149,9 +150,17 @@
                           <input
                             type="number"
                             class="form-control"
-                            name="number"
+                            name="count"
                             value="1"
                             placeholder="請輸入數量"
+                          />
+                        </div>
+                        <div class="col">
+                          <input
+                            type="text"
+                            class="form-control"
+                            name="unit"
+                            placeholder="請輸入單位"
                           />
                         </div>
                         <div class="col">
@@ -193,9 +202,10 @@
                           </a>
                         </div>
                       </div>
+                      
 
-                      <div data-item class="row g-2 mb-2">
-                        <div class="col">
+                      <div data-item class="row g-2 mb-4 mb-md-2">
+                        <div class="col-6 col-md">
                           <input
                             type="text"
                             class="form-control"
@@ -203,7 +213,7 @@
                             placeholder="請輸入類別"
                           />
                         </div>
-                        <div class="col">
+                        <div class="col-6 col-md">
                           <input
                             type="text"
                             class="form-control"
@@ -223,9 +233,17 @@
                           <input
                             type="number"
                             class="form-control"
-                            name="number"
+                            name="count"
                             value="1"
                             placeholder="請輸入數量"
+                          />
+                        </div>
+                        <div class="col">
+                          <input
+                            type="text"
+                            class="form-control"
+                            name="unit"
+                            placeholder="請輸入單位"
                           />
                         </div>
                         <div class="col">
@@ -267,6 +285,9 @@
                           </a>
                         </div>
                       </div>
+                      
+
+                      
                     </div>
                   </div>
 
@@ -284,7 +305,7 @@
 
                 <div class="card-footer">
                   <div class="row align-items-center">
-                    <div class="col">合計 <span id="total-price">0</span></div>
+                    <div class="col">合計 $<span id="total-price">0</span></div>
                     <div class="col-auto">
                       <a
                         href="#"
