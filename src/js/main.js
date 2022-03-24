@@ -123,6 +123,21 @@
             ${createItem(data.items).join('')}
           </tbody>
         </table>
+        <table class="table table-vcenter">
+          <thead>
+            <tr>
+              <th>備註</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                ${(data.description + '').replace(/\r\n/g, '<br />')}
+              </td>
+            </tr>
+          </thead>
+          </tbody>
+        </table>
       </div>
     `;
   };
