@@ -9,7 +9,7 @@
 ## 套件
 
 - [validate](http://validatejs.org/) 驗証
-- [tabler](https://tabler.io/) css 框架
+- [tabler](https://tabler.io/) 一個架構在 bootstrap 的框架
 
 > 送出後列印 PDF 檔
 
