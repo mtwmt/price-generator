@@ -39,12 +39,12 @@
                   <h3 class="text-muted">主要資料</h3>
 
                   <div class="mb-3">
-                    <label class="form-label">業主名稱</label>
+                    <label class="form-label">業主(公司)名稱</label>
                     <input
                       type="text"
                       class="form-control"
                       name="company"
-                      placeholder="請輸入業主名稱"
+                      placeholder="請輸入業主(公司)名稱"
                     />
                   </div>
                   <div class="mb-3">
@@ -82,7 +82,7 @@
                 <div class="card-body">
                   <h3 class="text-muted">服務項目</h3>
                   <div class="mb-3">
-                    <label class="form-label"
+                    <label class="form-label fs-3 clearfix"
                       >項目
                       <div class="form-label-description">
                         <a
@@ -118,16 +118,14 @@
                         </a>
                       </div>
                     </label>
-
-                    <div data-items style="clear: both">
-
+                    <div data-items>
                       <div data-item class="row g-2 mb-4 mb-md-2">
                         <div class="col-6 col-md">
                           <input
                             type="text"
                             class="form-control"
                             name="category"
-                            placeholder="請輸入類別"
+                            placeholder="類別"
                           />
                         </div>
                         <div class="col-6 col-md">
@@ -135,7 +133,7 @@
                             type="text"
                             class="form-control"
                             name="item"
-                            placeholder="請輸入項目"
+                            placeholder="項目"
                           />
                         </div>
                         <div class="col">
@@ -143,7 +141,7 @@
                             type="number"
                             class="form-control"
                             name="price"
-                            placeholder="請輸入單價"
+                            placeholder="單價"
                           />
                         </div>
                         <div class="col">
@@ -152,7 +150,7 @@
                             class="form-control"
                             name="count"
                             value="1"
-                            placeholder="請輸入數量"
+                            placeholder="數量"
                           />
                         </div>
                         <div class="col">
@@ -160,7 +158,7 @@
                             type="text"
                             class="form-control"
                             name="unit"
-                            placeholder="請輸入單位"
+                            placeholder="單位"
                           />
                         </div>
                         <div class="col">
@@ -202,9 +200,15 @@
                           </a>
                         </div>
                       </div>
-                      
-
-                      
+                    </div>
+                  </div>
+                  <div class="mb-3 row">
+                    <div class="col-auto ms-auto fs-3">
+                      合計：NT$
+                      <span class="fs-2 fw-bold text-danger" id="total-price"
+                        >0</span
+                      >
+                      元整
                     </div>
                   </div>
 
@@ -222,8 +226,17 @@
 
                 <div class="card-footer">
                   <div class="row align-items-center">
-                    <div class="col">合計 $<span id="total-price">0</span></div>
-                    <div class="col-auto">
+                    <!-- <div class="col">合計 $<span id="total-price">0</span></div> -->
+                    <div class="col-auto ms-auto">
+                      <a
+                        href="#"
+                        id="submit"
+                        class="btn btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#preview"
+                      >
+                        預覽
+                      </a>
                       <a
                         href="#"
                         id="submit"
@@ -243,20 +256,39 @@
         <footer class="footer footer-transparent d-print-none">
           <div class="container-xl">
             <div class="row text-center align-items-center">
-              
-              
-                <ul class="list-inline list-inline-dots mb-0">
-                  <li class="list-inline-item">
-                    Copyright © 2022
-                    <a href="https://mtwmt.com/" target="_blank">Mandy</a>. All rights
-                    reserved.
-                  </li>
-                  
-                </ul>
-              
+              <ul class="list-inline list-inline-dots mb-0">
+                <li class="list-inline-item">
+                  Copyright © 2022
+                  <a href="https://mtwmt.com/" target="_blank">Mandy</a>. All
+                  rights reserved.
+                </li>
+              </ul>
             </div>
           </div>
         </footer>
+      </div>
+    </div>
+    <div
+      class="modal modal-blur fade"
+      data-bs-backdrop="true"
+      id="preview"
+      tabindex="-1"
+      style="display: none"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"></h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body"></div>
+        </div>
       </div>
     </div>
     <div
@@ -292,4 +324,5 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js"></script>
 <script src="https://unpkg.com/@tabler/core@latest/dist/js/tabler.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="js/main.js"></script>
