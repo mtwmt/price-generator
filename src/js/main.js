@@ -1,5 +1,6 @@
 (function () {
   const $modal = document.querySelector('#modal');
+  const $preview = document.querySelector('#preview');
   const $form = document.querySelector('form#form');
   const $inputs = document.querySelectorAll('input, textarea, select');
 
@@ -87,7 +88,7 @@
           <td class="text-left">${e.item}</td>
           <td>${e.price}</td>
           <td>${e.count} ${!!e.unit ? '/' : ''} ${e.unit}</td>
-          <td class="price">${e.amount}</td>
+          <td class="text-end price">NT$ ${setNumFormat(e.amount)}</td>
         </tr> 
       `
     );
@@ -116,11 +117,18 @@
               <th>項目</th>
               <th>單價</th>
               <th>數量</th>
-              <th>金額</th>
+              <th class="text-end">金額</th>
             </tr>
           </thead>
           <tbody>
             ${createItem(data.items).join('')}
+            <tr>
+              <td colspan="5" class="text-end">
+               合計：NT$ <span class="fs-2 fw-bold text-danger">${
+                 data.total
+               }</span> 元整
+              </td>
+            </tr>
           </tbody>
         </table>
         <table class="table table-vcenter">
@@ -212,6 +220,10 @@
     return false;
   };
 
+  /**
+   * formData
+   * @returns 表單資料
+   */
   const formData = function () {
     const data = {
       company: document.querySelector('[name=company]').value,
@@ -219,6 +231,7 @@
       phone: document.querySelector('[name=phone]').value,
       email: document.querySelector('[name=email]').value,
       description: document.querySelector('[name=description]').value,
+      total: document.querySelector('#total-price').textContent,
       items: [],
     };
 
@@ -232,7 +245,6 @@
         amount: e.querySelector(`[name*=amount]`).value,
       });
     });
-
     return data;
   };
 
@@ -267,6 +279,20 @@
     setItemFormValidate();
   });
 
+  // on preview
+  $preview.addEventListener('show.bs.modal', function (e) {
+    const data = formData();
+    const modalTitle = this.querySelector('.modal-title');
+    const modalBody = this.querySelector('.modal-body');
+    modalTitle.append(`${data.company} ${!data.company ? '' : '-'} 報價單`);
+    modalBody.insertAdjacentHTML('beforeend', createModal(data));
+  });
+  $preview.addEventListener('hidden.bs.modal', function (e) {
+    e.preventDefault();
+    this.querySelector('.modal-title').textContent = '';
+    this.querySelector('.modal-body').textContent = '';
+  });
+
   // on Submit
   $modal.addEventListener('show.bs.modal', function (e) {
     if (!handleFormSubmit($form)) {
@@ -275,8 +301,8 @@
       this.querySelector('.modal-body').textContent = '';
     } else {
       const data = formData();
-      const modalTitle = document.querySelector('.modal-title');
-      const modalBody = document.querySelector('.modal-body');
+      const modalTitle = this.querySelector('.modal-title');
+      const modalBody = this.querySelector('.modal-body');
       modalTitle.append(data.company + '-報價單');
       modalBody.insertAdjacentHTML('beforeend', createModal(data));
     }
@@ -310,7 +336,9 @@
 
   document.querySelector('#print').addEventListener('click', function () {
     const now = new Date().toLocaleDateString();
-    const printHtml = document.querySelector('.modal-dialog .modal-content');
+    const printHtml = document.querySelector(
+      '#modal .modal-dialog .modal-content'
+    );
 
     const newPrintHtml = printHtml.cloneNode(true);
     newPrintHtml.querySelector('.modal-footer').remove();
