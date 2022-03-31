@@ -45,7 +45,7 @@
           </div>
         </div>
         <div class="page-body">
-          <div class="container mb-3">
+          <div class="container">
             <form id="form">
               <div class="card">
                 <div class="card-body">
@@ -264,7 +264,7 @@
                 </div>
               </div>
             </form>
-            <div id="comments">
+            <div class="mt-3" id="comments">
               <script
                 src="https://utteranc.es/client.js"
                 repo="mtwmt/mtwmt.github.io"
@@ -312,11 +312,11 @@
             ></button>
           </div>
           <div class="modal-body"></div>
-          <!-- <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="exportImage">
+          <div class="modal-footer">
+            <!-- <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
               匯出圖片
-            </button>
-          </div> -->
+            </button> -->
+          </div>
         </div>
       </div>
     </div>
@@ -339,14 +339,15 @@
               class="btn-close"
               data-bs-dismiss="modal"
               aria-label="Close"
+              data-html2canvas-ignore="true"
             ></button>
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="exportImage">
+            <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
               匯出圖片
             </button>
-            <button type="button" class="btn btn-primary" id="print">
+            <button type="button" class="btn btn-primary" id="print" data-html2canvas-ignore="true">
               下載為 PDF
             </button>
           </div>
