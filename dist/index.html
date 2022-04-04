@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="keywords" content="報價單 估價單 產生器" />
+    <meta name="author" content="Mandy" />
+    <meta
+      name="description"
+      content="https://mtwmt.com/price-generator/ 報價單 產生器"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mtwmt.com/price-generator/" />
+    <meta property="og:title" content="報價單產生器 | Mandy's Website" />
+    <meta
+      property="og:description"
+      content="https://mtwmt.com/price-generator/ 報價單 產生器"
+    />
     <title>報價單產生器</title>
     <link
       rel="stylesheet"
@@ -80,20 +93,107 @@
                   </div>
                 </div>
                 <div class="card-body">
-                  <h3 class="text-muted">服務項目</h3>
-                  <div class="mb-3">
-                    <label class="form-label fs-3 clearfix"
-                      >項目
-                      <div class="form-label-description">
+                  <div class="row mb-1">
+                    <h3 class="col text-muted">服務項目</h3>
+                    <div class="col-auto ms-auto">
+                      <a
+                        id="addItem"
+                        href="#"
+                        class="btn btn-sm btn-primary"
+                        aria-label="Button"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="icon icon-tabler icon-tabler-playlist-add"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          stroke-width="2"
+                          stroke="currentColor"
+                          fill="none"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path
+                            stroke="none"
+                            d="M0 0h24v24H0z"
+                            fill="none"
+                          ></path>
+                          <path d="M19 8h-14"></path>
+                          <path d="M5 12h9"></path>
+                          <path d="M11 16h-6"></path>
+                          <path d="M15 16h6"></path>
+                          <path d="M18 13v6"></path>
+                        </svg>
+                        新增項目
+                      </a>
+                    </div>
+                  </div>
+                  <div data-items>
+                    <div
+                      data-item
+                      class="row align-items-center g-2 mb-4 mb-md-2"
+                    >
+                      <div class="col-6 col-md">
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="category"
+                          placeholder="類別"
+                        />
+                      </div>
+                      <div class="col-6 col-md">
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="item"
+                          placeholder="項目"
+                        />
+                      </div>
+                      <div class="col">
+                        <input
+                          type="number"
+                          class="form-control"
+                          name="price"
+                          placeholder="單價"
+                        />
+                      </div>
+                      <div class="col">
+                        <input
+                          type="number"
+                          class="form-control"
+                          name="count"
+                          value="1"
+                          placeholder="數量"
+                        />
+                      </div>
+                      <div class="col">
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="unit"
+                          placeholder="單位"
+                        />
+                      </div>
+                      <div class="col">
+                        <input
+                          type="number"
+                          class="form-control"
+                          name="amount"
+                          value="0"
+                          placeholder="金額"
+                          disabled
+                        />
+                      </div>
+                      <div class="col-auto">
                         <a
-                          id="addItem"
                           href="#"
-                          class="btn btn-sm btn-primary"
+                          class="btn btn-white btn-icon delItem"
                           aria-label="Button"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            class="icon icon-tabler icon-tabler-playlist-add"
+                            class="icon icon-tabler icon-tabler-x"
                             width="24"
                             height="24"
                             viewBox="0 0 24 24"
@@ -108,97 +208,10 @@
                               d="M0 0h24v24H0z"
                               fill="none"
                             ></path>
-                            <path d="M19 8h-14"></path>
-                            <path d="M5 12h9"></path>
-                            <path d="M11 16h-6"></path>
-                            <path d="M15 16h6"></path>
-                            <path d="M18 13v6"></path>
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
                           </svg>
-                          新增項目
                         </a>
-                      </div>
-                    </label>
-                    <div data-items>
-                      <div data-item class="row g-2 mb-4 mb-md-2">
-                        <div class="col-6 col-md">
-                          <input
-                            type="text"
-                            class="form-control"
-                            name="category"
-                            placeholder="類別"
-                          />
-                        </div>
-                        <div class="col-6 col-md">
-                          <input
-                            type="text"
-                            class="form-control"
-                            name="item"
-                            placeholder="項目"
-                          />
-                        </div>
-                        <div class="col">
-                          <input
-                            type="number"
-                            class="form-control"
-                            name="price"
-                            placeholder="單價"
-                          />
-                        </div>
-                        <div class="col">
-                          <input
-                            type="number"
-                            class="form-control"
-                            name="count"
-                            value="1"
-                            placeholder="數量"
-                          />
-                        </div>
-                        <div class="col">
-                          <input
-                            type="text"
-                            class="form-control"
-                            name="unit"
-                            placeholder="單位"
-                          />
-                        </div>
-                        <div class="col">
-                          <input
-                            type="number"
-                            class="form-control"
-                            name="amount"
-                            value="0"
-                            placeholder="金額"
-                            disabled
-                          />
-                        </div>
-                        <div class="col-auto">
-                          <a
-                            href="#"
-                            class="btn btn-white btn-icon delItem"
-                            aria-label="Button"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              class="icon icon-tabler icon-tabler-x"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              stroke-width="2"
-                              stroke="currentColor"
-                              fill="none"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            >
-                              <path
-                                stroke="none"
-                                d="M0 0h24v24H0z"
-                                fill="none"
-                              ></path>
-                              <line x1="18" y1="6" x2="6" y2="18"></line>
-                              <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                          </a>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -216,7 +229,7 @@
                     <label class="form-label">備註</label>
                     <textarea
                       class="form-control"
-                      name="description"
+                      name="desc"
                       rows="3"
                       placeholder="Content.."
                       style="resize: none"
@@ -251,6 +264,16 @@
                 </div>
               </div>
             </form>
+            <div class="mt-3" id="comments">
+              <script
+                src="https://utteranc.es/client.js"
+                repo="mtwmt/mtwmt.github.io"
+                issue-term="pathname"
+                theme="github-light"
+                crossorigin="anonymous"
+                async
+              ></script>
+            </div>
           </div>
         </div>
         <footer class="footer footer-transparent d-print-none">
@@ -268,6 +291,7 @@
         </footer>
       </div>
     </div>
+    <!-- preview -->
     <div
       class="modal modal-blur fade"
       data-bs-backdrop="true"
@@ -288,9 +312,16 @@
             ></button>
           </div>
           <div class="modal-body"></div>
+          <div class="modal-footer">
+            <!-- <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
+              匯出圖片
+            </button> -->
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- submit -->
     <div
       class="modal modal-blur fade"
       data-bs-backdrop="static"
@@ -308,11 +339,15 @@
               class="btn-close"
               data-bs-dismiss="modal"
               aria-label="Close"
+              data-html2canvas-ignore="true"
             ></button>
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="print">
+            <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
+              匯出圖片
+            </button>
+            <button type="button" class="btn btn-primary" id="print" data-html2canvas-ignore="true">
               下載為 PDF
             </button>
           </div>
@@ -325,4 +360,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js"></script>
 <script src="https://unpkg.com/@tabler/core@latest/dist/js/tabler.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/view.js"></script>
+<script src="js/verify.js"></script>
 <script src="js/main.js"></script>
