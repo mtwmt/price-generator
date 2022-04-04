@@ -4,57 +4,16 @@
   const $form = document.querySelector('form#form');
   const $inputs = document.querySelectorAll('input, textarea, select');
 
-  // validate
-  const mainValidate = {
-    company: {
-      presence: {
-        message: '^請輸入業主名稱',
-      },
-    },
-    name: {
-      presence: {
-        message: '^請輸入報價人員',
-      },
-    },
-    email: {
-      presence: {
-        message: '^請輸入 E-Mail',
-      },
-      email: {
-        message: '格式錯誤',
-      },
-    },
-    phone: {
-      presence: {
-        message: '^請輸入聯絡電話',
-      },
-      format: {
-        pattern: '^09[0-9]{8}$',
-        message: '^手機格式錯誤',
-      },
-    },
-  };
-  let constraints = {};
+  const { setAmount, setTotal } = common();
 
-  const setNumFormat = (num) => {
-    num = num + '';
-    return num.replace(/\B(?=(?:\d{3})+(?!\d))/g, ',');
-  };
+  const {
+    constraints,
+    setItemFormValidate,
+    showErrorsForInput,
+    handleFormSubmit,
+  } = verify();
 
-  const setAmount = (row) => {
-    const price = row.querySelector(`[name*=price]`).value || 0;
-    const count = row.querySelector(`[name*=count]`).value || 1;
-    row.querySelector('[name=amount]').value = price * count;
-  };
-
-  const setTotal = () => {
-    const total = document.querySelectorAll('[name=amount]');
-    let getTotal = 0;
-    total.forEach((e) => {
-      getTotal += +e.value;
-    });
-    document.querySelector('#total-price').textContent = setNumFormat(getTotal);
-  };
+  const { createModal } = view();
 
   const delItem = (row) => {
     row.querySelector('.delItem').addEventListener('click', function (e) {
@@ -79,147 +38,6 @@
     delItem(row);
   };
 
-  const createItem = (data) => {
-    return data.map(
-      (e) =>
-        `
-        <tr>
-          <td class="text-left">${e.category}</td>
-          <td class="text-left">${e.item}</td>
-          <td>${e.price}</td>
-          <td>${e.count} ${!!e.unit ? '/' : ''} ${e.unit}</td>
-          <td class="text-end price">NT$ ${setNumFormat(e.amount)}</td>
-        </tr> 
-      `
-    );
-  };
-  const createModal = (data) => {
-    return `
-      <div class="table-responsive">
-        <table class="table table-vcenter">
-          <tr>
-            <th>報價人員</th>
-            <td>${data.name}</td>
-          </tr>
-          <tr>
-            <th>聯絡電話</th>
-            <td>${data.phone}</td>
-          </tr>
-          <tr>
-            <th>E-Mail</th>
-            <td>${data.email}</td>
-          </tr>
-        </table>
-        <table class="table table-vcenter">
-          <thead>
-            <tr>
-              <th>類別</th>
-              <th>項目</th>
-              <th>單價</th>
-              <th>數量</th>
-              <th class="text-end">金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${createItem(data.items).join('')}
-            <tr>
-              <td colspan="5" class="text-end">
-               合計：NT$ <span class="fs-2 fw-bold text-danger">${
-                 data.total
-               }</span> 元整
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table class="table table-vcenter">
-          <thead>
-            <tr>
-              <th>備註</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                ${(data.description + '').replace(/\r\n/g, '<br />')}
-              </td>
-            </tr>
-          </thead>
-          </tbody>
-        </table>
-      </div>
-    `;
-  };
-
-  // set validate
-  const setItemFormValidate = () => {
-    let itemValidate = {};
-    document.querySelectorAll('[data-item]').forEach((e, i) => {
-      e.querySelector('[name*=category]').name = `category${i}`;
-      e.querySelector('[name*=item]').name = `item${i}`;
-      e.querySelector('[name*=price]').name = `price${i}`;
-      e.querySelector('[name*=count]').name = `count${i}`;
-      e.querySelector('[name*=unit]').name = `unit${i}`;
-
-      itemValidate = {
-        ...itemValidate,
-        [`item${i}`]: {
-          presence: {
-            message: '^項目名稱不得為空',
-          },
-        },
-        [`price${i}`]: {
-          presence: {
-            message: '^單價名稱不得為空',
-          },
-        },
-      };
-    });
-    constraints = {
-      ...mainValidate,
-      ...itemValidate,
-    };
-  };
-
-  const resetFormInput = (formInput) => {
-    formInput.classList.remove('is-invalid');
-    formInput.parentNode.querySelectorAll('.invalid-feedback').forEach((el) => {
-      el.remove();
-    });
-  };
-
-  const addError = (formInput, error) => {
-    const block = document.createElement('div');
-    block.classList.add('invalid-feedback');
-    block.innerText = error;
-    formInput.parentNode.appendChild(block);
-  };
-
-  const showErrorsForInput = (input, errors) => {
-    resetFormInput(input);
-    if (errors) {
-      input.classList.add('is-invalid');
-
-      errors.forEach((err) => {
-        addError(input, err);
-      });
-    }
-  };
-
-  const showErrors = (form, errors) => {
-    form.querySelectorAll('input[name], select[name]').forEach((input) => {
-      showErrorsForInput(input, errors && errors[input.name]);
-    });
-  };
-
-  const handleFormSubmit = (form) => {
-    const errors = validate(form, constraints);
-    if (!errors) {
-      return true;
-    }
-    showErrors(form, errors || {});
-    return false;
-  };
-
   /**
    * formData
    * @returns 表單資料
@@ -230,7 +48,7 @@
       name: document.querySelector('[name=name]').value,
       phone: document.querySelector('[name=phone]').value,
       email: document.querySelector('[name=email]').value,
-      description: document.querySelector('[name=description]').value,
+      desc: document.querySelector('[name=desc]').value,
       total: document.querySelector('#total-price').textContent,
       items: [],
     };
@@ -314,6 +132,26 @@
     this.querySelector('.modal-body').textContent = '';
   });
 
+  // Export ==============
+  document.querySelector('#exportImage').addEventListener('click', function () {
+    const preview = document.querySelector('#modal .modal-content');
+
+    // export Image
+    html2canvas(preview).then(function (canvas) {
+      console.log('canvas', canvas);
+      document.body.appendChild(canvas);
+      const $a = document.createElement('a');
+      $a.href = canvas
+        .toDataURL('image/jpeg')
+        .replace('image/jpeg', 'image/octet-stream');
+      $a.download = ''.concat(
+        new Date().toLocaleString('roc', { hour12: false }),
+        '_quotation.jpg'
+      );
+      $a.click();
+    });
+  });
+
   // Print ==============
   const printScreen = (print) => {
     const printArea = print.innerHTML;
@@ -339,14 +177,12 @@
     const printHtml = document.querySelector(
       '#modal .modal-dialog .modal-content'
     );
-
     const newPrintHtml = printHtml.cloneNode(true);
     newPrintHtml.querySelector('.modal-footer').remove();
     newPrintHtml.insertAdjacentHTML(
       'beforeend',
       `<p style="text-align: right;">報價時間：${now}</p>`
     );
-
     printScreen(newPrintHtml);
   });
 })();
