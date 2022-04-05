@@ -20,6 +20,10 @@
     <title>報價單產生器</title>
     <link
       rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/css/litepicker.min.css"
+    />
+    <link
+      rel="stylesheet"
       href="https://unpkg.com/@tabler/core@latest/dist/css/tabler.min.css"
     />
     <script
@@ -52,16 +56,44 @@
                   <h3 class="text-muted">主要資料</h3>
 
                   <div class="mb-3">
-                    <label class="form-label">業主(公司)名稱</label>
+                    <label class="form-label">客戶 LOGO</label>
                     <input
-                      type="text"
+                      type="file"
                       class="form-control"
-                      name="company"
-                      placeholder="請輸入業主(公司)名稱"
+                      name="logo"
+                      placeholder=""
+                      accept="image/gif, image/jpeg, image/png"
                     />
                   </div>
+
                   <div class="mb-3">
-                    <label class="form-label">報價人員</label>
+                    <div class="row">
+                      <div class="col-md-6 col-sm-12 mb-3 mb-md-0">
+                        <label class="form-label required">客戶名稱</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="company"
+                          placeholder="請輸入客戶名稱"
+                        />
+                      </div>
+                      <div class="col-md-6 col-sm-12">
+                        <label class="form-label">統一編號</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          name="taxID"
+                          placeholder="請輸入統一編號"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <!-- <h3 class="text-muted">主要資料</h3> -->
+
+                  <div class="mb-3">
+                    <label class="form-label required">報價人員</label>
                     <input
                       type="text"
                       class="form-control"
@@ -69,10 +101,11 @@
                       placeholder="請輸入報價人員"
                     />
                   </div>
+
                   <div class="mb-3">
                     <div class="row">
                       <div class="col-md-6 col-sm-12 mb-3 mb-md-0">
-                        <label class="form-label">Email</label>
+                        <label class="form-label required">Email</label>
                         <input
                           type="email"
                           class="form-control"
@@ -81,13 +114,106 @@
                         />
                       </div>
                       <div class="col-md-6 col-sm-12">
-                        <label class="form-label">聯絡電話</label>
+                        <label class="form-label required">聯絡電話</label>
                         <input
                           type="tel"
                           class="form-control"
                           name="phone"
                           placeholder="聯絡電話"
                         />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <div class="row">
+                      <div class="col-md-6 col-sm-12 mb-3 mb-md-0">
+                        <label class="form-label">報價日期</label>
+                        <div class="input-icon">
+                          <span class="input-icon-addon">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="icon"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              stroke-width="2"
+                              stroke="currentColor"
+                              fill="none"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                stroke="none"
+                                d="M0 0h24v24H0z"
+                                fill="none"
+                              ></path>
+                              <rect
+                                x="4"
+                                y="5"
+                                width="16"
+                                height="16"
+                                rx="2"
+                              ></rect>
+                              <line x1="16" y1="3" x2="16" y2="7"></line>
+                              <line x1="8" y1="3" x2="8" y2="7"></line>
+                              <line x1="4" y1="11" x2="20" y2="11"></line>
+                              <line x1="11" y1="15" x2="12" y2="15"></line>
+                              <line x1="12" y1="15" x2="12" y2="18"></line>
+                            </svg>
+                          </span>
+                          <input
+                            class="form-control"
+                            placeholder="報價日期"
+                            name="startDate"
+                            id="startDate"
+                            autocomplete="off"
+                          />
+                        </div>
+                      </div>
+                      <div class="col-md-6 col-sm-12">
+                        <label class="form-label">有效日期</label>
+                        <div class="input-icon">
+                          <span class="input-icon-addon">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="icon"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              stroke-width="2"
+                              stroke="currentColor"
+                              fill="none"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                stroke="none"
+                                d="M0 0h24v24H0z"
+                                fill="none"
+                              ></path>
+                              <rect
+                                x="4"
+                                y="5"
+                                width="16"
+                                height="16"
+                                rx="2"
+                              ></rect>
+                              <line x1="16" y1="3" x2="16" y2="7"></line>
+                              <line x1="8" y1="3" x2="8" y2="7"></line>
+                              <line x1="4" y1="11" x2="20" y2="11"></line>
+                              <line x1="11" y1="15" x2="12" y2="15"></line>
+                              <line x1="12" y1="15" x2="12" y2="18"></line>
+                            </svg>
+                          </span>
+                          <input
+                            class="form-control"
+                            placeholder="------"
+                            name="endDate"
+                            id="endDate"
+                            autocomplete="off"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -239,7 +365,6 @@
 
                 <div class="card-footer">
                   <div class="row align-items-center">
-                    <!-- <div class="col">合計 $<span id="total-price">0</span></div> -->
                     <div class="col-auto ms-auto">
                       <a
                         href="#"
@@ -302,21 +427,14 @@
     >
       <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title"></h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body"></div>
-          <div class="modal-footer">
-            <!-- <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
-              匯出圖片
-            </button> -->
-          </div>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+          <div class="modal-status bg-info"></div>
+          <div class="modal-main"></div>
         </div>
       </div>
     </div>
@@ -332,22 +450,30 @@
     >
       <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title"></h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+            data-html2canvas-ignore="true"
+          ></button>
+          <div class="modal-status bg-info"></div>
+          <div class="modal-main"></div>
+          <div class="modal-footer">
             <button
               type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
+              class="btn btn-primary"
+              id="exportImage"
               data-html2canvas-ignore="true"
-            ></button>
-          </div>
-          <div class="modal-body"></div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="exportImage" data-html2canvas-ignore="true">
+            >
               匯出圖片
             </button>
-            <button type="button" class="btn btn-primary" id="print" data-html2canvas-ignore="true">
+            <button
+              type="button"
+              class="btn btn-primary"
+              id="print"
+              data-html2canvas-ignore="true"
+            >
               下載為 PDF
             </button>
           </div>
@@ -358,6 +484,7 @@
 </html>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/validate.js/0.13.1/validate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/litepicker/2.0.12/litepicker.min.js"></script>
 <script src="https://unpkg.com/@tabler/core@latest/dist/js/tabler.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="js/common.js"></script>

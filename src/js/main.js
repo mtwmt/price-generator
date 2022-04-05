@@ -4,8 +4,10 @@
   const $form = document.querySelector('form#form');
   const $inputs = document.querySelectorAll('input, textarea, select');
 
+  // common fn
   const { setAmount, setTotal } = common();
 
+  // validate
   const {
     constraints,
     setItemFormValidate,
@@ -13,7 +15,8 @@
     handleFormSubmit,
   } = verify();
 
-  const { createModal } = view();
+  // modal view
+  const { createModal } = modalView();
 
   const delItem = (row) => {
     row.querySelector('.delItem').addEventListener('click', function (e) {
@@ -43,17 +46,24 @@
    * @returns 表單資料
    */
   const formData = function () {
+    const logoFile = $form.querySelector('[name=logo]')?.files[0];
+    const getLogo = !!logoFile ? URL.createObjectURL(logoFile) : null;
+
     const data = {
-      company: document.querySelector('[name=company]').value,
-      name: document.querySelector('[name=name]').value,
-      phone: document.querySelector('[name=phone]').value,
-      email: document.querySelector('[name=email]').value,
-      desc: document.querySelector('[name=desc]').value,
-      total: document.querySelector('#total-price').textContent,
+      logo: getLogo,
+      company: $form.querySelector('[name=company]').value,
+      taxID: $form.querySelector('[name=taxID]').value,
+      name: $form.querySelector('[name=name]').value,
+      phone: $form.querySelector('[name=phone]').value,
+      email: $form.querySelector('[name=email]').value,
+      startDate: $form.querySelector('[name=startDate]').value,
+      endDate: $form.querySelector('[name=endDate]').value,
+      desc: $form.querySelector('[name=desc]').value,
+      total: $form.querySelector('#total-price').textContent,
       items: [],
     };
 
-    document.querySelectorAll('[data-item]').forEach((e, index) => {
+    $form.querySelectorAll('[data-item]').forEach((e, index) => {
       data.items.push({
         category: e.querySelector(`[name*=category`).value,
         item: e.querySelector(`[name*=item`).value,
@@ -66,8 +76,19 @@
     return data;
   };
 
-  // document init ==============
-  document.querySelectorAll('[data-item]').forEach((e) => {
+  const exportTemplate = function(tmp) {
+    const data = formData();
+    const modalBody = tmp.querySelector('.modal-main');
+
+    modalBody.insertAdjacentHTML('beforeend', createModal(data));
+  };
+  const resetExportTemplate = function(tmp) {
+    tmp.querySelector('.modal-main').textContent = '';
+  }
+
+  //======== document init ========
+  
+  $form.querySelectorAll('[data-item]').forEach((e) => {
     updateItemRow(e);
     setItemFormValidate();
   });
@@ -80,9 +101,9 @@
   });
 
   // add item row
-  document.querySelector('#addItem').addEventListener('click', function (e) {
+  $form.querySelector('#addItem').addEventListener('click', function (e) {
     e.preventDefault();
-    const row = document.querySelector('[data-item]');
+    const row = $form.querySelector('[data-item]');
     const newRow = row.cloneNode(true);
     newRow.querySelectorAll('input').forEach((e) => {
       e.value = e.defaultValue;
@@ -92,23 +113,18 @@
       });
     });
 
-    document.querySelector('[data-items]').append(newRow);
+    $form.querySelector('[data-items]').append(newRow);
     updateItemRow(newRow);
     setItemFormValidate();
   });
 
   // on preview
   $preview.addEventListener('show.bs.modal', function (e) {
-    const data = formData();
-    const modalTitle = this.querySelector('.modal-title');
-    const modalBody = this.querySelector('.modal-body');
-    modalTitle.append(`${data.company} ${!data.company ? '' : '-'} 報價單`);
-    modalBody.insertAdjacentHTML('beforeend', createModal(data));
+    exportTemplate(this);
   });
   $preview.addEventListener('hidden.bs.modal', function (e) {
     e.preventDefault();
-    this.querySelector('.modal-title').textContent = '';
-    this.querySelector('.modal-body').textContent = '';
+    resetExportTemplate(this)
   });
 
   // on Submit
@@ -118,27 +134,20 @@
       this.querySelector('.modal-title').textContent = '';
       this.querySelector('.modal-body').textContent = '';
     } else {
-      const data = formData();
-      const modalTitle = this.querySelector('.modal-title');
-      const modalBody = this.querySelector('.modal-body');
-      modalTitle.append(data.company + '-報價單');
-      modalBody.insertAdjacentHTML('beforeend', createModal(data));
+      exportTemplate(this);
     }
   });
 
   $modal.addEventListener('hidden.bs.modal', function (e) {
     e.preventDefault();
-    this.querySelector('.modal-title').textContent = '';
-    this.querySelector('.modal-body').textContent = '';
+    resetExportTemplate(this);
   });
 
-  // Export ==============
-  document.querySelector('#exportImage').addEventListener('click', function () {
-    const preview = document.querySelector('#modal .modal-content');
-
+  // =========== Export ============
+  $modal.querySelector('#exportImage').addEventListener('click', function () {
+    const preview = $modal.querySelector('.modal-content');
     // export Image
     html2canvas(preview).then(function (canvas) {
-      console.log('canvas', canvas);
       document.body.appendChild(canvas);
       const $a = document.createElement('a');
       $a.href = canvas
@@ -152,7 +161,7 @@
     });
   });
 
-  // Print ==============
+  // =========== Print ==============
   const printScreen = (print) => {
     const printArea = print.innerHTML;
     const printPage = window.open('', 'Printing...', '');
@@ -172,16 +181,16 @@
     printPage.document.close('</body></html>');
   };
 
-  document.querySelector('#print').addEventListener('click', function () {
-    const now = new Date().toLocaleDateString();
-    const printHtml = document.querySelector(
-      '#modal .modal-dialog .modal-content'
+  $modal.querySelector('#print').addEventListener('click', function () {
+    const now = new Date().toLocaleString('roc', { hour12: false });
+    const printHtml = $modal.querySelector(
+      '.modal-dialog .modal-content'
     );
     const newPrintHtml = printHtml.cloneNode(true);
     newPrintHtml.querySelector('.modal-footer').remove();
     newPrintHtml.insertAdjacentHTML(
       'beforeend',
-      `<p style="text-align: right;">報價時間：${now}</p>`
+      `<p style="text-align: right;">列印時間：${now}</p>`
     );
     printScreen(newPrintHtml);
   });
