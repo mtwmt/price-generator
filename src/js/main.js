@@ -131,8 +131,7 @@
   $modal.addEventListener('show.bs.modal', function (e) {
     if (!handleFormSubmit($form)) {
       e.preventDefault();
-      this.querySelector('.modal-title').textContent = '';
-      this.querySelector('.modal-body').textContent = '';
+      resetExportTemplate(this);
     } else {
       exportTemplate(this);
     }
