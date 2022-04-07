@@ -76,18 +76,18 @@
     return data;
   };
 
-  const exportTemplate = function(tmp) {
+  const exportTemplate = function (tmp) {
     const data = formData();
     const modalBody = tmp.querySelector('.modal-main');
 
     modalBody.insertAdjacentHTML('beforeend', createModal(data));
   };
-  const resetExportTemplate = function(tmp) {
+  const resetExportTemplate = function (tmp) {
     tmp.querySelector('.modal-main').textContent = '';
   }
 
   //======== document init ========
-  
+
   $form.querySelectorAll('[data-item]').forEach((e) => {
     updateItemRow(e);
     setItemFormValidate();
@@ -161,36 +161,21 @@
   });
 
   // =========== Print ==============
-  const printScreen = (print) => {
-    const printArea = print.innerHTML;
-    const printPage = window.open('', 'Printing...', '');
-    printPage.document.open();
-    printPage.document.write(
-      `<html>
-        <head>
-        <meta charset="UTF-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>報價單產生器</title>
-          <link rel="stylesheet" href="https://unpkg.com/@tabler/core@latest/dist/css/tabler.min.css"/>
-        </head>
-        <body onload='window.print();window.close()'>`
-    );
-    printPage.document.write(printArea);
-    printPage.document.close('</body></html>');
-  };
-
   $modal.querySelector('#print').addEventListener('click', function () {
-    const now = new Date().toLocaleString('roc', { hour12: false });
-    const printHtml = $modal.querySelector(
-      '.modal-dialog .modal-content'
-    );
-    const newPrintHtml = printHtml.cloneNode(true);
-    newPrintHtml.querySelector('.modal-footer').remove();
-    newPrintHtml.insertAdjacentHTML(
-      'beforeend',
-      `<p style="text-align: right;">列印時間：${now}</p>`
-    );
-    printScreen(newPrintHtml);
+    const { jsPDF } = window.jspdf;
+    const print = $modal.querySelector('.modal-content');
+    // export pdf
+    html2canvas(print).then(function (canvas) {
+      const pdfImage = canvas.toDataURL();
+      const doc = new jsPDF({
+        unit: 'px',
+        hotfixes: ['px_scaling']
+      });
+      const scale = ((2780 - canvas.width) / 2480);
+      doc.addImage(pdfImage, 'JPEG', 10, 10, (canvas.width * scale), (canvas.height * scale));
+      doc.save(
+        new Date().toLocaleString('roc', { hour12: false }) + '_quotation.pdf'
+      );
+    });
   });
 })();
