@@ -38,68 +38,76 @@
         <dd class="col-10">{{ data.startDate }}</dd>
       </ng-template>
     </dl>
-    <div class="table-responsive">
-      <table class="table table-vcenter">
-        <thead>
-          <tr>
-            <th>類別</th>
-            <th>項目</th>
-            <th>單價</th>
-            <th>數量</th>
-            <th class="text-end">金額</th>
-          </tr>
-        </thead>
-        <tbody>
-          <ng-container *ngFor="let item of data.serviceItems">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-vcenter">
+          <thead>
             <tr>
-              <td class="text-left">{{ item.category }}</td>
-              <td class="text-left">{{ item.item }}</td>
-              <td>{{ item.price }}</td>
-              <td>
-                {{ item.count }}
-                {{ !!item.unit ? "/" : "" }}
-                {{ item.unit }}
-              </td>
-              <td class="text-end price">NT$ {{ item.amount }}</td>
+              <th>類別</th>
+              <th>項目</th>
+              <th>單價</th>
+              <th>數量</th>
+              <th class="text-end">金額</th>
             </tr>
-          </ng-container>
-          <tr>
-            <td colspan="5" class="text-end">
-              金額：NT$
-              <span class="fs-2 fw-bold text-danger">
-                {{ data.excludingTax || 0 }}
-              </span>
-              元整
-
-              <ng-container *ngIf="data.tax !== 0">
-                <br />
-                {{ data.taxName }}稅 {{ data.percentage }}%
-                <span class="fs-2 fw-bold text-danger">{{ data.tax }}</span>
-                元
-                <br />
-                含稅：NT$
-                <span class="fs-2 fw-bold text-danger">{{
-                  data.includingTax || 0
-                }}</span>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let item of data.serviceItems">
+              <tr>
+                <td class="text-left">{{ item.category }}</td>
+                <td class="text-left">{{ item.item }}</td>
+                <td>{{ item.price }}</td>
+                <td>
+                  {{ item.count }}
+                  {{ !!item.unit ? "/" : "" }}
+                  {{ item.unit }}
+                </td>
+                <td class="text-end price">NT$ {{ item.amount }}</td>
+              </tr>
+            </ng-container>
+            <tr>
+              <td colspan="5" class="text-end">
+                金額：NT$
+                <span class="fs-2 fw-bold text-danger">
+                  {{ data.excludingTax || 0 }}
+                </span>
                 元整
-              </ng-container>
-            </td>
-          </tr>
-        </tbody>
-      </table>
 
-      <table class="table table-vcenter" *ngIf="data.desc">
-        <thead>
-          <tr>
-            <th>備註</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ data.desc }}</td>
-          </tr>
-        </tbody>
-      </table>
+                <ng-container *ngIf="data.tax !== 0">
+                  <br />
+                  {{ data.taxName }}稅 {{ data.percentage }}%
+                  <span class="fs-2 fw-bold text-danger">{{ data.tax }}</span>
+                  元
+                  <br />
+                  含稅：NT$
+                  <span class="fs-2 fw-bold text-danger">{{
+                    data.includingTax || 0
+                  }}</span>
+                  元整
+                </ng-container>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="table table-vcenter" *ngIf="data.desc">
+          <thead>
+            <tr>
+              <th>備註</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ data.desc }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-sm mt-4" style="height: 200px">
+      <div class="card-body">
+        <h3 class="card-title">客戶簽章</h3>
+      </div>
     </div>
   </div>
 </div>
