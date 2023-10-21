@@ -205,16 +205,5 @@ export class PriceGeneratorComponent implements OnInit {
     modalRef.componentInstance.data = this.form.getRawValue();
     modalRef.componentInstance.logo = this.logo;
     modalRef.componentInstance.isPreview = isPreview;
-
-    modalRef.result.then(
-      (result) => {
-        this.closeResult = `Closed with: ${result}`;
-        console.log(`Closed with: ${result}`);
-      },
-      (reason) => {
-        console.log(1111, reason);
-        // this.closeResult = `Dismissed ${this.getDismissReason(reason)}`;
-      }
-    );
   }
 }
