@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "price-generator": {
+    "price": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:class": {
@@ -42,7 +42,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/price-generator",
+            "outputPath": "dist/price",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": [
@@ -91,10 +91,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "price-generator:build:production"
+              "browserTarget": "price:build:production"
             },
             "development": {
-              "browserTarget": "price-generator:build:development"
+              "browserTarget": "price:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -102,7 +102,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "price-generator:build"
+            "browserTarget": "price:build"
           }
         },
         "test": {
