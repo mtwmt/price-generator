@@ -17,7 +17,7 @@ export class CommentsComponent implements OnInit {
     const script = this.renderer.createElement('script');
     script.type = 'text/javascript';
     script.src = 'https://utteranc.es/client.js';
-    script.setAttribute('repo', 'mtwmt/price-generator');
+    script.setAttribute('repo', 'mtwmt/mtwmt.github.io');
     script.setAttribute('issue-term', 'pathname');
     script.setAttribute('theme', 'github-light');
     script.setAttribute('crossorigin', 'anonymous');
