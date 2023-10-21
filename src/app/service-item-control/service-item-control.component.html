@@ -1,0 +1,94 @@
+<form [formGroup]="form">
+  <div class="row align-items-center g-2 mb-4 mb-md-2">
+    <div class="col-6 col-md">
+      <input
+        formControlName="category"
+        type="text"
+        class="form-control"
+        name="category"
+        placeholder="類別"
+        (change)="onInputChange()"
+      />
+    </div>
+    <div class="col-6 col-md">
+      <input
+        formControlName="item"
+        type="text"
+        class="form-control"
+        [ngClass]="form.get('item')?.touched && form.get('item')?.errors?.['required'] ? 'is-invalid': ''"
+        name="item"
+        placeholder="項目"
+      />
+      <div class="invalid-feedback">項目名稱不得為空</div>
+    </div>
+    <div class="col">
+      <input
+        formControlName="price"
+        type="number"
+        class="form-control"
+        [ngClass]="form.get('price')?.touched && form.get('price')?.errors?.['required'] ? 'is-invalid': ''"
+        name="price"
+        placeholder="單價"
+        (change)="onAmountChange()"
+      />
+      <div class="invalid-feedback">單價名稱不得為空</div>
+    </div>
+    <div class="col">
+      <input
+        formControlName="count"
+        type="number"
+        class="form-control"
+        name="count"
+        value="1"
+        placeholder="數量"
+        (change)="onAmountChange()"
+      />
+    </div>
+    <div class="col">
+      <input
+        formControlName="unit"
+        type="text"
+        class="form-control"
+        name="unit"
+        placeholder="單位"
+        (change)="onInputChange()"
+      />
+    </div>
+    <div class="col">
+      <input
+        formControlName="amount"
+        type="number"
+        class="form-control"
+        name="amount"
+        value="0"
+        placeholder="金額"
+        (change)="onInputChange()"
+      />
+    </div>
+    <div class="col-auto">
+      <button
+        class="btn btn-white btn-icon delItem"
+        aria-label="Button"
+        type="button"
+        (click)="onRemoveField($event)"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="icon icon-tabler icon-tabler-x"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+</form>
