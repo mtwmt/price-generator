@@ -86,11 +86,6 @@ export class ServiceItemControlComponent
 
   public setDisabledState(disabled: boolean) {
     this.disabled = disabled;
-    if (disabled) {
-      this.form?.disable();
-    } else {
-      this.form?.enable();
-    }
   }
 
   public validate(control: AbstractControl): ValidationErrors | null {
