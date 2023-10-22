@@ -125,7 +125,6 @@ export class PriceGeneratorComponent implements OnInit {
 
   onLogoChange(file: FileList) {
     this.logo = URL.createObjectURL(file[0]);
-    console.log('onLogoChange', file[0], this.logo);
   }
 
   setStartDate() {
@@ -176,7 +175,6 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   onAddField(event: any) {
-    console.log('onAddField', event);
     this.createTodoItem();
   }
 
