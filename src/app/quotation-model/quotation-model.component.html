@@ -13,6 +13,7 @@
     </div>
 
     <button
+      *ngIf="!isPrint"
       type="button"
       class="btn-close"
       aria-label="Close"
@@ -21,21 +22,21 @@
   </div>
   <div class="modal-body">
     <dl class="row">
-      <dt class="col-2">報價人員:</dt>
-      <dd class="col-10">{{ data.name }}</dd>
-      <dt class="col-2">聯絡電話:</dt>
-      <dd class="col-10">{{ data.tel }}</dd>
-      <dt class="col-2">E-Mail:</dt>
-      <dd class="col-10">{{ data.email }}</dd>
+      <dt class="col-3">報價人員:</dt>
+      <dd class="col-9">{{ data.name }}</dd>
+      <dt class="col-3">聯絡電話:</dt>
+      <dd class="col-9">{{ data.tel }}</dd>
+      <dt class="col-3">E-Mail:</dt>
+      <dd class="col-9">{{ data.email }}</dd>
       <ng-container *ngIf="data.endDate; else noEndDate">
-        <dt class="col-2">報價日期:</dt>
-        <dd class="col-4">{{ data.startDate }}</dd>
-        <dt class="col-2">有效日期:</dt>
-        <dd class="col-4">{{ data.endDate }}</dd>
+        <dt class="col-3">報價日期:</dt>
+        <dd class="col-9">{{ data.startDate }}</dd>
+        <dt class="col-3">有效日期:</dt>
+        <dd class="col-9">{{ data.endDate }}</dd>
       </ng-container>
       <ng-template #noEndDate>
-        <dt class="col-2">報價日期:</dt>
-        <dd class="col-10">{{ data.startDate }}</dd>
+        <dt class="col-3">報價日期:</dt>
+        <dd class="col-9">{{ data.startDate }}</dd>
       </ng-template>
     </dl>
     <div class="card">
