@@ -21,7 +21,6 @@
     </div>
     <div class="page-body">
       <div class="container">
-        <!-- (ngSubmit)="onSubmit($event, content)" -->
         <form id="form" [formGroup]="form">
           <div class="card">
             <div class="card-body">
@@ -57,10 +56,10 @@
                   <div class="col-md-6 col-sm-12">
                     <label class="form-label">統一編號</label>
                     <input
-                      formControlName="taxID"
+                      formControlName="customerTaxID"
                       type="number"
                       class="form-control"
-                      name="taxID"
+                      name="customerTaxID"
                       placeholder="請輸入統一編號"
                     />
                   </div>
@@ -70,16 +69,30 @@
 
             <div class="card-body">
               <div class="mb-3">
-                <label class="form-label required">報價人員</label>
-                <input
-                  formControlName="name"
-                  type="text"
-                  class="form-control"
-                  [ngClass]="form.get('name')?.touched && form.get('name')?.errors?.['required'] ? 'is-invalid': ''"
-                  name="name"
-                  placeholder="請輸入報價人員"
-                />
-                <div class="invalid-feedback">請輸入報價人員</div>
+                <div class="row">
+                  <div class="col-md-6 col-sm-12 mb-3 mb-md-0">
+                    <label class="form-label required">報價人員</label>
+                    <input
+                      formControlName="quoterName"
+                      type="text"
+                      class="form-control"
+                      [ngClass]="form.get('quoterName')?.touched && form.get('quoterName')?.errors?.['required'] ? 'is-invalid': ''"
+                      name="quoterName"
+                      placeholder="請輸入報價人員"
+                    />
+                    <div class="invalid-feedback">請輸入報價人員</div>
+                  </div>
+                  <div class="col-md-6 col-sm-12">
+                    <label class="form-label">統一編號</label>
+                    <input
+                      formControlName="quoterTaxID"
+                      type="number"
+                      class="form-control"
+                      name="quoterTaxID"
+                      placeholder="請輸入統一編號"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -97,16 +110,14 @@
                     <div class="invalid-feedback">請輸入電子信箱</div>
                   </div>
                   <div class="col-md-6 col-sm-12">
-                    <label class="form-label required">聯絡電話</label>
+                    <label class="form-label">聯絡電話</label>
                     <input
                       formControlName="tel"
                       type="tel"
                       class="form-control"
-                      [ngClass]="form.get('tel')?.touched && form.get('tel')?.errors?.['required'] ? 'is-invalid': ''"
                       name="tel"
                       placeholder="請輸入聯絡電話"
                     />
-                    <div class="invalid-feedback">請輸入聯絡電話</div>
                   </div>
                 </div>
               </div>

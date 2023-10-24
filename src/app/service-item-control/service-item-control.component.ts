@@ -24,7 +24,6 @@ import {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './service-item-control.component.html',
-
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
