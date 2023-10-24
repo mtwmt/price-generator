@@ -1,5 +1,5 @@
 <div id="contentToConvert">
-  <div class="modal-header py-3">
+  <div class="modal-header py-2">
     <div class="modal-status bg-info"></div>
     <div class="d-flex align-items-center">
       <div *ngIf="!!logo">
@@ -9,7 +9,12 @@
           style="margin-right: 8px; height: 40px"
         />
       </div>
-      <h4 class="modal-title fs-2 fw-bolder">報價單</h4>
+      <div>
+        <h4 class="modal-title fs-2 fw-bolder">{{ data.company }} - 報價單</h4>
+        <span *ngIf="data.customerTaxID"
+          >統一編號：{{ data.customerTaxID }}</span
+        >
+      </div>
     </div>
 
     <button
@@ -22,20 +27,26 @@
   </div>
   <div class="modal-body">
     <dl class="row">
-      <dt class="col-3">報價人員:</dt>
-      <dd class="col-9">{{ data.name }}</dd>
-      <dt class="col-3">聯絡電話:</dt>
-      <dd class="col-9">{{ data.tel }}</dd>
-      <dt class="col-3">E-Mail:</dt>
+      <dt class="col-3">報價人員：</dt>
+      <dd class="col-9">{{ data.quoterName }}</dd>
+      <ng-container *ngIf="data.quoterTaxID">
+        <dt class="col-3">統一編號：</dt>
+        <dd class="col-9">{{ data.quoterTaxID }}</dd>
+      </ng-container>
+      <ng-container *ngIf="data.tel">
+        <dt class="col-3">聯絡電話：</dt>
+        <dd class="col-9">{{ data.tel }}</dd>
+      </ng-container>
+      <dt class="col-3">E-Mail：</dt>
       <dd class="col-9">{{ data.email }}</dd>
       <ng-container *ngIf="data.endDate; else noEndDate">
-        <dt class="col-3">報價日期:</dt>
+        <dt class="col-3">報價日期：</dt>
         <dd class="col-9">{{ data.startDate }}</dd>
-        <dt class="col-3">有效日期:</dt>
+        <dt class="col-3">有效日期：</dt>
         <dd class="col-9">{{ data.endDate }}</dd>
       </ng-container>
       <ng-template #noEndDate>
-        <dt class="col-3">報價日期:</dt>
+        <dt class="col-3">報價日期：</dt>
         <dd class="col-9">{{ data.startDate }}</dd>
       </ng-template>
     </dl>
@@ -67,7 +78,7 @@
             </ng-container>
             <tr>
               <td colspan="5" class="text-end">
-                金額：NT$
+                未稅：NT$
                 <span class="fs-2 fw-bold text-danger">
                   {{ data.excludingTax || 0 }}
                 </span>
@@ -105,7 +116,7 @@
       </div>
     </div>
 
-    <div class="card card-sm mt-4" style="height: 200px">
+    <div class="card card-sm mt-4" style="height: 120px">
       <div class="card-body">
         <h3 class="card-title">客戶簽章</h3>
       </div>

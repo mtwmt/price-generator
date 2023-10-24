@@ -12,6 +12,7 @@ import {
   FormArray,
   ReactiveFormsModule,
   Validators,
+  Form,
 } from '@angular/forms';
 import {
   NgbDatepickerModule,
@@ -56,25 +57,30 @@ export class PriceGeneratorComponent implements OnInit {
   startDate!: Litepicker;
   endDate!: Litepicker;
 
+
   form: FormGroup = new FormGroup({
     logo: new FormControl(),
     company: new FormControl(null, Validators.required),
-    taxID: new FormControl(),
-    name: new FormControl(null, Validators.required),
-    email: new FormControl(null, Validators.required),
-    tel: new FormControl(null, Validators.required),
+    customerTaxID: new FormControl(),
+
+    quoterName: new FormControl(null, Validators.required),
+    quoterTaxID: new FormControl(),
+    email: new FormControl(),
+    tel: new FormControl(),
+
     startDate: new FormControl(),
     endDate: new FormControl(),
-    serviceItems: new FormArray([], Validators.required),
 
+    serviceItems: new FormArray([], Validators.required),
     excludingTax: new FormControl(),
+
+    // taxItem: new FormArray([]),
 
     taxName: new FormControl(),
     percentage: new FormControl(),
     tax: new FormControl({ value: 0, disabled: true }),
 
     includingTax: new FormControl(),
-
     desc: new FormControl(),
   });
 
