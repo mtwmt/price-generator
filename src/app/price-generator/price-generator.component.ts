@@ -57,7 +57,6 @@ export class PriceGeneratorComponent implements OnInit {
   startDate!: Litepicker;
   endDate!: Litepicker;
 
-
   form: FormGroup = new FormGroup({
     logo: new FormControl(),
     company: new FormControl(null, Validators.required),
@@ -82,6 +81,7 @@ export class PriceGeneratorComponent implements OnInit {
 
     includingTax: new FormControl(),
     desc: new FormControl(),
+    isSign: new FormControl(true),
   });
 
   logo = '';
