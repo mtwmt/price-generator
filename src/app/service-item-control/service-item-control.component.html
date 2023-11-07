@@ -18,7 +18,7 @@
         [ngClass]="form.get('item')?.touched && form.get('item')?.errors?.['required'] ? 'is-invalid': ''"
         name="item"
         placeholder="項目"
-        (change)="onAmountChange()"
+        (change)="onInputChange()"
       />
       <div class="invalid-feedback">項目名稱不得為空</div>
     </div>
