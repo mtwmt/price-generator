@@ -88,11 +88,15 @@ export class PriceGeneratorComponent implements OnInit {
 
   closeResult = '';
 
+  historyData!: any[];
+
   constructor(
     private modal: NgbModal,
     private renderer: Renderer2,
     private el: ElementRef
   ) {
+    this.historyData = JSON.parse(localStorage.getItem('quotation') || '[]');
+
     this.createTodoItem();
 
     this.serviceItems.valueChanges.subscribe((res) => {
@@ -190,7 +194,16 @@ export class PriceGeneratorComponent implements OnInit {
     }
   }
 
+  onHistoryChange(event: any) {
+    const idx = event.target.value;
+    const data = this.historyData[idx];
+
+    this.form.patchValue({ ...data });
+  }
+
   onSubmit() {
+    const data = this.form.getRawValue();
+    this.saveLocalStorage(data);
     this.openModal();
   }
 
@@ -209,5 +222,14 @@ export class PriceGeneratorComponent implements OnInit {
     modalRef.componentInstance.data = this.form.getRawValue();
     modalRef.componentInstance.logo = this.logo;
     modalRef.componentInstance.isPreview = isPreview;
+  }
+
+  saveLocalStorage(data: any) {
+    this.historyData.unshift(data);
+    if (this.historyData.length > 5) {
+      this.historyData.pop();
+    }
+
+    localStorage.setItem('quotation', JSON.stringify(this.historyData));
   }
 }
