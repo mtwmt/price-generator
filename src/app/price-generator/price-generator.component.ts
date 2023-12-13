@@ -12,7 +12,6 @@ import {
   FormArray,
   ReactiveFormsModule,
   Validators,
-  Form,
 } from '@angular/forms';
 import {
   NgbDatepickerModule,
@@ -199,6 +198,20 @@ export class PriceGeneratorComponent implements OnInit {
     const data = this.historyData[idx];
 
     this.form.patchValue({ ...data });
+
+    this.serviceItems.clear();
+    data.serviceItems.forEach((item: any) => {
+      this.serviceItems.push(
+        new FormControl({
+          category: item.category,
+          item: item.item,
+          price: item.price,
+          count: item.count,
+          unit: item.unit,
+          amount: item.amount,
+        })
+      );
+    });
   }
 
   onSubmit() {
