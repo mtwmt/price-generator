@@ -1,7 +1,9 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
+  inject,
   OnInit,
   Renderer2,
 } from '@angular/core';
@@ -21,6 +23,7 @@ import {
 import { ServiceItemControlComponent } from '../service-item-control/service-item-control.component';
 import Litepicker from 'litepicker';
 import { debounceTime, filter, map } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuotationModelComponent } from '../quotation-model/quotation-model.component';
 import { CommentsComponent } from '../comments/comments.component';
 
@@ -53,6 +56,8 @@ import { CommentsComponent } from '../comments/comments.component';
   templateUrl: './price-generator.component.html',
 })
 export class PriceGeneratorComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   startDate!: Litepicker;
   endDate!: Litepicker;
 
@@ -62,7 +67,7 @@ export class PriceGeneratorComponent implements OnInit {
     customerTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
 
     quoterName: new FormControl(null, Validators.required),
-    quoterTaxID: new FormControl(),
+    quoterTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
     email: new FormControl(),
     tel: new FormControl(),
 
@@ -108,6 +113,7 @@ export class PriceGeneratorComponent implements OnInit {
     // calculate tax
     this.form.valueChanges
       .pipe(
+        takeUntilDestroyed(this.destroyRef),
         debounceTime(200),
         filter(({ excludingTax, percentage }) => {
           return excludingTax || percentage;
@@ -128,6 +134,8 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.onTaxIdValueChange('customerTaxID');
+    this.onTaxIdValueChange('quoterTaxID');
     this.setStartDate();
     this.setEndDate();
   }
@@ -136,10 +144,17 @@ export class PriceGeneratorComponent implements OnInit {
     this.logo = URL.createObjectURL(file[0]);
   }
 
-  onCustomerTaxIDChange(event: Event): void {
-    const inputElement = event.target as HTMLInputElement;
-    inputElement.value = inputElement.value.replace(/[^0-9]/g, '');
-    this.form.get('customerTaxID')?.setValue(inputElement.value);
+  onTaxIdValueChange(controlName: string) {
+    const control = this.form.get(controlName);
+
+    control?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef), debounceTime(200))
+      .subscribe((value: string) => {
+        const sanitizedValue = value?.replace(/[^0-9]/g, '') || '';
+        if (sanitizedValue !== value) {
+          control.setValue(sanitizedValue, { emitEvent: false });
+        }
+      });
   }
 
   setStartDate() {

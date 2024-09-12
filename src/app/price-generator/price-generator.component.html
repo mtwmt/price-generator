@@ -90,7 +90,6 @@
                       class="form-control"
                       name="customerTaxID"
                       placeholder="請輸入統一編號"
-                      (input)="onCustomerTaxIDChange($event)"
                       [ngClass]="form.get('customerTaxID')?.touched && form.get('customerTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
                     />
                     <div class="invalid-feedback">請輸入正確統一編號</div>
@@ -118,11 +117,13 @@
                     <label class="form-label">統一編號</label>
                     <input
                       formControlName="quoterTaxID"
-                      type="number"
+                      type="text"
                       class="form-control"
                       name="quoterTaxID"
                       placeholder="請輸入統一編號"
+                      [ngClass]="form.get('quoterTaxID')?.touched && form.get('quoterTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
                     />
+                    <div class="invalid-feedback">請輸入正確統一編號</div>
                   </div>
                 </div>
               </div>
