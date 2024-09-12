@@ -59,7 +59,7 @@ export class PriceGeneratorComponent implements OnInit {
   form: FormGroup = new FormGroup({
     logo: new FormControl(),
     company: new FormControl(null, Validators.required),
-    customerTaxID: new FormControl(),
+    customerTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
 
     quoterName: new FormControl(null, Validators.required),
     quoterTaxID: new FormControl(),
@@ -134,6 +134,12 @@ export class PriceGeneratorComponent implements OnInit {
 
   onLogoChange(file: FileList) {
     this.logo = URL.createObjectURL(file[0]);
+  }
+
+  onCustomerTaxIDChange(event: Event): void {
+    const inputElement = event.target as HTMLInputElement;
+    inputElement.value = inputElement.value.replace(/[^0-9]/g, '');
+    this.form.get('customerTaxID')?.setValue(inputElement.value);
   }
 
   setStartDate() {

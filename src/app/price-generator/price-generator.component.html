@@ -25,7 +25,10 @@
           <div class="card">
             <div class="card-body">
               <div class="row flex-row-reverse align-items-center">
-                <div class="col-md-6 col-lg-5 row mb-3 mb-md-0 mx-0" *ngIf="historyData.length > 0">
+                <div
+                  class="col-md-6 col-lg-5 row mb-3 mb-md-0 mx-0"
+                  *ngIf="historyData.length > 0"
+                >
                   <label class="col-md-3 col-form-label">歷史報價單</label>
                   <div class="col-md-9">
                     <select
@@ -83,11 +86,14 @@
                     <label class="form-label">統一編號</label>
                     <input
                       formControlName="customerTaxID"
-                      type="number"
+                      type="text"
                       class="form-control"
                       name="customerTaxID"
                       placeholder="請輸入統一編號"
+                      (input)="onCustomerTaxIDChange($event)"
+                      [ngClass]="form.get('customerTaxID')?.touched && form.get('customerTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
                     />
+                    <div class="invalid-feedback">請輸入正確統一編號</div>
                   </div>
                 </div>
               </div>
