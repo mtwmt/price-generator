@@ -26,6 +26,7 @@ import { debounceTime, filter, map } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuotationModelComponent } from '../quotation-model/quotation-model.component';
 import { CommentsComponent } from '../comments/comments.component';
+import { DonateComponent } from '../donate/donate.component';
 
 @Component({
   selector: 'app-price-generator',
@@ -51,6 +52,7 @@ import { CommentsComponent } from '../comments/comments.component';
     NgbDatepickerModule,
     ServiceItemControlComponent,
     CommentsComponent,
+    DonateComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
