@@ -26,4 +26,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm install
-          npm run ng -- deploy --no-silent
+          npm run build
+          touch dist/price/.nojekyll
+          npm run ng -- deploy --dir=dist/price --no-silent
