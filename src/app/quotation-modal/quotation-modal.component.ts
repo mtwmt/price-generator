@@ -5,12 +5,12 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 @Component({
-  selector: 'app-quotation-model',
+  selector: 'app-quotation-modal',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './quotation-model.component.html',
+  templateUrl: './quotation-modal.component.html',
 })
-export class QuotationModelComponent implements OnInit {
+export class QuotationModalComponent implements OnInit {
   @Input() data!: any;
   @Input() logo!: any;
   @Input() isPreview: boolean = false;
