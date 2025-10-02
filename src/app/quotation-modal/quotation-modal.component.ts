@@ -1,27 +1,29 @@
-import { Component, Input, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { QuotationData } from '../models/quotation.model';
 
 @Component({
   selector: 'app-quotation-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './quotation-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QuotationModalComponent implements OnInit {
-  @Input() data!: any;
-  @Input() logo!: any;
+export class QuotationModalComponent {
+  // 動態開啟的 Modal 無法使用 Signal Input，需使用傳統 @Input
+  @Input() data!: QuotationData;
+  @Input() logo: string = '';
+  @Input() stamp: string = '';
   @Input() isPreview: boolean = false;
 
-  isPrint = false;
+  isPrint = signal<boolean>(false);
+
   constructor(public activeModal: NgbActiveModal) {}
 
-  ngOnInit() {}
-
   onExportImage() {
-    this.isPrint = true;
+    this.isPrint.set(true);
     const preview = document.getElementById('contentToConvert') as HTMLElement;
 
     const fileName = ''.concat(
@@ -40,12 +42,12 @@ export class QuotationModalComponent implements OnInit {
         link.click();
       })
       .then(() => {
-        this.isPrint = false;
+        this.isPrint.set(false);
       });
   }
 
   onExportPdf() {
-    this.isPrint = true;
+    this.isPrint.set(true);
     const preview = document.getElementById('contentToConvert') as HTMLElement;
     const fileName = ''.concat(
       new Date().toLocaleString('roc', { hour12: false }),
@@ -67,7 +69,7 @@ export class QuotationModalComponent implements OnInit {
         pdf.save(fileName); // Generated PDF
       })
       .then(() => {
-        this.isPrint = false;
+        this.isPrint.set(false);
       });
   }
 }

@@ -25,10 +25,8 @@
           <div class="card">
             <div class="card-body">
               <div class="row flex-row-reverse align-items-center">
-                <div
-                  class="col-md-6 col-lg-5 row mb-3 mb-md-0 mx-0"
-                  *ngIf="historyData.length > 0"
-                >
+                @if (hasHistory()) {
+                <div class="col-md-6 col-lg-5 row mb-3 mb-md-0 mx-0">
                   <label class="col-md-3 col-form-label">歷史報價單</label>
                   <div class="col-md-9">
                     <select
@@ -40,32 +38,54 @@
                       (change)="onHistoryChange($event)"
                     >
                       <option value="">選擇歷史報價單</option>
-                      <ng-container
-                        *ngFor="let option of historyData; let i = index"
-                      >
-                        <option [value]="i">
-                          {{ option.startDate }} - {{ option.company }}
-                        </option>
-                      </ng-container>
+                      @for (option of historyData(); track $index) {
+                      <option [value]="$index">{{ option.startDate }} - {{ option.company }}</option>
+                      }
                     </select>
                   </div>
                 </div>
+                }
                 <div class="col-md">
                   <h3 class="text-muted">主要資料</h3>
                 </div>
               </div>
 
-              <div class="mb-3">
-                <label class="form-label">客戶 LOGO</label>
-                <input
-                  formControlName="logo"
-                  type="file"
-                  class="form-control"
-                  name="logo"
-                  placeholder=""
-                  accept="image/gif, image/jpeg, image/png"
-                  (change)="onLogoChange($any($event).target.files)"
-                />
+              <div class="row mb-3">
+                <div class="col-sm-12 mb-3 mb-md-0">
+                  <label class="form-label">客戶 LOGO</label>
+                  <div class="input-group">
+                    <input
+                      #logoInput
+                      formControlName="logo"
+                      type="file"
+                      class="form-control"
+                      name="logo"
+                      placeholder=""
+                      accept="image/gif, image/jpeg, image/png"
+                      (change)="onLogoChange($any($event).target.files)"
+                    />
+                    @if(logo()) {
+                    <button type="button" class="btn btn-white btn-icon" (click)="removeLogo(logoInput)" title="移除 LOGO">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="icon icon-tabler icon-tabler-x"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                        stroke="currentColor"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                    }
+                  </div>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -101,7 +121,7 @@
             <div class="card-body">
               <div class="mb-3">
                 <div class="row">
-                  <div class="col-md-6 col-sm-12 mb-3 mb-md-0">
+                  <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
                     <label class="form-label required">報價公司/人員</label>
                     <input
                       formControlName="quoterName"
@@ -113,7 +133,7 @@
                     />
                     <div class="invalid-feedback">請輸入報價人員</div>
                   </div>
-                  <div class="col-md-6 col-sm-12">
+                  <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
                     <label class="form-label">統一編號</label>
                     <input
                       formControlName="quoterTaxID"
@@ -124,6 +144,41 @@
                       [ngClass]="form.get('quoterTaxID')?.touched && form.get('quoterTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
                     />
                     <div class="invalid-feedback">請輸入正確統一編號</div>
+                  </div>
+                  <div class="col-md-4 col-sm-12">
+                    <label class="form-label">公司發票章</label>
+                    <div class="input-group">
+                      <input
+                        #stampInput
+                        formControlName="stamp"
+                        type="file"
+                        class="form-control"
+                        name="stamp"
+                        placeholder=""
+                        accept="image/gif, image/jpeg, image/png"
+                        (change)="onStampChange($any($event).target.files)"
+                      />
+                      @if(stamp()) {
+                      <button type="button" class="btn btn-white btn-icon" (click)="removeStamp(stampInput)" title="移除公司發票章">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="icon icon-tabler icon-tabler-x"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          stroke-width="2"
+                          stroke="currentColor"
+                          fill="none"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -143,22 +198,13 @@
                       }"
                     />
                     <div class="invalid-feedback">
-                      @if(form.get('email')?.errors?.['required']) {
-                      請輸入電子信箱
-                      } @else if(form.get('email')?.errors?.['email']) {
-                      錯誤的電子信箱
+                      @if(form.get('email')?.errors?.['required']) { 請輸入電子信箱 } @else if(form.get('email')?.errors?.['email']) { 錯誤的電子信箱
                       }
                     </div>
                   </div>
                   <div class="col-md-6 col-sm-12">
                     <label class="form-label">聯絡電話</label>
-                    <input
-                      formControlName="tel"
-                      type="tel"
-                      class="form-control"
-                      name="tel"
-                      placeholder="請輸入聯絡電話"
-                    />
+                    <input formControlName="tel" type="tel" class="form-control" name="tel" placeholder="請輸入聯絡電話" />
                   </div>
                 </div>
               </div>
@@ -181,18 +227,8 @@
                           stroke-linecap="round"
                           stroke-linejoin="round"
                         >
-                          <path
-                            stroke="none"
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          ></path>
-                          <rect
-                            x="4"
-                            y="5"
-                            width="16"
-                            height="16"
-                            rx="2"
-                          ></rect>
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                          <rect x="4" y="5" width="16" height="16" rx="2"></rect>
                           <line x1="16" y1="3" x2="16" y2="7"></line>
                           <line x1="8" y1="3" x2="8" y2="7"></line>
                           <line x1="4" y1="11" x2="20" y2="11"></line>
@@ -227,18 +263,8 @@
                           stroke-linecap="round"
                           stroke-linejoin="round"
                         >
-                          <path
-                            stroke="none"
-                            d="M0 0h24v24H0z"
-                            fill="none"
-                          ></path>
-                          <rect
-                            x="4"
-                            y="5"
-                            width="16"
-                            height="16"
-                            rx="2"
-                          ></rect>
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                          <rect x="4" y="5" width="16" height="16" rx="2"></rect>
                           <line x1="16" y1="3" x2="16" y2="7"></line>
                           <line x1="8" y1="3" x2="8" y2="7"></line>
                           <line x1="4" y1="11" x2="20" y2="11"></line>
@@ -246,14 +272,7 @@
                           <line x1="12" y1="15" x2="12" y2="18"></line>
                         </svg>
                       </span>
-                      <input
-                        formControlName="endDate"
-                        class="form-control"
-                        placeholder="------"
-                        name="endDate"
-                        id="endDate"
-                        autocomplete="off"
-                      />
+                      <input formControlName="endDate" class="form-control" placeholder="------" name="endDate" id="endDate" autocomplete="off" />
                     </div>
                   </div>
                 </div>
@@ -264,11 +283,7 @@
               <div class="row mb-1">
                 <h3 class="col text-muted">服務項目</h3>
                 <div class="col-auto ms-auto">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-primary"
-                    (click)="onAddField($event)"
-                  >
+                  <button type="button" class="btn btn-sm btn-primary" (click)="onAddField($event)">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       class="icon icon-tabler icon-tabler-playlist-add"
@@ -292,21 +307,15 @@
                   </button>
                 </div>
               </div>
-              <ng-container
-                formArrayName="serviceItems"
-                *ngFor="let control of serviceItems.controls; let idx = index"
-              >
-                <app-service-item-control
-                  [formControlName]="idx"
-                  (removeField)="onRemoveField(idx)"
-                />
-              </ng-container>
+              <div formArrayName="serviceItems">
+                @for (control of serviceItems.controls; track $index) {
+                <app-service-item-control [formControlName]="$index" (removeField)="onRemoveField($index)" />
+                }
+              </div>
               <div class="mb-3 row">
                 <div class="col-auto ms-auto fs-3">
                   未稅價 合計：NT$
-                  <span class="fs-2 fw-bold text-danger" id="excluding-tax">{{
-                    form.get("excludingTax")?.value || 0
-                  }}</span>
+                  <span class="fs-2 fw-bold text-danger" id="excluding-tax">{{ form.get('excludingTax')?.value || 0 }}</span>
                   元整
                 </div>
               </div>
@@ -320,44 +329,23 @@
               <div data-texRate>
                 <div data-tex class="row align-items-center g-2 mb-4 mb-md-2">
                   <div class="col-12 col-md">
-                    <input
-                      formControlName="taxName"
-                      type="text"
-                      class="form-control"
-                      name="taxName"
-                      placeholder="稅別"
-                    />
+                    <input formControlName="taxName" type="text" class="form-control" name="taxName" placeholder="稅別" />
                   </div>
                   <div class="col">
                     <div class="d-flex align-items-center">
-                      <input
-                        formControlName="percentage"
-                        type="number"
-                        class="form-control mr-2"
-                        name="percentage"
-                        placeholder="稅率"
-                      />
+                      <input formControlName="percentage" type="number" class="form-control mr-2" name="percentage" placeholder="稅率" />
                       <span class="d-inline-block">%</span>
                     </div>
                   </div>
                   <div class="col">
-                    <input
-                      formControlName="tax"
-                      type="number"
-                      class="form-control"
-                      name="tax"
-                      value="0"
-                      placeholder="金額"
-                    />
+                    <input formControlName="tax" type="number" class="form-control" name="tax" value="0" placeholder="金額" />
                   </div>
                 </div>
               </div>
               <div class="mb-3 row">
                 <div class="col-auto ms-auto fs-3">
                   含稅價 合計：NT$
-                  <span class="fs-2 fw-bold text-danger" id="including-tax">{{
-                    form.get("includingTax")?.value || 0
-                  }}</span>
+                  <span class="fs-2 fw-bold text-danger" id="including-tax">{{ form.get('includingTax')?.value || 0 }}</span>
                   元整
                 </div>
               </div>
@@ -367,42 +355,18 @@
             <div class="card-body">
               <div class="mb-3">
                 <label class="form-label">備註</label>
-                <textarea
-                  formControlName="desc"
-                  class="form-control"
-                  name="desc"
-                  rows="3"
-                  placeholder="Content.."
-                  style="resize: none"
-                ></textarea>
+                <textarea formControlName="desc" class="form-control" name="desc" rows="3" placeholder="Content.." style="resize: none"></textarea>
               </div>
               <label class="form-check">
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  formControlName="isSign"
-                />
+                <input type="checkbox" class="form-check-input" formControlName="isSign" />
                 <span class="form-check-label">是否顯示簽章欄位</span>
               </label>
             </div>
             <div class="card-footer">
               <div class="row align-items-center">
                 <div class="col-auto ms-auto btn-list">
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    (click)="onPreview()"
-                  >
-                    預覽
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-primary"
-                    [disabled]="!form.valid || !form.dirty"
-                    (click)="onSubmit()"
-                  >
-                    送出
-                  </button>
+                  <button type="button" class="btn btn-primary" (click)="onPreview()">預覽</button>
+                  <button type="button" class="btn btn-primary" [disabled]="!form.valid || !form.dirty" (click)="onSubmit()">送出</button>
                 </div>
               </div>
             </div>
@@ -418,8 +382,8 @@
           <ul class="list-inline list-inline-dots mb-0">
             <li class="list-inline-item">
               Copyright © 2022
-              <a href="https://mtwmt.com/" target="_blank">Mandy</a>. All rights
-              reserved.
+              <a href="https://mtwmt.com/" target="_blank">Mandy</a>
+              . All rights reserved.
             </li>
           </ul>
         </div>

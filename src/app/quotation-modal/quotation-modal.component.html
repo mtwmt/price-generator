@@ -2,54 +2,55 @@
   <div class="modal-header py-2">
     <div class="modal-status bg-info"></div>
     <div class="d-flex align-items-center">
-      <div *ngIf="!!logo">
-        <img
-          [src]="logo"
-          [alt]="data.company"
-          style="margin-right: 8px; height: 40px"
-        />
+      @if (!!logo) {
+      <div>
+        <img [src]="logo" [alt]="data.company" style="margin-right: 8px; height: 40px" />
       </div>
+      }
       <div>
         <h4 class="modal-title fs-2 fw-bolder">{{ data.company }} - 報價單</h4>
-        <span *ngIf="data.customerTaxID"
-          >統一編號：{{ data.customerTaxID }}</span
-        >
+        @if (data.customerTaxID) {
+        <span>統一編號：{{ data.customerTaxID }}</span>
+        }
       </div>
     </div>
 
-    <button
-      *ngIf="!isPrint"
-      type="button"
-      class="btn-close"
-      aria-label="Close"
-      (click)="activeModal.dismiss('Cross click')"
-    ></button>
+    @if (!isPrint()) {
+    <button type="button" class="btn-close" aria-label="Close" (click)="activeModal.dismiss('Cross click')"></button>
+    }
   </div>
   <div class="modal-body">
-    <dl class="row">
-      <dt class="col-3">報價公司/人員：</dt>
-      <dd class="col-9">{{ data.quoterName }}</dd>
-      <ng-container *ngIf="data.quoterTaxID">
-        <dt class="col-3">統一編號：</dt>
-        <dd class="col-9">{{ data.quoterTaxID }}</dd>
-      </ng-container>
-      <ng-container *ngIf="data.tel">
-        <dt class="col-3">聯絡電話：</dt>
-        <dd class="col-9">{{ data.tel }}</dd>
-      </ng-container>
-      <dt class="col-3">E-Mail：</dt>
-      <dd class="col-9">{{ data.email }}</dd>
-      <ng-container *ngIf="data.endDate; else noEndDate">
-        <dt class="col-3">報價日期：</dt>
-        <dd class="col-9">{{ data.startDate }}</dd>
-        <dt class="col-3">有效日期：</dt>
-        <dd class="col-9">{{ data.endDate }}</dd>
-      </ng-container>
-      <ng-template #noEndDate>
-        <dt class="col-3">報價日期：</dt>
-        <dd class="col-9">{{ data.startDate }}</dd>
-      </ng-template>
-    </dl>
+    <div class="row">
+      <div class="col-9">
+        <dl class="row">
+          <dt class="col-4">報價公司/人員：</dt>
+          <dd class="col-8">{{ data.quoterName }}</dd>
+          @if (data.quoterTaxID) {
+          <dt class="col-4">統一編號：</dt>
+          <dd class="col-8">{{ data.quoterTaxID }}</dd>
+          } @if (data.tel) {
+          <dt class="col-4">聯絡電話：</dt>
+          <dd class="col-8">{{ data.tel }}</dd>
+          }
+          <dt class="col-4">E-Mail：</dt>
+          <dd class="col-8">{{ data.email }}</dd>
+          @if (data.endDate) {
+          <dt class="col-4">報價日期：</dt>
+          <dd class="col-8">{{ data.startDate }}</dd>
+          <dt class="col-4">有效日期：</dt>
+          <dd class="col-8">{{ data.endDate }}</dd>
+          } @else {
+          <dt class="col-4">報價日期：</dt>
+          <dd class="col-8">{{ data.startDate }}</dd>
+          }
+        </dl>
+      </div>
+      @if (stamp) {
+      <div class="col-3 text-center">
+        <img [src]="stamp" alt="公司發票章" style="max-height: 120px; max-width: 100%" />
+      </div>
+      }
+    </div>
     <div class="card">
       <div class="table-responsive">
         <table class="table table-vcenter">
@@ -63,45 +64,41 @@
             </tr>
           </thead>
           <tbody>
-            <ng-container *ngFor="let item of data.serviceItems">
-              <tr>
-                <td class="text-left">{{ item.category }}</td>
-                <td class="text-left">{{ item.item }}</td>
-                <td>{{ item.price }}</td>
-                <td>
-                  {{ item.count }}
-                  {{ !!item.unit ? "/" : "" }}
-                  {{ item.unit }}
-                </td>
-                <td class="text-end price">NT$ {{ item.amount }}</td>
-              </tr>
-            </ng-container>
+            @for (item of data.serviceItems; track $index) {
+            <tr>
+              <td class="text-left">{{ item.category }}</td>
+              <td class="text-left">{{ item.item }}</td>
+              <td>{{ item.price }}</td>
+              <td>
+                {{ item.count }}
+                {{ !!item.unit ? '/' : '' }}
+                {{ item.unit }}
+              </td>
+              <td class="text-end price">NT$ {{ item.amount }}</td>
+            </tr>
+            }
             <tr>
               <td colspan="5" class="text-end">
                 未稅：NT$
                 <span class="fs-2 fw-bold text-danger">
                   {{ data.excludingTax || 0 }}
                 </span>
-                元整
-
-                <ng-container *ngIf="data.tax !== 0">
-                  <br />
-                  {{ data.taxName }}稅 {{ data.percentage }}%
-                  <span class="fs-2 fw-bold text-danger">{{ data.tax }}</span>
-                  元
-                  <br />
-                  含稅：NT$
-                  <span class="fs-2 fw-bold text-danger">{{
-                    data.includingTax || 0
-                  }}</span>
-                  元整
-                </ng-container>
+                元整 @if (data.tax !== 0) {
+                <br />
+                {{ data.taxName }}稅 {{ data.percentage }}%
+                <span class="fs-2 fw-bold text-danger">{{ data.tax }}</span>
+                元
+                <br />
+                含稅：NT$
+                <span class="fs-2 fw-bold text-danger">{{ data.includingTax || 0 }}</span>
+                元整 }
               </td>
             </tr>
           </tbody>
         </table>
 
-        <table class="table table-vcenter" *ngIf="data.desc">
+        @if (data.desc) {
+        <table class="table table-vcenter">
           <thead>
             <tr>
               <th>備註</th>
@@ -113,22 +110,23 @@
             </tr>
           </tbody>
         </table>
+        }
       </div>
     </div>
 
-    <div class="card card-sm mt-4" style="height: 120px" *ngIf="data.isSign">
+    @if (data.isSign) {
+    <div class="card card-sm mt-4" style="height: 120px">
       <div class="card-body">
         <h3 class="card-title">客戶簽章</h3>
       </div>
     </div>
+    }
   </div>
 </div>
 
-<div class="modal-footer" *ngIf="!isPreview">
-  <button type="button" class="btn btn-primary" (click)="onExportImage()">
-    匯出圖片
-  </button>
-  <button type="button" class="btn btn-primary" (click)="onExportPdf()">
-    下載為 PDF
-  </button>
+@if (!isPreview) {
+<div class="modal-footer">
+  <button type="button" class="btn btn-primary" (click)="onExportImage()">匯出圖片</button>
+  <button type="button" class="btn btn-primary" (click)="onExportPdf()">下載為 PDF</button>
 </div>
+}

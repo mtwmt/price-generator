@@ -6,6 +6,8 @@ import {
   inject,
   OnInit,
   Renderer2,
+  signal,
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -28,6 +30,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuotationModalComponent } from '../quotation-modal/quotation-modal.component';
 import { CommentsComponent } from '../comments/comments.component';
 import { DonateComponent } from '../donate/donate.component';
+import { QuotationData } from '../models/quotation.model';
 
 @Component({
   selector: 'app-price-generator',
@@ -71,16 +74,18 @@ export class PriceGeneratorComponent implements OnInit {
 
   form!: FormGroup;
 
-  logo = '';
-  closeResult = '';
-  historyData!: any[];
+  logo = signal<string>('');
+  stamp = signal<string>('');
+  historyData = signal<QuotationData[]>([]);
+
+  hasHistory = computed(() => this.historyData().length > 0);
 
   get serviceItems() {
     return this.form?.get('serviceItems') as FormArray;
   }
 
   ngOnInit() {
-    this.historyData = JSON.parse(localStorage.getItem('quotation') || '[]');
+    this.historyData.set(JSON.parse(localStorage.getItem('quotation') || '[]'));
     this.createForm();
     this.createTodoItem();
 
@@ -118,6 +123,7 @@ export class PriceGeneratorComponent implements OnInit {
   createForm() {
     this.form = this.fb.group({
       logo: new FormControl(),
+      stamp: new FormControl(),
       company: new FormControl(null, Validators.required),
       customerTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
 
@@ -145,7 +151,34 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   onLogoChange(file: FileList) {
-    this.logo = URL.createObjectURL(file[0]);
+    if (file && file[0]) {
+      // 使用 FileReader 轉成 base64，方便儲存到 localStorage
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.logo.set(e.target.result);
+      };
+      reader.readAsDataURL(file[0]);
+    }
+  }
+
+  onStampChange(file: FileList) {
+    if (file && file[0]) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.stamp.set(e.target.result);
+      };
+      reader.readAsDataURL(file[0]);
+    }
+  }
+
+  removeLogo(input: HTMLInputElement) {
+    this.logo.set('');
+    input.value = '';
+  }
+
+  removeStamp(input: HTMLInputElement) {
+    this.stamp.set('');
+    input.value = '';
   }
 
   onTaxIdValueChange(controlName: string) {
@@ -220,8 +253,25 @@ export class PriceGeneratorComponent implements OnInit {
 
   onHistoryChange(event: any) {
     const idx = event.target.value;
-    const data = this.historyData[idx];
-    this.form.patchValue({ ...data });
+    const data = this.historyData()[idx];
+
+    // 排除 logo 和 stamp 欄位（因為 file input 不能被程式設定值）
+    const { logo, stamp, ...formData } = data || {};
+    this.form.patchValue({ ...formData });
+
+    // 載入印章圖片（從 localStorage 載入的是 base64）
+    if (stamp) {
+      this.stamp.set(stamp);
+    } else {
+      this.stamp.set('');
+    }
+
+    // 載入 LOGO 圖片
+    if (logo) {
+      this.logo.set(logo);
+    } else {
+      this.logo.set('');
+    }
 
     this.serviceItems.clear();
 
@@ -245,7 +295,9 @@ export class PriceGeneratorComponent implements OnInit {
 
   onSubmit() {
     const data = this.form.getRawValue();
-    this.saveLocalStorage(data);
+    // 將 LOGO 和印章圖片一起儲存
+    const dataWithImages = { ...data, logo: this.logo(), stamp: this.stamp() };
+    this.saveLocalStorage(dataWithImages);
     this.openModal();
   }
 
@@ -261,17 +313,23 @@ export class PriceGeneratorComponent implements OnInit {
       ariaLabelledBy: 'modal-basic-title',
     });
 
-    modalRef.componentInstance.data = this.form.getRawValue();
-    modalRef.componentInstance.logo = this.logo;
-    modalRef.componentInstance.isPreview = isPreview;
+    // Signal Input 仍然支援透過 componentInstance 設定
+    const component = modalRef.componentInstance;
+    component.data = this.form.getRawValue();
+    component.logo = this.logo();
+    component.stamp = this.stamp();
+    component.isPreview = isPreview;
   }
 
-  saveLocalStorage(data: any) {
-    this.historyData.unshift(data);
-    if (this.historyData.length > 5) {
-      this.historyData.pop();
-    }
+  saveLocalStorage(data: QuotationData) {
+    this.historyData.update(history => {
+      const newHistory = [data, ...history];
+      if (newHistory.length > 5) {
+        newHistory.pop();
+      }
+      return newHistory;
+    });
 
-    localStorage.setItem('quotation', JSON.stringify(this.historyData));
+    localStorage.setItem('quotation', JSON.stringify(this.historyData()));
   }
 }
