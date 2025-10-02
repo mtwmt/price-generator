@@ -1,11 +1,11 @@
 import {
   Component,
-  EventEmitter,
-  OnInit,
-  Output,
+  output,
   forwardRef,
+  ChangeDetectionStrategy,
+  signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import {
   FormGroup,
   FormControl,
@@ -18,12 +18,14 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { ServiceItem } from '../models/quotation.model';
 
 @Component({
   selector: 'app-service-item-control',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [ReactiveFormsModule, NgClass],
   templateUrl: './service-item-control.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -38,16 +40,15 @@ import {
   ],
 })
 export class ServiceItemControlComponent
-  implements OnInit, ControlValueAccessor, Validator
+  implements ControlValueAccessor, Validator
 {
-  @Output() removeField: EventEmitter<any> = new EventEmitter();
+  // 使用 Signal Output API
+  removeField = output<void>();
 
-  private serviceItem: any = {
-    category: null,
-    item: null,
-    price: null,
+  private serviceItem: ServiceItem = {
+    item: '',
+    price: 0,
     count: 0,
-    unit: null,
     amount: 0,
   };
 
@@ -60,31 +61,28 @@ export class ServiceItemControlComponent
     amount: new FormControl({ value: 0, disabled: true }),
   });
 
-  public onChange = (serviceItem: any) => serviceItem;
+  public onChange: (serviceItem: ServiceItem) => void = () => {};
 
   public onTouched = () => {};
 
-  public touched = false;
+  touched = signal<boolean>(false);
+  disabled = signal<boolean>(false);
 
-  public disabled = false;
-
-  ngOnInit(): void {}
-
-  public writeValue(serviceItem: any) {
+  public writeValue(serviceItem: ServiceItem) {
     this.serviceItem = serviceItem;
     this.form.patchValue({ ...serviceItem });
   }
 
-  public registerOnChange(onChange: any) {
+  public registerOnChange(onChange: (serviceItem: ServiceItem) => void) {
     this.onChange = onChange;
   }
 
-  public registerOnTouched(onTouched: any) {
+  public registerOnTouched(onTouched: () => void) {
     this.onTouched = onTouched;
   }
 
-  public setDisabledState(disabled: boolean) {
-    this.disabled = disabled;
+  public setDisabledState(isDisabled: boolean) {
+    this.disabled.set(isDisabled);
   }
 
   public validate(control: AbstractControl): ValidationErrors | null {
@@ -94,9 +92,9 @@ export class ServiceItemControlComponent
   }
 
   private markAsTouched() {
-    if (!this.touched) {
+    if (!this.touched()) {
       this.onTouched();
-      this.touched = true;
+      this.touched.set(true);
     }
   }
 
