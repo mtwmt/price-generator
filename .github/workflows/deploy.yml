@@ -27,5 +27,5 @@ jobs:
         run: |
           npm install
           npm run build
-          touch dist/price/.nojekyll
-          npm run ng -- deploy --dir=dist/price --no-silent
+          touch dist/price/browser/.nojekyll
+          npm run ng -- deploy --dir=dist/price/browser --no-silent

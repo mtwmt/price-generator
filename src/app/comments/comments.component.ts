@@ -1,5 +1,5 @@
-import { Component, Inject, OnInit, Renderer2 } from '@angular/core';
-import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, Inject, OnInit, Renderer2, DOCUMENT } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-comments',
