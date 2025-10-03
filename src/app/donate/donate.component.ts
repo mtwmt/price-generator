@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { AnalyticsService } from '../services/analytics';
 
 @Component({
   selector: 'app-donate',
@@ -6,5 +7,9 @@ import { Component } from '@angular/core';
   templateUrl: './donate.component.html',
 })
 export class DonateComponent {
+  private analytics = inject(AnalyticsService);
 
+  onDonateClick() {
+    this.analytics.trackDonateClick();
+  }
 }
