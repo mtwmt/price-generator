@@ -32,7 +32,8 @@ import { QuotationModalComponent } from '../quotation-modal/quotation-modal.comp
 import { CommentsComponent } from '../comments/comments.component';
 import { DonateComponent } from '../donate/donate.component';
 import { ChangelogComponent } from '../changelog/changelog';
-import { QuotationData } from '../models/quotation.model';
+import { QuotationData } from '../quotation.model';
+import { AnalyticsService } from '../services/analytics';
 
 @Component({
   selector: 'app-price-generator',
@@ -69,6 +70,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private modal = inject(NgbModal);
   private renderer = inject(Renderer2);
   private el = inject(ElementRef);
+  private analytics = inject(AnalyticsService);
 
   private destroyRef = inject(DestroyRef);
 
@@ -270,6 +272,11 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   onHistoryChange(event: any) {
     const idx = event.target.value;
+
+    if (idx) {
+      this.analytics.trackHistoryLoaded(parseInt(idx, 10));
+    }
+
     const data = this.historyData()[idx];
 
     // 排除 logo 和 stamp 欄位（因為 file input 不能被程式設定值）
@@ -323,6 +330,13 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   openModal(isPreview: boolean = false) {
+    // 追蹤報價單生成或預覽
+    if (isPreview) {
+      this.analytics.trackQuotationPreviewed();
+    } else {
+      this.analytics.trackQuotationGenerated();
+    }
+
     const modalRef: NgbModalRef = this.modal.open(QuotationModalComponent, {
       backdropClass: '',
       size: 'lg',
@@ -336,6 +350,11 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     component.logo = this.logo();
     component.stamp = this.stamp();
     component.isPreview = isPreview;
+  }
+
+  onTabChange(tab: 'quotation' | 'changelog') {
+    this.activeTab.set(tab);
+    this.analytics.trackTabChange(tab);
   }
 
   ngOnDestroy() {

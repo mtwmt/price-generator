@@ -29,7 +29,7 @@
               [class.active]="activeTab() === 'quotation'"
               type="button"
               role="tab"
-              (click)="activeTab.set('quotation')"
+              (click)="onTabChange('quotation')"
             >
               報價單
             </button>
@@ -40,7 +40,7 @@
               [class.active]="activeTab() === 'changelog'"
               type="button"
               role="tab"
-              (click)="activeTab.set('changelog')"
+              (click)="onTabChange('changelog')"
             >
               更新記錄
             </button>
