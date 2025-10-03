@@ -18,7 +18,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { ServiceItem } from '../models/quotation.model';
+import { ServiceItem } from '../quotation.model';
 
 @Component({
   selector: 'app-service-item-control',

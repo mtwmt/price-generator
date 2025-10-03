@@ -3,12 +3,14 @@ import {
   Input,
   signal,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import * as ExcelJS from 'exceljs';
-import { QuotationData } from '../models/quotation.model';
+import { QuotationData } from '../quotation.model';
+import { AnalyticsService } from '../services/analytics';
 
 @Component({
   selector: 'app-quotation-modal',
@@ -25,6 +27,8 @@ export class QuotationModalComponent {
   @Input() isPreview: boolean = false;
 
   isPrint = signal<boolean>(false);
+
+  private analytics = inject(AnalyticsService);
 
   constructor(public activeModal: NgbActiveModal) {}
 
@@ -99,8 +103,10 @@ export class QuotationModalComponent {
       const fileName = this.generateFileName('jpg');
 
       this.downloadFile(dataUrl, fileName);
+      this.analytics.trackExport('image');
     } catch (error) {
       console.error('匯出圖片失敗:', error);
+      this.analytics.trackError(error as Error, 'export_image');
       alert('匯出圖片失敗，請重試');
     } finally {
       this.isPrint.set(false);
@@ -120,8 +126,10 @@ export class QuotationModalComponent {
       const pdf = new jsPDF('p', 'mm', 'a4');
       pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
       pdf.save(fileName);
+      this.analytics.trackExport('pdf');
     } catch (error) {
       console.error('匯出 PDF 失敗:', error);
+      this.analytics.trackError(error as Error, 'export_pdf');
       alert('匯出 PDF 失敗，請重試');
     } finally {
       this.isPrint.set(false);
@@ -129,8 +137,9 @@ export class QuotationModalComponent {
   }
 
   async onExportExcel() {
-    const data = this.data;
-    const date = new Date().toLocaleString('roc', { hour12: false });
+    try {
+      const data = this.data;
+      const date = new Date().toLocaleString('roc', { hour12: false });
 
     // 建立活頁簿和工作表
     const workbook = new ExcelJS.Workbook();
@@ -351,7 +360,14 @@ export class QuotationModalComponent {
     link.download = `${date}_quotation.xlsx`;
     link.click();
 
-    // 釋放 URL 避免記憶體洩漏
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+      // 釋放 URL 避免記憶體洩漏
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+
+      this.analytics.trackExport('excel');
+    } catch (error) {
+      console.error('匯出 Excel 失敗:', error);
+      this.analytics.trackError(error as Error, 'export_excel');
+      alert('匯出 Excel 失敗，請重試');
+    }
   }
 }
