@@ -21,6 +21,34 @@
     </div>
     <div class="page-body">
       <div class="container">
+        <!-- Nav Tabs -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'quotation'"
+              type="button"
+              role="tab"
+              (click)="activeTab.set('quotation')"
+            >
+              報價單
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'changelog'"
+              type="button"
+              role="tab"
+              (click)="activeTab.set('changelog')"
+            >
+              更新記錄
+            </button>
+          </li>
+        </ul>
+
+        <!-- 報價單表單 -->
+        @if (activeTab() === 'quotation') {
         <form id="form" [formGroup]="form">
           <div class="card">
             <div class="card-body">
@@ -283,7 +311,7 @@
               <div class="row mb-1">
                 <h3 class="col text-muted">服務項目</h3>
                 <div class="col-auto ms-auto">
-                  <button type="button" class="btn btn-sm btn-primary" (click)="onAddField($event)">
+                  <button type="button" class="btn btn-sm btn-primary" (click)="onAddField()">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       class="icon icon-tabler icon-tabler-playlist-add"
@@ -372,6 +400,13 @@
             </div>
           </div>
         </form>
+        }
+
+        <!-- 更新記錄 -->
+        @if (activeTab() === 'changelog') {
+        <app-changelog />
+        }
+
         <app-donate />
         <app-comments />
       </div>
