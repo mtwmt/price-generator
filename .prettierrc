@@ -1,5 +1,5 @@
 {
-  "printWidth": 120,
+  "printWidth": 80,
   "tabWidth": 2,
   "useTabs": false,
   "semi": true,
@@ -13,7 +13,7 @@
       "files": "*.html",
       "options": {
         "parser": "angular",
-        "printWidth": 150
+        "printWidth": 80
       }
     }
   ]
