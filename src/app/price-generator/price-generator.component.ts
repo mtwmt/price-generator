@@ -5,6 +5,7 @@ import {
   ElementRef,
   inject,
   OnInit,
+  OnDestroy,
   Renderer2,
   signal,
   computed,
@@ -30,6 +31,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuotationModalComponent } from '../quotation-modal/quotation-modal.component';
 import { CommentsComponent } from '../comments/comments.component';
 import { DonateComponent } from '../donate/donate.component';
+import { ChangelogComponent } from '../changelog/changelog';
 import { QuotationData } from '../models/quotation.model';
 
 @Component({
@@ -57,11 +59,12 @@ import { QuotationData } from '../models/quotation.model';
     ServiceItemControlComponent,
     CommentsComponent,
     DonateComponent,
+    ChangelogComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
 })
-export class PriceGeneratorComponent implements OnInit {
+export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private modal = inject(NgbModal);
   private renderer = inject(Renderer2);
@@ -77,6 +80,7 @@ export class PriceGeneratorComponent implements OnInit {
   logo = signal<string>('');
   stamp = signal<string>('');
   historyData = signal<QuotationData[]>([]);
+  activeTab = signal<'quotation' | 'changelog'>('quotation');
 
   hasHistory = computed(() => this.historyData().length > 0);
 
@@ -85,7 +89,12 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.historyData.set(JSON.parse(localStorage.getItem('quotation') || '[]'));
+    try {
+      this.historyData.set(JSON.parse(localStorage.getItem('quotation') || '[]'));
+    } catch (error) {
+      console.error('Failed to load quotation history from localStorage:', error);
+      this.historyData.set([]);
+    }
     this.createForm();
     this.createTodoItem();
 
@@ -94,12 +103,14 @@ export class PriceGeneratorComponent implements OnInit {
     this.setStartDate();
     this.setEndDate();
 
-    this.serviceItems.valueChanges.subscribe((res) => {
-      const total = res.reduce((acc: number, item: any) => {
-        return acc + item.amount;
-      }, 0);
-      this.form.get('excludingTax')?.patchValue(total);
-    });
+    this.serviceItems.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((res) => {
+        const total = res.reduce((acc: number, item: any) => {
+          return acc + item.amount;
+        }, 0);
+        this.form.get('excludingTax')?.patchValue(total, { emitEvent: false });
+      });
 
     // calculate tax
     this.form.valueChanges
@@ -115,8 +126,8 @@ export class PriceGeneratorComponent implements OnInit {
       )
       .subscribe(({ excludingTax, percentage }) => {
         const tax = Math.ceil((percentage / 100) * +excludingTax);
-        this.form.get('tax')?.patchValue(tax);
-        this.form.get('includingTax')?.patchValue(excludingTax + tax);
+        this.form.get('tax')?.patchValue(tax, { emitEvent: false });
+        this.form.get('includingTax')?.patchValue(excludingTax + tax, { emitEvent: false });
       });
   }
 
@@ -195,8 +206,11 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   setStartDate() {
+    const element = this.el.nativeElement.querySelector('#startDate');
+    if (!element) return;
+
     this.startDate = new Litepicker({
-      element: this.el.nativeElement.querySelector('#startDate'),
+      element: element,
       startDate: new Date(),
     });
 
@@ -206,8 +220,11 @@ export class PriceGeneratorComponent implements OnInit {
   }
 
   setEndDate() {
+    const element = this.el.nativeElement.querySelector('#endDate');
+    if (!element) return;
+
     this.endDate = new Litepicker({
-      element: this.el.nativeElement.querySelector('#endDate'),
+      element: element,
       lockDays: [[new Date(0), new Date()]],
       resetButton: () => {
         let btn = this.renderer.createElement('a');
@@ -230,18 +247,18 @@ export class PriceGeneratorComponent implements OnInit {
 
   createTodoItem() {
     this.serviceItems.push(
-      new FormControl({
-        category: null,
-        item: null,
-        price: null,
-        count: 1,
-        unit: null,
-        amount: 0,
+      this.fb.group({
+        category: [null],
+        item: [null],
+        price: [null],
+        count: [1],
+        unit: [null],
+        amount: [0],
       })
     );
   }
 
-  onAddField(event: any) {
+  onAddField() {
     this.createTodoItem();
   }
 
@@ -280,13 +297,13 @@ export class PriceGeneratorComponent implements OnInit {
     } else {
       data?.serviceItems.forEach((item: any) => {
         this.serviceItems.push(
-          new FormControl({
-            category: item.category,
-            item: item.item,
-            price: item.price,
-            count: item.count,
-            unit: item.unit,
-            amount: item.amount,
+          this.fb.group({
+            category: [item.category],
+            item: [item.item],
+            price: [item.price],
+            count: [item.count],
+            unit: [item.unit],
+            amount: [item.amount],
           })
         );
       });
@@ -321,6 +338,11 @@ export class PriceGeneratorComponent implements OnInit {
     component.isPreview = isPreview;
   }
 
+  ngOnDestroy() {
+    this.startDate?.destroy();
+    this.endDate?.destroy();
+  }
+
   saveLocalStorage(data: QuotationData) {
     this.historyData.update(history => {
       const newHistory = [data, ...history];
@@ -330,6 +352,10 @@ export class PriceGeneratorComponent implements OnInit {
       return newHistory;
     });
 
-    localStorage.setItem('quotation', JSON.stringify(this.historyData()));
+    try {
+      localStorage.setItem('quotation', JSON.stringify(this.historyData()));
+    } catch (error) {
+      console.error('Failed to save quotation to localStorage:', error);
+    }
   }
 }
