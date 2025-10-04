@@ -9,6 +9,8 @@ import {
   Renderer2,
   signal,
   computed,
+  viewChild,
+  afterNextRender,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -69,13 +71,22 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private modal = inject(NgbModal);
   private renderer = inject(Renderer2);
-  private el = inject(ElementRef);
   private analytics = inject(AnalyticsService);
 
   private destroyRef = inject(DestroyRef);
 
+  private startDateInput = viewChild<ElementRef>('startDate');
+  private endDateInput = viewChild<ElementRef>('endDate');
+
   startDate!: Litepicker;
   endDate!: Litepicker;
+
+  constructor() {
+    afterNextRender(() => {
+      this.setStartDate();
+      this.setEndDate();
+    });
+  }
 
   form!: FormGroup;
 
@@ -102,8 +113,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     this.onTaxIdValueChange('customerTaxID');
     this.onTaxIdValueChange('quoterTaxID');
-    this.setStartDate();
-    this.setEndDate();
 
     this.serviceItems.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -208,7 +217,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   setStartDate() {
-    const element = this.el.nativeElement.querySelector('#startDate');
+    const element = this.startDateInput()?.nativeElement;
     if (!element) return;
 
     this.startDate = new Litepicker({
@@ -222,7 +231,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   setEndDate() {
-    const element = this.el.nativeElement.querySelector('#endDate');
+    const element = this.endDateInput()?.nativeElement;
     if (!element) return;
 
     this.endDate = new Litepicker({
