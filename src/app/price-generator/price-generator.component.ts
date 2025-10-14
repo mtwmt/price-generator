@@ -103,9 +103,14 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     try {
-      this.historyData.set(JSON.parse(localStorage.getItem('quotation') || '[]'));
+      this.historyData.set(
+        JSON.parse(localStorage.getItem('quotation') || '[]')
+      );
     } catch (error) {
-      console.error('Failed to load quotation history from localStorage:', error);
+      console.error(
+        'Failed to load quotation history from localStorage:',
+        error
+      );
       this.historyData.set([]);
     }
     this.createForm();
@@ -113,6 +118,8 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     this.onTaxIdValueChange('customerTaxID');
     this.onTaxIdValueChange('quoterTaxID');
+    this.setStartDate();
+    this.setEndDate();
 
     this.serviceItems.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -120,7 +127,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
         const total = res.reduce((acc: number, item: any) => {
           return acc + item.amount;
         }, 0);
-        this.form.get('excludingTax')?.patchValue(total, { emitEvent: false });
+        this.form.get('excludingTax')?.patchValue(total);
       });
 
     // calculate tax
@@ -136,9 +143,13 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe(({ excludingTax, percentage }) => {
+        // const tax = Math.ceil((percentage / 100) * +excludingTax);
+        // this.form.get('tax')?.patchValue(tax, { emitEvent: false });
+        // this.form.get('includingTax')?.patchValue(excludingTax + tax, { emitEvent: false });
+
         const tax = Math.ceil((percentage / 100) * +excludingTax);
-        this.form.get('tax')?.patchValue(tax, { emitEvent: false });
-        this.form.get('includingTax')?.patchValue(excludingTax + tax, { emitEvent: false });
+        this.form.get('tax')?.patchValue(tax);
+        this.form.get('includingTax')?.patchValue(excludingTax + tax);
       });
   }
 
@@ -258,13 +269,13 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   createTodoItem() {
     this.serviceItems.push(
-      this.fb.group({
-        category: [null],
-        item: [null],
-        price: [null],
-        count: [1],
-        unit: [null],
-        amount: [0],
+      new FormControl({
+        category: null,
+        item: null,
+        price: null,
+        count: 1,
+        unit: null,
+        amount: 0,
       })
     );
   }
@@ -288,7 +299,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     const data = this.historyData()[idx];
 
-    // 排除 logo 和 stamp 欄位（因為 file input 不能被程式設定值）
     const { logo, stamp, ...formData } = data || {};
     this.form.patchValue({ ...formData });
 
@@ -313,13 +323,13 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     } else {
       data?.serviceItems.forEach((item: any) => {
         this.serviceItems.push(
-          this.fb.group({
-            category: [item.category],
-            item: [item.item],
-            price: [item.price],
-            count: [item.count],
-            unit: [item.unit],
-            amount: [item.amount],
+          new FormControl({
+            category: item.category,
+            item: item.item,
+            price: item.price,
+            count: item.count,
+            unit: item.unit,
+            amount: item.amount,
           })
         );
       });
@@ -372,7 +382,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   saveLocalStorage(data: QuotationData) {
-    this.historyData.update(history => {
+    this.historyData.update((history) => {
       const newHistory = [data, ...history];
       if (newHistory.length > 5) {
         newHistory.pop();
