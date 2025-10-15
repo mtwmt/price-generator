@@ -23,7 +23,7 @@ export class CommentsComponent implements OnInit {
     script.setAttribute('data-mapping', 'pathname');
     script.setAttribute('data-strict', '0');
     script.setAttribute('data-reactions-enabled', '1');
-    script.setAttribute('data-emit-metadata', '0');
+    script.setAttribute('data-emit-metadata', '1');
     script.setAttribute('data-input-position', 'top');
     script.setAttribute('data-theme', 'preferred_color_scheme');
     script.setAttribute('data-lang', 'zh-TW');
