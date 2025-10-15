@@ -21,6 +21,7 @@ import {
   Validators,
   FormBuilder,
 } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NgbDatepickerModule,
   NgbModal,
@@ -28,14 +29,13 @@ import {
 } from '@ng-bootstrap/ng-bootstrap';
 import { ServiceItemControlComponent } from '../service-item-control/service-item-control.component';
 import Litepicker from 'litepicker';
-import { debounceTime, filter, map } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { QuotationModalComponent } from '../quotation-modal/quotation-modal.component';
 import { CommentsComponent } from '../comments/comments.component';
 import { DonateComponent } from '../donate/donate.component';
 import { ChangelogComponent } from '../changelog/changelog';
 import { QuotationData } from '../quotation.model';
 import { AnalyticsService } from '../services/analytics';
+import { taxIdValidator } from '../validators/tax-id.validator';
 
 @Component({
   selector: 'app-price-generator',
@@ -72,7 +72,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private modal = inject(NgbModal);
   private renderer = inject(Renderer2);
   private analytics = inject(AnalyticsService);
-
   private destroyRef = inject(DestroyRef);
 
   private startDateInput = viewChild<ElementRef>('startDate');
@@ -113,79 +112,70 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       );
       this.historyData.set([]);
     }
-    this.createForm();
+    this.initForm();
     this.createTodoItem();
-
-    this.onTaxIdValueChange('customerTaxID');
-    this.onTaxIdValueChange('quoterTaxID');
-    this.setStartDate();
-    this.setEndDate();
-
-    this.serviceItems.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((res) => {
-        const total = res.reduce((acc: number, item: any) => {
-          return acc + item.amount;
-        }, 0);
-        this.form.get('excludingTax')?.patchValue(total);
-      });
-
-    // calculate tax
-    this.form.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        debounceTime(200),
-        filter(({ excludingTax, percentage }) => {
-          return excludingTax || percentage;
-        }),
-        map(({ excludingTax, percentage }) => {
-          return { excludingTax, percentage };
-        })
-      )
-      .subscribe(({ excludingTax, percentage }) => {
-        // const tax = Math.ceil((percentage / 100) * +excludingTax);
-        // this.form.get('tax')?.patchValue(tax, { emitEvent: false });
-        // this.form.get('includingTax')?.patchValue(excludingTax + tax, { emitEvent: false });
-
-        const tax = Math.ceil((percentage / 100) * +excludingTax);
-        this.form.get('tax')?.patchValue(tax);
-        this.form.get('includingTax')?.patchValue(excludingTax + tax);
-      });
+    this.setupFormListeners();
   }
 
-  createForm() {
+  private setupFormListeners(): void {
+    this.serviceItems.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.calculateTotals());
+
+    this.form.get('percentage')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.calculateTotals());
+  }
+
+  private calculateTotals(): void {
+    const items = this.serviceItems.value;
+    const excludingTax = items.reduce((acc: number, item: any) => {
+      return acc + (item.amount || 0);
+    }, 0);
+
+    const percentage = Number(this.form.get('percentage')?.value) || 0;
+    const tax = Math.ceil((percentage / 100) * excludingTax);
+    const includingTax = excludingTax + tax;
+
+    this.form.patchValue(
+      { excludingTax, tax, includingTax },
+      { emitEvent: false }
+    );
+  }
+
+  initForm() {
     this.form = this.fb.group({
-      logo: new FormControl(),
-      stamp: new FormControl(),
-      company: new FormControl(null, Validators.required),
-      customerTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
-
-      quoterName: new FormControl(null, Validators.required),
-      quoterTaxID: new FormControl(null, Validators.pattern(/^[0-9]{8}$/)),
-      email: new FormControl(null, [Validators.required, Validators.email]),
-      tel: new FormControl(),
-
-      startDate: new FormControl(),
-      endDate: new FormControl(),
-
-      serviceItems: new FormArray([], Validators.required),
-      excludingTax: new FormControl(),
-
-      // taxItem: new FormArray([]),
-
-      taxName: new FormControl(),
-      percentage: new FormControl(),
-      tax: new FormControl({ value: 0, disabled: true }),
-
-      includingTax: new FormControl(),
-      desc: new FormControl(),
-      isSign: new FormControl(true),
+      logo: [''],
+      stamp: [''],
+      company: ['', Validators.required],
+      customerTaxID: ['', taxIdValidator()],
+      quoterName: ['', Validators.required],
+      quoterTaxID: ['', taxIdValidator()],
+      email: ['', [Validators.required, Validators.email]],
+      tel: [''],
+      startDate: [this.getTodayDate()],
+      endDate: [''],
+      serviceItems: this.fb.array([], Validators.required),
+      excludingTax: [0],
+      taxName: [''],
+      percentage: [0],
+      tax: [{ value: 0, disabled: true }],
+      includingTax: [0],
+      desc: [''],
+      isSign: [true],
     });
+  }
+
+  private getTodayDate(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   onLogoChange(file: FileList) {
     if (file && file[0]) {
-      // 使用 FileReader 轉成 base64，方便儲存到 localStorage
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.logo.set(e.target.result);
@@ -212,19 +202,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   removeStamp(input: HTMLInputElement) {
     this.stamp.set('');
     input.value = '';
-  }
-
-  onTaxIdValueChange(controlName: string) {
-    const control = this.form.get(controlName);
-
-    control?.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef), debounceTime(200))
-      .subscribe((value: string) => {
-        const sanitizedValue = value?.replace(/[^0-9]/g, '') || '';
-        if (sanitizedValue !== value) {
-          control.setValue(sanitizedValue, { emitEvent: false });
-        }
-      });
   }
 
   setStartDate() {
@@ -290,55 +267,80 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     }
   }
 
-  onHistoryChange(event: any) {
-    const idx = event.target.value;
+  onHistoryChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const index = target.value;
 
-    if (idx) {
-      this.analytics.trackHistoryLoaded(parseInt(idx, 10));
+    if (index) {
+      this.analytics.trackHistoryLoaded(parseInt(index, 10));
     }
 
-    const data = this.historyData()[idx];
-
-    const { logo, stamp, ...formData } = data || {};
-    this.form.patchValue({ ...formData });
-
-    // 載入印章圖片（從 localStorage 載入的是 base64）
-    if (stamp) {
-      this.stamp.set(stamp);
-    } else {
-      this.stamp.set('');
+    if (!index) {
+      this.resetForm();
+      return;
     }
 
-    // 載入 LOGO 圖片
-    if (logo) {
-      this.logo.set(logo);
-    } else {
-      this.logo.set('');
+    const data = this.historyData()[parseInt(index, 10)];
+    if (!data) {
+      console.warn(`History data not found at index: ${index}`);
+      return;
     }
 
+    this.loadQuotationData(data);
+  }
+
+  private resetForm(): void {
+    this.form.reset({
+      logo: '',
+      stamp: '',
+      company: '',
+      customerTaxID: '',
+      quoterName: '',
+      quoterTaxID: '',
+      email: '',
+      tel: '',
+      startDate: this.getTodayDate(),
+      endDate: '',
+      excludingTax: 0,
+      taxName: '',
+      percentage: 0,
+      tax: 0,
+      includingTax: 0,
+      desc: '',
+      isSign: true,
+    });
+    this.logo.set('');
+    this.stamp.set('');
     this.serviceItems.clear();
+    this.createTodoItem();
+  }
 
-    if (!idx) {
-      this.createTodoItem();
-    } else {
-      data?.serviceItems.forEach((item: any) => {
-        this.serviceItems.push(
-          new FormControl({
-            category: item.category,
-            item: item.item,
-            price: item.price,
-            count: item.count,
-            unit: item.unit,
-            amount: item.amount,
-          })
-        );
-      });
-    }
+  private loadQuotationData(data: QuotationData): void {
+    const { logo, stamp, serviceItems, ...formData } = data;
+    this.form.patchValue(formData);
+    this.logo.set(logo || '');
+    this.stamp.set(stamp || '');
+    this.loadServiceItems(serviceItems);
+  }
+
+  private loadServiceItems(items: any[]): void {
+    this.serviceItems.clear();
+    items.forEach((item) => {
+      this.serviceItems.push(
+        this.fb.control({
+          category: item.category ?? null,
+          item: item.item ?? null,
+          price: item.price ?? null,
+          count: item.count ?? 1,
+          unit: item.unit ?? null,
+          amount: item.amount ?? 0,
+        })
+      );
+    });
   }
 
   onSubmit() {
     const data = this.form.getRawValue();
-    // 將 LOGO 和印章圖片一起儲存
     const dataWithImages = { ...data, logo: this.logo(), stamp: this.stamp() };
     this.saveLocalStorage(dataWithImages);
     this.openModal();
@@ -349,7 +351,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   openModal(isPreview: boolean = false) {
-    // 追蹤報價單生成或預覽
     if (isPreview) {
       this.analytics.trackQuotationPreviewed();
     } else {
@@ -363,7 +364,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       ariaLabelledBy: 'modal-basic-title',
     });
 
-    // Signal Input 仍然支援透過 componentInstance 設定
     const component = modalRef.componentInstance;
     component.data = this.form.getRawValue();
     component.logo = this.logo();
