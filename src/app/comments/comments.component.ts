@@ -21,7 +21,7 @@ export class CommentsComponent implements OnInit {
     script.setAttribute('issue-term', 'pathname');
     script.setAttribute('theme', 'github-light');
     script.setAttribute('crossorigin', 'anonymous');
-    script.setAttribute('issue-comment-order', 'desc');
+    script.setAttribute('async', 'true');
     script.text = ``;
     this.renderer.appendChild(this.document.querySelector('#comments'), script);
   }
