@@ -10,6 +10,10 @@ import { CommonModule } from '@angular/common';
 export class ChangelogComponent {
   changelog = [
     {
+      date: '2025-10-15',
+      features: ['留言系統從 utterances 遷移至 giscus，支援更多功能'],
+    },
+    {
       date: '2025-10-04',
       features: [
         '新增 Excel 匯出功能',
