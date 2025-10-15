@@ -138,7 +138,7 @@
                       class="form-control"
                       name="customerTaxID"
                       placeholder="請輸入統一編號"
-                      [ngClass]="form.get('customerTaxID')?.touched && form.get('customerTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
+                      [ngClass]="form.get('customerTaxID')?.touched && form.get('customerTaxID')?.invalid ? 'is-invalid': ''"
                     />
                     <div class="invalid-feedback">請輸入正確統一編號</div>
                   </div>
@@ -169,7 +169,7 @@
                       class="form-control"
                       name="quoterTaxID"
                       placeholder="請輸入統一編號"
-                      [ngClass]="form.get('quoterTaxID')?.touched && form.get('quoterTaxID')?.errors?.['pattern'] ? 'is-invalid': ''"
+                      [ngClass]="form.get('quoterTaxID')?.touched && form.get('quoterTaxID')?.invalid ? 'is-invalid': ''"
                     />
                     <div class="invalid-feedback">請輸入正確統一編號</div>
                   </div>
@@ -335,11 +335,11 @@
                   </button>
                 </div>
               </div>
-              <div formArrayName="serviceItems">
-                @for (control of serviceItems.controls; track $index) {
+              <ng-container formArrayName="serviceItems">
+                @for (item of serviceItems.controls; track item.value) {
                 <app-service-item-control [formControlName]="$index" (removeField)="onRemoveField($index)" />
                 }
-              </div>
+              </ng-container>
               <div class="mb-3 row">
                 <div class="col-auto ms-auto fs-3">
                   未稅價 合計：NT$
