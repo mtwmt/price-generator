@@ -623,33 +623,37 @@
           </fieldset>
 
           <!-- Signature -->
-          <div class="flex justify-between">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input
-                type="checkbox"
-                class="checkbox checkbox-primary checkbox-sm"
-                formControlName="isSign"
-              />
-              <span class="label-text text-sm">是否顯示簽章欄位</span>
-            </label>
-            <div class="flex flex-row justify-end gap-3">
-              <button
-                type="button"
-                class="btn btn-primary btn-md lg:hidden"
-                (click)="preview_modal.showModal()"
-              >
-                <lucide-icon [img]="Eye" [size]="16" />
-                預覽
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary btn-md"
-                (click)="onSubmit()"
-              >
-                <lucide-icon [img]="Check" [size]="16" />
-                儲存記錄
-              </button>
-            </div>
+          <label class="label cursor-pointer justify-start gap-3">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-primary checkbox-sm"
+              formControlName="isSign"
+            />
+            <span class="label-text text-sm">是否顯示簽章欄位</span>
+          </label>
+
+        </div>
+      </div>
+      <!-- Action Buttons -->
+      <div class="card bg-base-100 shadow-lg bottom-4 z-10">
+        <div class="card-body p-4">
+          <div class="flex flex-row justify-end gap-3">
+            <button
+              type="button"
+              class="btn btn-primary btn-md lg:hidden"
+              (click)="preview_modal.showModal()"
+            >
+              <lucide-icon [img]="Eye" [size]="16" />
+              預覽
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-md"
+              (click)="onSubmit()"
+            >
+              <lucide-icon [img]="Check" [size]="16" />
+              儲存記錄
+            </button>
           </div>
         </div>
       </div>
@@ -683,7 +687,7 @@
 
 <!-- 預覽 Modal (手機版) -->
 <dialog #preview_modal id="preview_modal" class="modal">
-  <div class="modal-box w-full max-w-[210mm]">
+  <div class="modal-box w-full max-w-[210mm] p-2">
     <form method="dialog">
       <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
         ✕
