@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   ElementRef,
@@ -10,32 +11,47 @@ import {
   signal,
   computed,
   viewChild,
-  afterNextRender,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormGroup,
-  FormControl,
   FormArray,
   ReactiveFormsModule,
   Validators,
   FormBuilder,
 } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  NgbDatepickerModule,
-  NgbModal,
-  NgbModalRef,
-} from '@ng-bootstrap/ng-bootstrap';
+// Removed NgbModal - will use DaisyUI modal instead
 import { ServiceItemControlComponent } from '../service-item-control/service-item-control.component';
 import Litepicker from 'litepicker';
-import { QuotationModalComponent } from '../quotation-modal/quotation-modal.component';
-import { CommentsComponent } from '../comments/comments.component';
-import { DonateComponent } from '../donate/donate.component';
-import { ChangelogComponent } from '../changelog/changelog';
+import { QuotationPreview } from '../quotation-preview/quotation-preview';
 import { QuotationData } from '../quotation.model';
 import { AnalyticsService } from '../services/analytics';
 import { taxIdValidator } from '../validators/tax-id.validator';
+import { phoneValidator } from '../validators/phone.validator';
+import { FileUpload } from '../file-upload/file-upload';
+import {
+  LucideAngularModule,
+  ListPlus,
+  Eye,
+  Upload,
+  Trash2,
+  History,
+  FileText,
+  Check,
+  Mail,
+  Phone,
+  X,
+  Users,
+  Building2,
+  ShoppingCart,
+  FileCheck,
+  ReceiptText,
+  MessageSquareQuote,
+  UserRound,
+  MapPin,
+  Calendar1,
+} from 'lucide-angular';
 
 @Component({
   selector: 'app-price-generator',
@@ -58,42 +74,61 @@ import { taxIdValidator } from '../validators/tax-id.validator';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    NgbDatepickerModule,
     ServiceItemControlComponent,
-    CommentsComponent,
-    DonateComponent,
-    ChangelogComponent,
+    QuotationPreview,
+    LucideAngularModule,
+    FileUpload,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
 })
 export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
-  private modal = inject(NgbModal);
   private renderer = inject(Renderer2);
   private analytics = inject(AnalyticsService);
   private destroyRef = inject(DestroyRef);
+  private cdr = inject(ChangeDetectorRef);
 
   private startDateInput = viewChild<ElementRef>('startDate');
   private endDateInput = viewChild<ElementRef>('endDate');
+  private previewModal =
+    viewChild<ElementRef<HTMLDialogElement>>('preview_modal');
+
+  private resizeListener?: () => void;
+
+  // Lucide Icons
+  readonly Eye = Eye;
+  readonly Upload = Upload;
+  readonly Trash2 = Trash2;
+  readonly ListPlus = ListPlus;
+  readonly History = History;
+  readonly FileText = FileText;
+  readonly Check = Check;
+  readonly Mail = Mail;
+  readonly Phone = Phone;
+  readonly X = X;
+  readonly Users = Users;
+  readonly Building2 = Building2;
+  readonly ShoppingCart = ShoppingCart;
+  readonly FileCheck = FileCheck;
+  readonly ReceiptText = ReceiptText;
+  readonly MessageSquareQuote = MessageSquareQuote;
+  readonly UserRound = UserRound;
+  readonly MapPin = MapPin;
+  readonly Calendar1 = Calendar1;
 
   startDate!: Litepicker;
   endDate!: Litepicker;
 
-  constructor() {
-    afterNextRender(() => {
-      this.setStartDate();
-      this.setEndDate();
-    });
-  }
-
   form!: FormGroup;
 
-  logo = signal<string>('');
-  stamp = signal<string>('');
+  // Signals
   historyData = signal<QuotationData[]>([]);
-  activeTab = signal<'quotation' | 'changelog'>('quotation');
+  customerLogo = signal<string>('');
+  stamp = signal<string>('');
+  quoterLogo = signal<string>('');
 
+  // Computed
   hasHistory = computed(() => this.historyData().length > 0);
 
   get serviceItems() {
@@ -101,6 +136,8 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.setStartDate();
+    this.setEndDate();
     try {
       this.historyData.set(
         JSON.parse(localStorage.getItem('quotation') || '[]')
@@ -115,6 +152,19 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     this.initForm();
     this.createTodoItem();
     this.setupFormListeners();
+    this.setupResizeListener();
+  }
+
+  private setupResizeListener(): void {
+    this.resizeListener = this.renderer.listen('window', 'resize', () => {
+      // DaisyUI 的 lg 斷點是 1024px
+      if (window.innerWidth >= 1024) {
+        const modal = this.previewModal()?.nativeElement;
+        if (modal?.open) {
+          modal.close();
+        }
+      }
+    });
   }
 
   private setupFormListeners(): void {
@@ -122,8 +172,9 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.calculateTotals());
 
-    this.form.get('percentage')?.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    this.form
+      .get('percentage')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.calculateTotals());
   }
 
@@ -143,24 +194,60 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     );
   }
 
+  onTaxRateChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const taxName = target.value;
+
+    let percentage = 0;
+    switch (taxName) {
+      case '免稅':
+        percentage = 0;
+        break;
+      case '營業稅':
+        percentage = 5;
+        break;
+      case '二代健保':
+        percentage = 2.11;
+        break;
+      case '自訂':
+        // 不自動設定稅率，讓使用者手動輸入
+        return;
+      default:
+        percentage = 0;
+    }
+
+    this.form.patchValue({ percentage });
+  }
+
   initForm() {
     this.form = this.fb.group({
-      logo: [''],
-      stamp: [''],
-      company: ['', Validators.required],
+      // 客戶資料
+      customerCompany: ['', Validators.required],
       customerTaxID: ['', taxIdValidator()],
+      customerContact: [''],
+      customerPhone: ['', phoneValidator()],
+      customerEmail: ['', Validators.email],
+      customerAddress: [''],
+
+      // 報價者資料
       quoterName: ['', Validators.required],
       quoterTaxID: ['', taxIdValidator()],
-      email: ['', [Validators.required, Validators.email]],
-      tel: [''],
+      quoterAddress: [''],
+      quoterEmail: ['', [Validators.required, Validators.email]],
+      quoterPhone: ['', phoneValidator()],
       startDate: [this.getTodayDate()],
       endDate: [''],
+
+      // 服務項目與稅率
       serviceItems: this.fb.array([], Validators.required),
       excludingTax: [0],
       taxName: [''],
+      customTaxName: [''], // 自訂稅別名稱
       percentage: [0],
       tax: [{ value: 0, disabled: true }],
       includingTax: [0],
+
+      // 其他資訊
       desc: [''],
       isSign: [true],
     });
@@ -178,7 +265,17 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     if (file && file[0]) {
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        this.logo.set(e.target.result);
+        this.customerLogo.set(e.target.result);
+      };
+      reader.readAsDataURL(file[0]);
+    }
+  }
+
+  onQuoterLogoChange(file: FileList) {
+    if (file && file[0]) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.quoterLogo.set(e.target.result);
       };
       reader.readAsDataURL(file[0]);
     }
@@ -194,14 +291,16 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     }
   }
 
-  removeLogo(input: HTMLInputElement) {
-    this.logo.set('');
-    input.value = '';
+  removeLogo() {
+    this.customerLogo.set('');
   }
 
-  removeStamp(input: HTMLInputElement) {
+  removeQuoterLogo() {
+    this.quoterLogo.set('');
+  }
+
+  removeStamp() {
     this.stamp.set('');
-    input.value = '';
   }
 
   setStartDate() {
@@ -215,6 +314,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     this.startDate.on('selected', (date) => {
       this.form.get('startDate')?.setValue(date.format('YYYY-MM-DD'));
+      this.cdr.markForCheck();
     });
   }
 
@@ -234,6 +334,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
         this.renderer.listen(btn, 'click', (evt) => {
           evt.preventDefault();
           this.form.get('endDate')?.setValue(null);
+          this.cdr.markForCheck();
         });
         return btn;
       },
@@ -241,18 +342,19 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     this.endDate.on('selected', (date) => {
       this.form.get('endDate')?.setValue(date.format('YYYY-MM-DD'));
+      this.cdr.markForCheck();
     });
   }
 
   createTodoItem() {
     this.serviceItems.push(
-      new FormControl({
-        category: null,
-        item: null,
-        price: null,
-        count: 1,
-        unit: null,
-        amount: 0,
+      this.fb.group({
+        category: [''],
+        item: ['', Validators.required],
+        price: [0, Validators.required],
+        count: [1],
+        unit: [''],
+        amount: [0],
       })
     );
   }
@@ -291,35 +393,42 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   private resetForm(): void {
     this.form.reset({
-      logo: '',
-      stamp: '',
-      company: '',
+      customerCompany: '',
       customerTaxID: '',
+      customerContact: '',
+      customerPhone: '',
+      customerEmail: '',
+      customerAddress: '',
       quoterName: '',
       quoterTaxID: '',
-      email: '',
-      tel: '',
+      quoterAddress: '',
+      quoterEmail: '',
+      quoterPhone: '',
       startDate: this.getTodayDate(),
       endDate: '',
       excludingTax: 0,
       taxName: '',
+      customTaxName: '',
       percentage: 0,
       tax: 0,
       includingTax: 0,
       desc: '',
       isSign: true,
     });
-    this.logo.set('');
+    this.customerLogo.set('');
     this.stamp.set('');
+    this.quoterLogo.set('');
     this.serviceItems.clear();
     this.createTodoItem();
   }
 
   private loadQuotationData(data: QuotationData): void {
-    const { logo, stamp, serviceItems, ...formData } = data;
+    const { customerLogo, quoterLogo, quoterStamp, serviceItems, ...formData } =
+      data;
     this.form.patchValue(formData);
-    this.logo.set(logo || '');
-    this.stamp.set(stamp || '');
+    this.customerLogo.set(customerLogo || '');
+    this.stamp.set(quoterStamp || '');
+    this.quoterLogo.set(quoterLogo || '');
     this.loadServiceItems(serviceItems);
   }
 
@@ -327,13 +436,13 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     this.serviceItems.clear();
     items.forEach((item) => {
       this.serviceItems.push(
-        this.fb.control({
-          category: item.category ?? null,
-          item: item.item ?? null,
-          price: item.price ?? null,
-          count: item.count ?? 1,
-          unit: item.unit ?? null,
-          amount: item.amount ?? 0,
+        this.fb.group({
+          category: [item.category ?? ''],
+          item: [item.item ?? '', Validators.required],
+          price: [item.price ?? 0, Validators.required],
+          count: [item.count ?? 1],
+          unit: [item.unit ?? ''],
+          amount: [item.amount ?? 0],
         })
       );
     });
@@ -341,44 +450,22 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   onSubmit() {
     const data = this.form.getRawValue();
-    const dataWithImages = { ...data, logo: this.logo(), stamp: this.stamp() };
+    const dataWithImages = {
+      ...data,
+      customerLogo: this.customerLogo(),
+      quoterStamp: this.stamp(),
+      quoterLogo: this.quoterLogo(),
+    };
     this.saveLocalStorage(dataWithImages);
-    this.openModal();
-  }
-
-  onPreview() {
-    this.openModal(true);
-  }
-
-  openModal(isPreview: boolean = false) {
-    if (isPreview) {
-      this.analytics.trackQuotationPreviewed();
-    } else {
-      this.analytics.trackQuotationGenerated();
-    }
-
-    const modalRef: NgbModalRef = this.modal.open(QuotationModalComponent, {
-      backdropClass: '',
-      size: 'lg',
-      centered: true,
-      ariaLabelledBy: 'modal-basic-title',
-    });
-
-    const component = modalRef.componentInstance;
-    component.data = this.form.getRawValue();
-    component.logo = this.logo();
-    component.stamp = this.stamp();
-    component.isPreview = isPreview;
-  }
-
-  onTabChange(tab: 'quotation' | 'changelog') {
-    this.activeTab.set(tab);
-    this.analytics.trackTabChange(tab);
+    this.analytics.trackQuotationGenerated();
+    // TODO: Maybe show a success toast/notification here
+    console.log('Quotation data saved.');
   }
 
   ngOnDestroy() {
     this.startDate?.destroy();
     this.endDate?.destroy();
+    this.resizeListener?.();
   }
 
   saveLocalStorage(data: QuotationData) {

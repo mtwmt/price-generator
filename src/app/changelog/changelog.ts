@@ -1,14 +1,25 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LucideAngularModule, Clock } from 'lucide-angular';
 
 @Component({
   selector: 'app-changelog',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LucideAngularModule],
   templateUrl: './changelog.html',
 })
 export class ChangelogComponent {
+  // Lucide Icons
+  readonly Clock = Clock;
+
   changelog = [
+    {
+      date: '2025-10-23',
+      features: [
+        '全新大改版，PC版新增即時預覽區',
+        '移除 bootstrap 與 tabler 改用 daisyui',
+      ],
+    },
     {
       date: '2025-10-15',
       features: ['留言系統從 utterances 遷移至 giscus，支援更多功能'],

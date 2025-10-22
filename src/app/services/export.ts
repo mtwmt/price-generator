@@ -1,34 +1,14 @@
-import {
-  Component,
-  Input,
-  signal,
-  ChangeDetectionStrategy,
-  inject,
-} from '@angular/core';
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { Injectable, inject } from '@angular/core';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import * as ExcelJS from 'exceljs';
 import { QuotationData } from '../quotation.model';
-import { AnalyticsService } from '../services/analytics';
+import { AnalyticsService } from './analytics';
 
-@Component({
-  selector: 'app-quotation-modal',
-  standalone: true,
-  imports: [],
-  templateUrl: './quotation-modal.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+@Injectable({
+  providedIn: 'root',
 })
-export class QuotationModalComponent {
-  activeModal = inject(NgbActiveModal);
-
-  @Input() data!: QuotationData;
-  @Input() logo: string = '';
-  @Input() stamp: string = '';
-  @Input() isPreview: boolean = false;
-
-  isPrint = signal<boolean>(false);
-
+export class ExportService {
   private analytics = inject(AnalyticsService);
 
   /**
@@ -37,38 +17,6 @@ export class QuotationModalComponent {
   private generateFileName(extension: string): string {
     const timestamp = new Date().toLocaleString('roc', { hour12: false });
     return `${timestamp}_quotation.${extension}`;
-  }
-
-  /**
-   * 準備並捕捉報價單畫面為 Canvas
-   */
-  private async captureCanvas(): Promise<HTMLCanvasElement> {
-    this.isPrint.set(true);
-
-    // 等待 DOM 更新以隱藏關閉按鈕
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-
-    const preview = document.getElementById('contentToConvert');
-    if (!preview) {
-      this.isPrint.set(false);
-      throw new Error('無法找到報價單內容元素');
-    }
-
-    return html2canvas(preview, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      onclone: (clonedDoc) => {
-        // 確保關閉按鈕被移除
-        const closeBtn = clonedDoc.querySelector('.btn-close');
-        if (closeBtn) {
-          closeBtn.remove();
-        }
-      },
-    });
   }
 
   /**
@@ -95,9 +43,69 @@ export class QuotationModalComponent {
     return parts[1];
   }
 
-  async onExportImage() {
+  /**
+   * 捕捉指定元素為 Canvas
+   */
+  async captureElement(elementId: string): Promise<HTMLCanvasElement> {
+    // 等待 DOM 更新以確保所有樣式已套用
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+
+    // 嘗試找到尺寸不為 0 的元素（可能有多個相同 ID 的元素，選擇可見的那個）
+    const elements = document.querySelectorAll(`#${elementId}`);
+
+    let element: HTMLElement | null = null;
+    for (const el of Array.from(elements)) {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      console.log(
+        `元素 ${Array.from(elements).indexOf(el)} 尺寸:`,
+        rect.width,
+        'x',
+        rect.height
+      );
+      if (rect.width > 0 && rect.height > 0) {
+        element = el as HTMLElement;
+        console.log(
+          `選擇元素 ${Array.from(elements).indexOf(el)}（尺寸不為 0）`
+        );
+        break;
+      }
+    }
+
+    if (!element) {
+      throw new Error(`無法找到尺寸不為 0 的元素: ${elementId}`);
+    }
+
+    return html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      onclone: (clonedDoc) => {
+        // 在 clone 的文檔中移除不需要的元素（如按鈕）
+        const clonedElements = clonedDoc.querySelectorAll(`#${elementId}`);
+        clonedElements.forEach((clonedElement) => {
+          // 移除按鈕
+          const buttons = clonedElement.querySelectorAll('button');
+          buttons.forEach((btn) => btn.remove());
+
+          // 移除邊框、圓角和陰影
+          (clonedElement as HTMLElement).style.border = 'none';
+          (clonedElement as HTMLElement).style.borderRadius = '0';
+          (clonedElement as HTMLElement).style.boxShadow = 'none';
+        });
+      },
+    });
+  }
+
+  /**
+   * 匯出為圖片
+   */
+  async exportAsImage(elementId: string): Promise<void> {
     try {
-      const canvas = await this.captureCanvas();
+      const canvas = await this.captureElement(elementId);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
       const fileName = this.generateFileName('jpg');
 
@@ -106,15 +114,16 @@ export class QuotationModalComponent {
     } catch (error) {
       console.error('匯出圖片失敗:', error);
       this.analytics.trackError(error as Error, 'export_image');
-      alert('匯出圖片失敗，請重試');
-    } finally {
-      this.isPrint.set(false);
+      throw new Error('匯出圖片失敗，請重試');
     }
   }
 
-  async onExportPdf() {
+  /**
+   * 匯出為 PDF
+   */
+  async exportAsPDF(elementId: string): Promise<void> {
     try {
-      const canvas = await this.captureCanvas();
+      const canvas = await this.captureElement(elementId);
       const dataUrl = canvas.toDataURL('image/png');
       const fileName = this.generateFileName('pdf');
 
@@ -129,13 +138,18 @@ export class QuotationModalComponent {
     } catch (error) {
       console.error('匯出 PDF 失敗:', error);
       this.analytics.trackError(error as Error, 'export_pdf');
-      alert('匯出 PDF 失敗，請重試');
-    } finally {
-      this.isPrint.set(false);
+      throw new Error('匯出 PDF 失敗，請重試');
     }
   }
 
-  async onExportExcel() {
+  /**
+   * 匯出為 Excel
+   */
+  async exportAsExcel(
+    data: QuotationData,
+    logo: string = '',
+    stamp: string = ''
+  ): Promise<void> {
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('報價單');
@@ -147,11 +161,11 @@ export class QuotationModalComponent {
       } as const;
 
       this.setupWorksheetStyles(worksheet);
-      this.createTitleSection(worksheet, workbook, titleBgColor);
-      this.createCompanyInfoSection(worksheet, workbook);
-      this.createServiceItemsTable(worksheet);
-      this.createSummarySection(worksheet);
-      this.createNotesAndSignature(worksheet, titleBgColor);
+      this.createTitleSection(worksheet, workbook, data, logo, titleBgColor);
+      this.createCompanyInfoSection(worksheet, workbook, data, stamp);
+      this.createServiceItemsTable(worksheet, data);
+      this.createSummarySection(worksheet, data);
+      this.createNotesAndSignature(worksheet, data, titleBgColor);
       this.applyBorders(worksheet);
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -168,13 +182,23 @@ export class QuotationModalComponent {
     } catch (error) {
       console.error('匯出 Excel 失敗:', error);
       this.analytics.trackError(error as Error, 'export_excel');
-      alert('匯出 Excel 失敗，請重試');
+      throw new Error('匯出 Excel 失敗，請重試');
     }
   }
 
   /**
-   * 設定 Excel 工作表的基本樣式
+   * 列印
    */
+  print(): void {
+    window.print();
+    this.analytics.trackEvent('print', {
+      event_category: 'export',
+      event_label: 'print',
+    });
+  }
+
+  // === Excel 相關私有方法 ===
+
   private setupWorksheetStyles(worksheet: ExcelJS.Worksheet): void {
     worksheet.properties.defaultRowHeight = 20;
     worksheet.properties.defaultColWidth = 12;
@@ -189,25 +213,24 @@ export class QuotationModalComponent {
     ];
   }
 
-  /**
-   * 建立標題列與 LOGO
-   */
   private createTitleSection(
     worksheet: ExcelJS.Worksheet,
     workbook: ExcelJS.Workbook,
+    data: QuotationData,
+    logo: string,
     titleBgColor: ExcelJS.Fill
   ): void {
-    const titleStartCol = this.logo ? 'B1:C2' : 'A1:C2';
+    const titleStartCol = logo ? 'B1:C2' : 'A1:C2';
     worksheet.mergeCells(titleStartCol);
     const titleCell = worksheet.getCell(titleStartCol.split(':')[0]);
-    titleCell.value = this.data.company + ' - 報價單';
+    titleCell.value = data.customerCompany + ' - 報價單';
     titleCell.font = { size: 18, bold: true };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = titleBgColor;
 
-    if (this.logo) {
+    if (logo) {
       const logoImageId = workbook.addImage({
-        base64: this.extractBase64(this.logo, 'LOGO'),
+        base64: this.extractBase64(logo, 'LOGO'),
         extension: 'png',
       });
       worksheet.addImage(logoImageId, {
@@ -221,33 +244,32 @@ export class QuotationModalComponent {
       worksheet.getCell(cellAddr).fill = titleBgColor;
     });
 
-    if (this.data.customerTaxID) {
+    if (data.customerTaxID) {
       const taxIdLabelCell = worksheet.getCell('D2');
       taxIdLabelCell.value = '統一編號：';
       taxIdLabelCell.font = { size: 12, bold: true };
       taxIdLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
       const taxIdValueCell = worksheet.getCell('E2');
-      taxIdValueCell.value = this.data.customerTaxID;
+      taxIdValueCell.value = data.customerTaxID;
       taxIdValueCell.font = { size: 12 };
       taxIdValueCell.alignment = { horizontal: 'left', vertical: 'middle' };
     }
   }
 
-  /**
-   * 建立報價公司資訊區塊
-   */
   private createCompanyInfoSection(
     worksheet: ExcelJS.Worksheet,
-    workbook: ExcelJS.Workbook
+    workbook: ExcelJS.Workbook,
+    data: QuotationData,
+    stamp: string
   ): void {
     const infoRows = [
-      ['報價公司/人員', this.data.quoterName],
-      ...(this.data.quoterTaxID ? [['統一編號：', this.data.quoterTaxID]] : []),
-      ...(this.data.tel ? [['聯絡電話', this.data.tel]] : []),
-      ['E-Mail', this.data.email],
-      ['報價日期：', this.data.startDate],
-      ...(this.data.endDate ? [['有效日期：', this.data.endDate]] : []),
+      ['報價公司/人員', data.quoterName],
+      ...(data.quoterTaxID ? [['統一編號：', data.quoterTaxID]] : []),
+      ...(data.quoterPhone ? [['聯絡電話', data.quoterPhone]] : []),
+      ['E-Mail', data.quoterEmail],
+      ['報價日期：', data.startDate],
+      ...(data.endDate ? [['有效日期：', data.endDate]] : []),
     ];
 
     infoRows.forEach((rowData) => {
@@ -261,9 +283,9 @@ export class QuotationModalComponent {
       row.getCell(2).font = { size: 12 };
     });
 
-    if (this.stamp) {
+    if (stamp) {
       const stampImageId = workbook.addImage({
-        base64: this.extractBase64(this.stamp, '公司發票章'),
+        base64: this.extractBase64(stamp, '公司章'),
         extension: 'png',
       });
       worksheet.addImage(stampImageId, {
@@ -274,10 +296,10 @@ export class QuotationModalComponent {
     }
   }
 
-  /**
-   * 建立服務項目表格
-   */
-  private createServiceItemsTable(worksheet: ExcelJS.Worksheet): void {
+  private createServiceItemsTable(
+    worksheet: ExcelJS.Worksheet,
+    data: QuotationData
+  ): void {
     worksheet.addRow([]);
 
     const headerRow = worksheet.addRow([
@@ -297,7 +319,7 @@ export class QuotationModalComponent {
       };
     }
 
-    this.data.serviceItems.forEach((item) => {
+    data.serviceItems.forEach((item) => {
       const row = worksheet.addRow([
         item.category,
         item.item,
@@ -312,20 +334,19 @@ export class QuotationModalComponent {
     });
   }
 
-  /**
-   * 建立稅額與總計區塊
-   */
-  private createSummarySection(worksheet: ExcelJS.Worksheet): void {
+  private createSummarySection(
+    worksheet: ExcelJS.Worksheet,
+    data: QuotationData
+  ): void {
+    const taxLabel =
+      data.taxName === '自訂' && data.customTaxName
+        ? data.customTaxName
+        : data.taxName;
+
     const summaryData = [
-      ['', '', '', '未稅', this.data.excludingTax],
-      [
-        '',
-        '',
-        this.data.taxName + '稅',
-        this.data.percentage + '%',
-        this.data.tax,
-      ],
-      ['', '', '', '含稅計', this.data.includingTax],
+      ['', '', '', '未稅', data.excludingTax],
+      ['', '', taxLabel + '稅', data.percentage + '%', data.tax],
+      ['', '', '', '含稅計', data.includingTax],
     ];
 
     summaryData.forEach((rowData) => {
@@ -342,14 +363,12 @@ export class QuotationModalComponent {
     });
   }
 
-  /**
-   * 建立備註與簽章區塊
-   */
   private createNotesAndSignature(
     worksheet: ExcelJS.Worksheet,
+    data: QuotationData,
     titleBgColor: ExcelJS.Fill
   ): void {
-    if (this.data.desc) {
+    if (data.desc) {
       worksheet.addRow([]);
       const remarkTitleRow = worksheet.addRow(['【備 註】']);
       remarkTitleRow.getCell(1).font = { size: 12, bold: true };
@@ -358,7 +377,7 @@ export class QuotationModalComponent {
         remarkTitleRow.getCell(col).fill = titleBgColor;
       }
 
-      const descRow = worksheet.addRow([this.data.desc]);
+      const descRow = worksheet.addRow([data.desc]);
       const descRowIndex = descRow.number;
       worksheet.mergeCells(`A${descRowIndex}:E${descRowIndex}`);
       descRow.getCell(1).font = { size: 12 };
@@ -370,9 +389,6 @@ export class QuotationModalComponent {
     worksheet.addRow([]);
   }
 
-  /**
-   * 為整個工作表添加外框
-   */
   private applyBorders(worksheet: ExcelJS.Worksheet): void {
     const lastRow = worksheet.rowCount;
     const borderStyle = {

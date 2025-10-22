@@ -1,51 +1,40 @@
-<div class="card">
+<div class="card bg-base-100 shadow-sm">
   <div class="card-body">
-    <ul class="timeline">
+    <div class="relative">
       @for (log of changelog; track $index) {
-      <li class="timeline-event">
-        <div class="timeline-event-icon bg-primary-lt">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="icon"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-            fill="none"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-
-            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path>
-            <path d="M12 10m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path>
-            <path d="M12 14l0 .01"></path>
-          </svg>
-        </div>
-        <div
-          class="card timeline-event-card"
-          [ngClass]="$index === 0 ? 'border-primary shadow-sm' : ''"
-        >
-          <div class="card-body">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <strong class="text-dark">{{ log.date }}</strong>
-              @if ($index === 0) {
-              <span class="badge text-white bg-primary">最新</span>
-              }
+        <div class="flex gap-4 relative">
+          <!-- 時間軸線條和圖示 -->
+          <div class="flex flex-col items-center">
+            <div class="p-3 rounded-lg bg-info/10 z-10">
+              <lucide-icon [img]="Clock" [size]="20" class="text-info" />
             </div>
-            <ul
-              class="mb-0"
-              [ngClass]="$index === 0 ? 'text-dark' : 'text-secondary'"
-            >
+            @if (!$last) {
+              <div class="w-px h-full bg-base-300 my-2"></div>
+            }
+          </div>
+
+          <!-- 內容區 -->
+          <div
+            class="flex-1 border shadow rounded-lg p-4 mb-3"
+            [ngClass]="$index === 0 ? 'border-info' : 'border-primary'"
+          >
+            <div class="flex items-center gap-2 mb-2">
+              <strong class="text-base-content">{{ log.date }}</strong>
+              @if ($index === 0) {
+                <span class="badge rounded text-white bg-sky-600"
+                  >最新</span
+                >
+              }
+
+            </div>
+            <ul class="text-base-content/70 text-sm">
               @for (feature of log.features; track $index) {
-              <li>{{ feature }}</li>
+                <li>{{ feature }}</li>
               }
             </ul>
           </div>
         </div>
-      </li>
       }
-    </ul>
+    </div>
   </div>
 </div>

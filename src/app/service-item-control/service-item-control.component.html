@@ -1,95 +1,95 @@
-<form [formGroup]="form">
-  <div class="row align-items-center g-2 mb-4 mb-md-2">
-    <div class="col-6 col-md">
+<!-- 服務項目（響應式佈局） -->
+<div
+  class="flex flex-wrap md:flex-nowrap gap-x-2 items-center bg-base-100 "
+  [formGroup]="formGroup()"
+>
+  <div class="flex gap-2 w-full md:w-1/2">
+    <!-- 類別 -->
+    <fieldset class="fieldset w-1/2 md:flex-1">
       <input
         formControlName="category"
         type="text"
-        class="form-control"
-        name="category"
+        class="input"
         placeholder="類別"
-        (change)="onInputChange()"
       />
-    </div>
-    <div class="col-6 col-md">
+    </fieldset>
+    <!-- 項目 -->
+    <fieldset class="fieldset w-1/2 md:flex-1">
       <input
         formControlName="item"
         type="text"
-        class="form-control"
-        [ngClass]="form.get('item')?.touched && form.get('item')?.errors?.['required'] ? 'is-invalid': ''"
-        name="item"
+        class="input"
+        [ngClass]="
+          formGroup().get('item')?.touched &&
+          formGroup().get('item')?.errors?.['required']
+            ? 'input-error'
+            : ''
+        "
         placeholder="項目"
-        (change)="onInputChange()"
       />
-      <div class="invalid-feedback">項目名稱不得為空</div>
-    </div>
-    <div class="col">
+      @if (
+        formGroup().get('item')?.touched &&
+        formGroup().get('item')?.errors?.['required']
+      ) {
+        <p class="text-error">項目名稱不得為空</p>
+      }
+    </fieldset>
+  </div>
+  <div class="flex gap-2 w-full md:w-1/2">
+    <!-- 單價 -->
+    <fieldset class="fieldset flex-1">
       <input
         formControlName="price"
         type="number"
-        class="form-control"
-        [ngClass]="form.get('price')?.touched && form.get('price')?.errors?.['required'] ? 'is-invalid': ''"
-        name="price"
+        class="input"
+        [class.input-error]="
+          formGroup().get('price')?.touched &&
+          formGroup().get('price')?.errors?.['required']
+        "
         placeholder="單價"
-        (change)="onAmountChange()"
+        min="0"
+        (input)="onInput($event, 'price')"
       />
-      <div class="invalid-feedback">單價名稱不得為空</div>
-    </div>
-    <div class="col">
+    </fieldset>
+    <!-- 數量 -->
+    <fieldset class="fieldset flex-1">
       <input
         formControlName="count"
         type="number"
-        class="form-control"
-        name="count"
-        value="1"
-        placeholder="數量"
-        (change)="onAmountChange()"
+        class="input"
+        placeholder="1"
+        (input)="onInput($event, 'count')"
       />
-    </div>
-    <div class="col">
+    </fieldset>
+    <!-- 單位 -->
+    <fieldset class="fieldset flex-1">
       <input
         formControlName="unit"
         type="text"
-        class="form-control"
-        name="unit"
+        class="input"
         placeholder="單位"
-        (change)="onInputChange()"
       />
-    </div>
-    <div class="col">
+    </fieldset>
+    <!-- 金額 -->
+    <fieldset class="fieldset flex-1">
       <input
         formControlName="amount"
         type="number"
-        class="form-control"
-        name="amount"
-        value="0"
-        placeholder="金額"
-        (change)="onInputChange()"
+        class="input font-bold"
+        placeholder="0"
+        readonly
       />
-    </div>
-    <div class="col-auto">
+    </fieldset>
+    <!-- 操作 -->
+    <fieldset class="fieldset">
       <button
-        class="btn btn-white btn-icon delItem"
-        aria-label="Button"
         type="button"
+        class="btn input btn-outline btn-square shrink-0 cursor-pointer"
         (click)="onRemoveField($event)"
+        title="刪除"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="icon icon-tabler icon-tabler-x"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke="currentColor"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <lucide-icon [img]="Trash2" [size]="18" />
       </button>
-    </div>
+    </fieldset>
   </div>
-</form>
+</div>

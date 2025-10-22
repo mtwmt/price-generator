@@ -1,1 +1,69 @@
-<app-price-generator></app-price-generator>
+<div class="container mx-auto px-4 py-4 max-w-7xl">
+  <!-- Header -->
+  <header class="mb-6">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <h1 class="text-2xl md:text-3xl font-bold">報價單產生器</h1>
+      <div class="flex items-center gap-3">
+        <iframe
+          src="https://ghbtns.com/github-btn.html?user=mtwmt&repo=price-generator&type=star&count=true"
+          frameborder="0"
+          scrolling="0"
+          width="90"
+          height="20"
+          title="GitHub"
+        ></iframe>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div role="tablist" class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm">
+    <button
+      role="tab"
+      class="tab"
+      [class.tab-active]="activeTab() === 'quotation'"
+      (click)="onTabChange('quotation')"
+    >
+      報價單
+    </button>
+    <button
+      role="tab"
+      class="tab"
+      [class.tab-active]="activeTab() === 'changelog'"
+      (click)="onTabChange('changelog')"
+    >
+      更新記錄
+    </button>
+  </div>
+
+  <!-- Main Content -->
+  @if (activeTab() === 'quotation') {
+    <app-price-generator />
+  }
+  @if (activeTab() === 'changelog') {
+    <app-changelog />
+  }
+
+  <app-donate />
+  <app-comments />
+
+  <!-- Footer -->
+  <footer
+    class="footer footer-center p-4 bg-base-100 text-base-content mt-6 rounded-lg"
+  >
+    <div>
+      <p class="text-sm">
+        Copyright © 2022
+        <a
+          href="https://mtwmt.com/"
+          target="_blank"
+          class="link link-hover"
+        >
+          Mandy
+        </a>
+        . All rights reserved.
+      </p>
+    </div>
+  </footer>
+</div>
+
