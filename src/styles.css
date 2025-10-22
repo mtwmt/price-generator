@@ -1,9 +1,13 @@
 /* You can add global styles to this file, and also import other style files */
 @import "tailwindcss";
 
-/* Tailwind v4 configuration using CSS */
-@layer theme {
-  * {
-    --important: true;
-  }
+/* DaisyUI plugin configuration for Tailwind v4 */
+@plugin "daisyui" {
+  themes: wireframe --default;
+}
+
+/* 全域背景色 */
+body {
+  background: #f9fafb;
+  min-height: 100vh;
 }

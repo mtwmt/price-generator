@@ -1,0 +1,128 @@
+<input
+  #fileInput
+  type="file"
+  class="hidden"
+  [accept]="accept()"
+  (change)="onFileChange($any($event).target.files)"
+/>
+
+@if (variant() === 'default') {
+  <!-- 大樣式 - 適用於客戶 LOGO -->
+  @if (!previewUrl()) {
+    <button
+      type="button"
+      class="w-full h-24 md:h-24 border-2 border-dashed border-base-300 rounded-lg bg-base-100 hover:bg-base-200 transition-colors flex flex-col md:flex-row items-center justify-center gap-2 md:gap-3 cursor-pointer"
+      (click)="fileInput.click()"
+    >
+      <lucide-icon
+        [img]="Upload"
+        [size]="24"
+        class="text-base-content/40"
+      />
+      <div class="flex flex-col items-center md:items-start">
+        <span class="text-base-content/70 text-sm font-medium"
+          >{{ label() }}</span
+        >
+        <span class="text-base-content/40 text-xs"
+          >{{ supportedFormats() }}</span
+        >
+      </div>
+    </button>
+  } @else {
+    <div class="flex flex-col md:flex-row items-center gap-3">
+      <div
+        class="w-20 h-20 md:w-24 md:h-24 border-2 border-base-300 rounded-lg bg-white overflow-hidden flex-shrink-0"
+      >
+        <img
+          [src]="previewUrl()"
+          [alt]="label()"
+          class="w-full h-full object-contain"
+        />
+      </div>
+      <div
+        class="flex-1 w-full flex flex-col md:flex-row items-center md:justify-between gap-2"
+      >
+        <div class="flex flex-col items-center md:items-start">
+          <span class="text-sm font-medium text-success"
+            >✓ 已上傳圖片</span
+          >
+          <span
+            class="text-xs text-base-content/60 hidden md:inline"
+            >點擊右側按鈕可重新上傳或移除</span
+          >
+        </div>
+        <div class="flex gap-2 justify-center w-full md:w-auto">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline flex-1 md:flex-none"
+            (click)="fileInput.click()"
+            title="重新上傳"
+          >
+            <lucide-icon [img]="Upload" [size]="14" />
+            <span class="md:inline">更換</span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline flex-1 md:flex-none"
+            (click)="onRemove(); fileInput.value = ''"
+            title="移除 LOGO"
+          >
+            <lucide-icon [img]="X" [size]="14" />
+            <span class="md:inline">移除</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+} @else {
+  <!-- 小樣式（compact）- 適用於公司 LOGO 和公司發票章 -->
+  @if (!previewUrl()) {
+    <button
+      type="button"
+      class="w-full h-20 border-2 border-dashed border-base-300 rounded-lg bg-base-100 hover:bg-base-200 transition-colors flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 cursor-pointer"
+      (click)="fileInput.click()"
+    >
+      <lucide-icon
+        [img]="Upload"
+        [size]="20"
+        class="text-base-content/40"
+      />
+      <span class="text-base-content/60 text-xs">點擊上傳</span>
+    </button>
+  } @else {
+    <div
+      class="flex items-center gap-2 p-2 border-2 border-base-300 rounded-lg bg-base-50"
+    >
+      <div
+        class="w-14 h-14 md:w-16 md:h-16 border border-base-300 rounded bg-white overflow-hidden flex-shrink-0"
+      >
+        <img
+          [src]="previewUrl()"
+          [alt]="label()"
+          class="w-full h-full object-contain"
+        />
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-success font-medium">✓ 已上傳</p>
+      </div>
+      <div class="flex gap-1">
+        <button
+          type="button"
+          class="btn btn-xs btn-ghost"
+          (click)="fileInput.click()"
+          title="更換"
+        >
+          <lucide-icon [img]="Upload" [size]="14" />
+        </button>
+        <button
+          type="button"
+          class="btn btn-xs btn-ghost text-error"
+          (click)="onRemove(); fileInput.value = ''"
+          title="移除"
+        >
+          <lucide-icon [img]="X" [size]="14" />
+        </button>
+      </div>
+    </div>
+  }
+}

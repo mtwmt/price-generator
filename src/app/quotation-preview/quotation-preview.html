@@ -1,0 +1,375 @@
+<!-- 操作按鈕列 -->
+<div class="flex justify-end gap-2 mb-4">
+  <!-- <button
+    type="button"
+    class="btn btn-sm btn-outline gap-2"
+    [disabled]="!form().valid"
+    (click)="onPrint()"
+    title="列印"
+  >
+    <lucide-icon [img]="Printer" [size]="16" />
+    列印
+  </button> -->
+  <button
+    type="button"
+    class="btn btn-sm btn-primary gap-2"
+    [disabled]="!form().valid"
+    (click)="onExportPDF()"
+    title="匯出 PDF"
+  >
+    <lucide-icon [img]="FileDown" [size]="16" />
+    PDF
+  </button>
+  <button
+    type="button"
+    class="btn btn-sm btn-primary gap-2"
+    [disabled]="!form().valid"
+    (click)="onExportImage()"
+    title="匯出圖片"
+  >
+    <lucide-icon [img]="Image" [size]="16" />
+    圖片
+  </button>
+  <button
+    type="button"
+    class="btn btn-sm btn-success gap-2"
+    [disabled]="!form().valid"
+    (click)="onExportExcel()"
+    title="匯出 Excel"
+  >
+    <lucide-icon [img]="FileSpreadsheet" [size]="16" />
+    Excel
+  </button>
+</div>
+
+<!-- 專業報價單格式 (使用 Wireframe 主題) - 優化 A4 列印 -->
+<div
+  id="quotation-preview-content"
+  class="bg-base-100 border border-base-300 rounded-lg p-4 shadow-sm text-xs print:p-6 print:text-sm"
+  style="max-width: 210mm; margin: 0 auto;"
+>
+  <!-- 標題區：左右佈局 -->
+  <div
+    class="flex justify-between items-start mb-3 pb-2 border-b-2 border-base-300"
+  >
+    <!-- 左側：報價方資訊 -->
+    <div class="flex-1">
+      <div class="flex items-end mb-2">
+        @if (quoterLogo()) {
+          <img
+            [src]="quoterLogo()"
+            class="h-10 mr-2 object-contain m-auto"
+            alt="logo"
+          />
+        }
+        <div class="font-bold text-2xl text-base-content flex-1">
+          {{ form().get('quoterName')?.value || '[公司名稱]' }}
+        </div>
+      </div>
+      <div class="text-base-content/70 space-y-0.5">
+        @if (form().get('quoterTaxID')?.value) {
+          <div class="">統編：{{ form().get('quoterTaxID')?.value }}</div>
+        }
+        @if (form().get('quoterAddress')?.value) {
+          <div class="flex items-center gap-2">
+            <lucide-icon
+              [img]="MapPin"
+              [size]="14"
+              class="opacity-60 shrink-0"
+            />
+            <span>{{ form().get('quoterAddress')?.value }}</span>
+          </div>
+        }
+        @if (form().get('quoterPhone')?.value) {
+          <div class="flex items-center gap-2">
+            <lucide-icon
+              [img]="Phone"
+              [size]="14"
+              class="opacity-60 shrink-0"
+            />
+            <span>{{ form().get('quoterPhone')?.value }}</span>
+          </div>
+        }
+        @if (form().get('quoterEmail')?.value) {
+          <div class="flex items-center gap-2">
+            <lucide-icon [img]="Mail" [size]="14" class="opacity-60 shrink-0" />
+            <span class="break-all">{{
+              form().get('quoterEmail')?.value
+            }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- 右側：報價單資訊 -->
+    <div class="text-right">
+      <h1 class="text-2xl font-bold text-base-content mb-3">報價單</h1>
+      <div class="space-y-1">
+        <div class="flex justify-between gap-4">
+          <span class="font-semibold">報價日期：</span>
+          <span class="text-base-content">
+            {{ form().get('startDate')?.value || '-' }}
+          </span>
+        </div>
+        @if (form().get('endDate')?.value) {
+          <div class="flex justify-between gap-4">
+            <span class="font-semibold">有效期限：</span>
+            <span class="text-base-content">
+              {{ form().get('endDate')?.value }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- 客戶資訊：表單式佈局 -->
+  <div class="mb-3">
+    <div class="flex justify-between items-end mb-3">
+      <div class="text-primary flex-1">客戶資訊</div>
+      <!-- @if(form().get('endDate')?.value) {
+      <div class="">
+        <span class="text-base-content/60 italic">Quote Valid Till :</span>
+        <span class="font-semibold text-base-content ml-2">
+          {{ form().get('endDate')?.value }}
+        </span>
+      </div>
+      } -->
+    </div>
+
+    <div class="grid grid-cols-2 gap-x-8 gap-y-0.5">
+      <div class="flex items-center mb-1 col-span-2">
+        <!-- <span class="text-base-content/60">公司名稱：</span> -->
+        @if (customerLogo()) {
+          <img
+            [src]="customerLogo()"
+            class="mr-1 h-10 object-contain"
+            alt="logo"
+          />
+        }
+        <span class="text-base-content font-semibold text-lg">
+          {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
+        </span>
+      </div>
+      @if (form().get('customerContact')?.value) {
+        <div class="flex">
+          <span class="text-base-content/60 w-20">聯絡人：</span>
+          <span class="text-base-content">
+            {{ form().get('customerContact')?.value || '' }}
+          </span>
+        </div>
+      }
+      @if (form().get('customerPhone')?.value) {
+        <div class="flex">
+          <span class="text-base-content/60 w-20">電話：</span>
+          <span class="text-base-content">
+            {{ form().get('customerPhone')?.value || '' }}
+          </span>
+        </div>
+      }
+
+      @if (form().get('customerEmail')?.value) {
+        <div class="flex">
+          <span class="text-base-content/60 w-20">E-Mail：</span>
+          <span class="text-base-content break-all">
+            {{ form().get('customerEmail')?.value || '' }}
+          </span>
+        </div>
+      }
+
+      @if (form().get('customerAddress')?.value) {
+        <div class="flex">
+          <span class="text-base-content/60 w-20">地址：</span>
+          <span class="text-base-content">
+            {{ form().get('customerAddress')?.value }}
+          </span>
+        </div>
+      }
+      @if (form().get('customerTaxID')?.value) {
+        <div class="flex">
+          <span class="text-base-content/60 w-20">統編：</span>
+          <span class="text-base-content">
+            {{ form().get('customerTaxID')?.value }}
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- 服務項目表格 -->
+  <div class="mb-3">
+    <table class="w-full border-collapse border border-base-300">
+      <thead>
+        <tr class="bg-base-300">
+          <th
+            class="py-1 px-2 text-left font-bold border-r border-base-300"
+          >
+            類別 / 項目
+          </th>
+          <th
+            class="py-1 px-2 text-right font-bold border-r border-base-300 w-24"
+          >
+            單價
+          </th>
+          <th
+            class="py-1 px-2 text-center font-bold border-r border-base-300 w-20"
+          >
+            數量
+          </th>
+          <th class="py-1 px-2 text-right font-bold w-28">金額</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (serviceItems.controls.length === 0) {
+          <tr>
+            <td
+              colspan="6"
+              class="p-6 text-center text-sm text-base-content/50 border-t border-base-300"
+            >
+              尚無服務項目
+            </td>
+          </tr>
+        } @else {
+          @for (
+            item of serviceItems.controls;
+            track item.value;
+            let idx = $index
+          ) {
+            <tr class="border-t border-base-300">
+              <td class="p-2 border-r border-base-300 flex items-center">
+                @if (item.value.category) {
+                  <div class="text-base-content/60">
+                    {{ item.value.category }}
+                  </div>
+                }
+                <div class="font-semibold ml-2">
+                  {{ item.value.item || '-' }}
+                </div>
+              </td>
+              <td class="p-2 text-right border-r border-base-300">
+                ${{ item.value.price || 0 | number }}
+              </td>
+              <td class="p-2 border-r border-base-300">
+                {{ item.value.count || 0 }}
+                {{ !!item.value.unit ? '/' : '' }}
+                {{ item.value.unit }}
+              </td>
+
+              <td class="p-2 text-right font-semibold">
+                ${{ item.value.amount || 0 | number }}
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 金額計算區 -->
+  <div class="flex mb-3">
+    <div class="w-1/2">
+      @if (stamp()) {
+        <img
+          [src]="stamp()"
+          class="max-w-11/12 max-h-32 object-contain m-auto"
+          alt="公司章"
+        />
+      }
+    </div>
+    <div class="w-1/2">
+      <div
+        class="flex justify-between items-center py-1.5 border-b border-base-300"
+      >
+        <span class="text-base-content">小計：</span>
+        <span class="font-semibold text-base-content">
+          ${{ form().get('excludingTax')?.value || 0 | number }}
+        </span>
+      </div>
+      <div
+        class="flex justify-between items-center py-1.5 border-b border-base-300"
+      >
+        <span class="text-base-content">
+          @if (
+            form().get('taxName')?.value === '自訂' &&
+            form().get('customTaxName')?.value
+          ) {
+            {{ form().get('customTaxName')?.value }}
+          } @else {
+            {{ form().get('taxName')?.value || '稅額' }}
+          }
+          @if (form().get('percentage')?.value) {
+            ({{ form().get('percentage')?.value }}%)
+          }
+          :
+        </span>
+        <span class="font-semibold text-base-content">
+          ${{ form().get('tax')?.value || 0 | number }}
+        </span>
+      </div>
+      <div
+        class="flex justify-between items-center bg-primary text-primary-content rounded p-1.5 mt-1"
+      >
+        <span class="font-bold">總計：</span>
+        <span class="text-lg font-bold">
+          ${{ form().get('includingTax')?.value || 0 | number }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 備註說明 -->
+  @if (form().get('desc')?.value) {
+    <div class="mb-3 border-t border-base-300 pt-3">
+      <h3 class="font-bold text-base-content mb-2">備註說明</h3>
+      <div
+        class="bg-base-50 border border-base-300 rounded p-2 text-base-content whitespace-pre-wrap leading-normal"
+      >
+        {{ form().get('desc')?.value }}
+      </div>
+    </div>
+  }
+
+  <!-- 簽章區 -->
+  @if (form().get('isSign')?.value) {
+    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-base-300 mt-3">
+      <!-- 報價人簽章 -->
+      <div class="border border-base-300 rounded p-2">
+        <div class="font-semibold text-base-content mb-2">
+          報價人簽章：
+        </div>
+        <div class="flex flex-col">
+          <div class="w-full">
+            <div class="text-base-content/50 text-xs">簽章：______________</div>
+            <div class="text-base-content/50 text-xs mt-1">日期：______________</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 客戶簽章確認 -->
+      <div class="border border-base-300 rounded p-2">
+        <div class="font-semibold text-base-content mb-2">
+          客戶簽章確認：
+        </div>
+        <div class="flex flex-col">
+          <div class="w-full">
+            <div class="text-base-content/50 text-xs">簽章：______________</div>
+            <div class="text-base-content/50 text-xs mt-1">日期：______________</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- 頁尾資訊 -->
+  <div class="mt-2 pt-2 border-base-300 text-center text-base-content/50">
+    <p>
+      本報價單由 {{ form().get('quoterName')?.value || '[公司名稱]' }} 提供 |
+      @if (form().get('quoterAddress')?.value) {
+        地址：{{ form().get('quoterAddress')?.value }} |
+      }
+      @if (form().get('quoterPhone')?.value) {
+        電話：{{ form().get('quoterPhone')?.value }}
+      }
+    </p>
+  </div>
+</div>

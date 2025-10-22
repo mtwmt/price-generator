@@ -1,121 +1,71 @@
+import { CommonModule } from '@angular/common';
 import {
   Component,
   output,
-  forwardRef,
+  input,
   ChangeDetectionStrategy,
-  signal,
 } from '@angular/core';
-import { NgClass } from '@angular/common';
-import {
-  FormGroup,
-  FormControl,
-  NG_VALIDATORS,
-  NG_VALUE_ACCESSOR,
-  ReactiveFormsModule,
-  ControlValueAccessor,
-  Validator,
-  AbstractControl,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
-import { ServiceItem } from '../quotation.model';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { LucideAngularModule, Trash2 } from 'lucide-angular';
 
 @Component({
   selector: 'app-service-item-control',
   standalone: true,
-  imports: [ReactiveFormsModule, NgClass],
+  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
   templateUrl: './service-item-control.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      multi: true,
-      useExisting: forwardRef(() => ServiceItemControlComponent),
-    },
-    {
-      provide: NG_VALIDATORS,
-      multi: true,
-      useExisting: forwardRef(() => ServiceItemControlComponent),
-    },
-  ],
 })
-export class ServiceItemControlComponent
-  implements ControlValueAccessor, Validator
-{
-  // 使用 Signal Output API
+export class ServiceItemControlComponent {
+  // 使用 Signal Input/Output API
+  formGroup = input.required<FormGroup>();
+  index = input<number>(0);
   removeField = output<void>();
 
-  private serviceItem: ServiceItem = {
-    item: '',
-    price: 0,
-    count: 0,
-    amount: 0,
-  };
+  // Lucide Icons
+  readonly Trash2 = Trash2;
 
-  public form: FormGroup = new FormGroup({
-    category: new FormControl(),
-    item: new FormControl(null, Validators.required),
-    price: new FormControl(null, Validators.required),
-    count: new FormControl(),
-    unit: new FormControl(),
-    amount: new FormControl({ value: 0, disabled: true }),
-  });
+  onAmountChange() {
+    const form = this.formGroup();
+    const price = Number(form.get('price')?.value) || 0;
+    const count = Number(form.get('count')?.value) || 1;
+    const amount = price * count;
 
-  public onChange: (serviceItem: ServiceItem) => void = () => {};
-
-  public onTouched = () => {};
-
-  touched = signal<boolean>(false);
-  disabled = signal<boolean>(false);
-
-  public writeValue(serviceItem: ServiceItem) {
-
-    this.serviceItem = serviceItem;
-    this.form.patchValue({ ...serviceItem });
+    // 移除 { emitEvent: false }，讓變更能觸發父元件的 valueChanges
+    form.get('amount')?.setValue(amount);
   }
 
-  public registerOnChange(onChange: (serviceItem: ServiceItem) => void) {
-    this.onChange = onChange;
-  }
+  onInput(event: Event, controlName: string) {
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
 
-  public registerOnTouched(onTouched: () => void) {
-    this.onTouched = onTouched;
-  }
+    // 移除前導零：如果輸入的是 "0123"，自動轉換為 "123"
+    // 但保留單純的 "0" 和小數點開頭的數字如 "0.5"
+    if (
+      value &&
+      value.length > 1 &&
+      value.startsWith('0') &&
+      value[1] !== '.'
+    ) {
+      value = value.replace(/^0+/, '');
+      // 如果移除後變成空字串（例如輸入 "000"），保留一個 0
+      if (value === '') {
+        value = '0';
+      }
+      // 更新 input 的值（這會移除前導零）
+      input.value = value;
 
-  public setDisabledState(isDisabled: boolean) {
-    this.disabled.set(isDisabled);
-  }
-
-  public validate(control: AbstractControl): ValidationErrors | null {
-    return (
-      this.form.get('item')?.errors || this.form.get('price')?.errors || null
-    );
-  }
-
-  private markAsTouched() {
-    if (!this.touched()) {
-      this.onTouched();
-      this.touched.set(true);
+      // 更新表單控制項的值
+      const form = this.formGroup();
+      const numValue = value === '' ? null : Number(value);
+      form.get(controlName)?.setValue(numValue);
     }
+
+    // 觸發金額計算（無論是否移除前導零，都需要計算）
+    this.onAmountChange();
   }
 
-  public onInputChange() {
-    this.markAsTouched();
-    this.onChange(this.form.getRawValue());
-  }
-
-  public onAmountChange() {
-    const price = this.form.get('price')?.value;
-    const count = this.form.get('count')?.value;
-
-    this.form.get('amount')?.setValue(price * count);
-
-    this.onInputChange();
-  }
-
-  public onRemoveField(e?: MouseEvent): void {
+  onRemoveField(e?: MouseEvent): void {
     e?.preventDefault();
-    this.markAsTouched();
     this.removeField.emit();
   }
 }
