@@ -25,7 +25,7 @@ export class CommentsComponent implements OnInit {
     script.setAttribute('data-reactions-enabled', '1');
     script.setAttribute('data-emit-metadata', '1');
     script.setAttribute('data-input-position', 'top');
-    script.setAttribute('data-theme', 'preferred_color_scheme');
+    script.setAttribute('data-theme', 'light');
     script.setAttribute('data-lang', 'zh-TW');
     script.setAttribute('crossorigin', 'anonymous');
     script.setAttribute('async', '');
