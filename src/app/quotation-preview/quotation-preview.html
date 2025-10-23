@@ -1,3 +1,11 @@
+<!-- 表單驗證提示 -->
+@if (!form().valid) {
+  <div class="alert alert-warning alert-soft my-2 px-4 py-2">
+    <lucide-icon [img]="Info" [size]="16" />
+    <span>請先完成必填欄位後才能匯出報價單</span>
+  </div>
+}
+
 <!-- 操作按鈕列 -->
 <div class="flex justify-end gap-2 mb-4">
   <!-- <button
@@ -12,30 +20,30 @@
   </button> -->
   <button
     type="button"
-    class="btn btn-sm btn-primary gap-2"
+    class="btn btn-sm btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
     (click)="onExportPDF()"
-    title="匯出 PDF"
   >
     <lucide-icon [img]="FileDown" [size]="16" />
     PDF
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-primary gap-2"
+    class="btn btn-sm btn-primary gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
     (click)="onExportImage()"
-    title="匯出圖片"
   >
     <lucide-icon [img]="Image" [size]="16" />
     圖片
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-success gap-2"
+    class="btn btn-sm btn-success gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
     (click)="onExportExcel()"
-    title="匯出 Excel"
   >
     <lucide-icon [img]="FileSpreadsheet" [size]="16" />
     Excel
@@ -46,7 +54,7 @@
 <div
   id="quotation-preview-content"
   class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-xs print:p-6 print:text-sm"
-  style="max-width: 210mm; margin: 0 auto;"
+  style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 標題區：左右佈局 -->
   <div
@@ -334,26 +342,26 @@
     <div class="grid grid-cols-2 gap-3 pt-3 border-t border-base-300 mt-3">
       <!-- 報價人簽章 -->
       <div class="border border-base-300 rounded p-2">
-        <div class="font-semibold text-base-content mb-2">
-          報價人簽章：
-        </div>
+        <div class="font-semibold text-base-content mb-2">報價人簽章：</div>
         <div class="flex flex-col">
           <div class="w-full">
             <div class="text-base-content/50 text-xs">簽章：______________</div>
-            <div class="text-base-content/50 text-xs mt-1">日期：______________</div>
+            <div class="text-base-content/50 text-xs mt-1">
+              日期：______________
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 客戶簽章確認 -->
       <div class="border border-base-300 rounded p-2">
-        <div class="font-semibold text-base-content mb-2">
-          客戶簽章確認：
-        </div>
+        <div class="font-semibold text-base-content mb-2">客戶簽章確認：</div>
         <div class="flex flex-col">
           <div class="w-full">
             <div class="text-base-content/50 text-xs">簽章：______________</div>
-            <div class="text-base-content/50 text-xs mt-1">日期：______________</div>
+            <div class="text-base-content/50 text-xs mt-1">
+              日期：______________
+            </div>
           </div>
         </div>
       </div>
