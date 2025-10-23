@@ -758,13 +758,6 @@
   </div>
 </dialog>
 
-<!-- 歷史記錄 Modal -->
-<app-history-modal
-  [historyData]="historyData()"
-  (loadHistory)="onLoadHistory($event)"
-  (deleteHistory)="onDeleteHistory($event)"
-/>
-
 <!-- 成功通知 Toast -->
 @if (showToast()) {
   <div class="toast toast-top toast-center z-50">
