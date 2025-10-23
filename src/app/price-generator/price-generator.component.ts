@@ -30,7 +30,6 @@ import { AnalyticsService } from '../services/analytics';
 import { taxIdValidator } from '../validators/tax-id.validator';
 import { phoneValidator } from '../validators/phone.validator';
 import { FileUpload } from '../file-upload/file-upload';
-import { HistoryModal } from '../history-modal/history-modal';
 import {
   LucideAngularModule,
   ListPlus,
@@ -81,7 +80,6 @@ import {
     QuotationPreview,
     LucideAngularModule,
     FileUpload,
-    HistoryModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
@@ -97,7 +95,6 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private endDateInput = viewChild<ElementRef>('endDate');
   private previewModal =
     viewChild<ElementRef<HTMLDialogElement>>('preview_modal');
-  historyModal = viewChild(HistoryModal);
 
   private resizeListener?: () => void;
 
@@ -412,9 +409,12 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     // 如果刪除的是目前選取的項目，重置選取狀態
     if (this.selectedHistoryIndex() === index) {
       this.selectedHistoryIndex.set(null);
-    } else if (this.selectedHistoryIndex() !== null && this.selectedHistoryIndex()! > index) {
+    } else if (
+      this.selectedHistoryIndex() !== null &&
+      this.selectedHistoryIndex()! > index
+    ) {
       // 如果刪除的項目在目前選取項目之前，需要調整索引
-      this.selectedHistoryIndex.update(current => current! - 1);
+      this.selectedHistoryIndex.update((current) => current! - 1);
     }
 
     // 從陣列中移除指定索引的項目
@@ -428,7 +428,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     try {
       localStorage.setItem('quotation', JSON.stringify(this.historyData()));
     } catch (error) {
-      console.error('Failed to update quotation history in localStorage:', error);
+      console.error(
+        'Failed to update quotation history in localStorage:',
+        error
+      );
     }
   }
 
