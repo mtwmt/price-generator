@@ -351,7 +351,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       this.fb.group({
         category: [''],
         item: ['', Validators.required],
-        price: [0, Validators.required],
+        price: [null, Validators.required],
         count: [1],
         unit: [''],
         amount: [0],

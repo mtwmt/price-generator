@@ -11,6 +11,7 @@ import {
   FileDown,
   Image,
   FileSpreadsheet,
+  Info,
 } from 'lucide-angular';
 import { ExportService } from '../services/export';
 import { QuotationData } from '../quotation.model';
@@ -30,6 +31,7 @@ export class QuotationPreview {
   readonly FileDown = FileDown;
   readonly Image = Image;
   readonly FileSpreadsheet = FileSpreadsheet;
+  readonly Info = Info;
 
   // Services
   private exportService = inject(ExportService);
