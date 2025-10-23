@@ -18,18 +18,74 @@
             </div>
             <h2 class="text-lg font-semibold text-base-content">基本資料</h2>
             @if (hasHistory()) {
-              <div class="ml-auto w-48">
-                <select
-                  class="select select-bordered select-sm w-full max-w-xs"
-                  (change)="onHistoryChange($event)"
+              <div class="dropdown">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="btn btn-sm btn-ghost gap-2"
                 >
-                  <option value="">載入歷史記錄</option>
-                  @for (option of historyData(); track $index) {
-                    <option [value]="$index">
-                      {{ option.startDate }} - {{ option.customerCompany }}
-                    </option>
+                  <lucide-icon [img]="History" [size]="16" />
+                  <!-- @if (selectedHistoryIndex() !== null) {
+                    <span class="hidden md:inline truncate max-w-[150px]">
+                      {{
+                        historyData()[selectedHistoryIndex()!].customerCompany
+                      }}
+                    </span>
+                  } @else {
+                    <span class="hidden md:inline">載入歷史記錄</span>
+                  } -->
+                  <span tabindex="0" role="button">載入歷史記錄</span>
+                  <lucide-icon [img]="ChevronDown" [size]="16" />
+                </div>
+                <ul
+                  tabindex="-1"
+                  class="dropdown-content menu bg-base-100 rounded-box z-[1] p-2 shadow-lg border border-base-300"
+                >
+                  <li>
+                    <a
+                      class="flex items-center gap-2"
+                      (click)="onCreateNewForm()"
+                    >
+                      <lucide-icon [img]="FilePlus" [size]="16" />
+                      <span class="font-semibold">全新表單</span>
+                    </a>
+                  </li>
+                  @if (historyData().length > 0) {
+                    <li>
+                      <span class="text-xs divider my-1">歷史記錄</span>
+                    </li>
                   }
-                </select>
+                  @for (item of historyData(); track $index) {
+                    <li>
+                      <div
+                        class="flex items-center justify-between gap-2 py-2 px-2"
+                      >
+                        <a
+                          class="flex-1 min-w-0 p-0 hover:bg-transparen w-full"
+                          (click)="onLoadHistory($index)"
+                        >
+                          <span class="truncate font-semibold">
+                            {{ item.startDate }} - {{ item.customerCompany }}
+                          </span>
+                        </a>
+                        <button
+                          type="button"
+                          class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
+                          (click)="
+                            onDeleteHistory($index); $event.stopPropagation()
+                          "
+                          title="刪除此筆記錄"
+                        >
+                          <lucide-icon
+                            [img]="X"
+                            [size]="14"
+                            class="text-error"
+                          />
+                        </button>
+                      </div>
+                    </li>
+                  }
+                </ul>
               </div>
             }
           </div>
@@ -466,7 +522,7 @@
               (click)="onAddField()"
             >
               <lucide-icon [img]="ListPlus" [size]="16" />
-              <span class="hidden md:inline">新增項目</span>
+              <span class="inline">新增項目</span>
             </button>
           </div>
 
@@ -631,7 +687,6 @@
             />
             <span class="label-text text-sm">是否顯示簽章欄位</span>
           </label>
-
         </div>
       </div>
       <!-- Action Buttons -->
@@ -702,3 +757,22 @@
     />
   </div>
 </dialog>
+
+<!-- 歷史記錄 Modal -->
+<app-history-modal
+  [historyData]="historyData()"
+  (loadHistory)="onLoadHistory($event)"
+  (deleteHistory)="onDeleteHistory($event)"
+/>
+
+<!-- 成功通知 Toast -->
+@if (showToast()) {
+  <div class="toast toast-top toast-center z-50">
+    <div class="alert alert-success shadow-lg">
+      <div class="flex items-center gap-2">
+        <lucide-icon [img]="Check" [size]="20" class="text-success-content" />
+        <span class="text-success-content font-medium">報價單已成功儲存！</span>
+      </div>
+    </div>
+  </div>
+}

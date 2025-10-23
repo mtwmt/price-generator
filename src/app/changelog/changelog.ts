@@ -14,6 +14,10 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2025-10-24',
+      features: ['現在可以刪除報價單歷史記錄嚕！'],
+    },
+    {
       date: '2025-10-23',
       features: [
         '全新大改版，PC版新增即時預覽區',

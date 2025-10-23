@@ -30,6 +30,7 @@ import { AnalyticsService } from '../services/analytics';
 import { taxIdValidator } from '../validators/tax-id.validator';
 import { phoneValidator } from '../validators/phone.validator';
 import { FileUpload } from '../file-upload/file-upload';
+import { HistoryModal } from '../history-modal/history-modal';
 import {
   LucideAngularModule,
   ListPlus,
@@ -51,6 +52,8 @@ import {
   UserRound,
   MapPin,
   Calendar1,
+  ChevronDown,
+  FilePlus,
 } from 'lucide-angular';
 
 @Component({
@@ -78,6 +81,7 @@ import {
     QuotationPreview,
     LucideAngularModule,
     FileUpload,
+    HistoryModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
@@ -93,6 +97,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   private endDateInput = viewChild<ElementRef>('endDate');
   private previewModal =
     viewChild<ElementRef<HTMLDialogElement>>('preview_modal');
+  historyModal = viewChild(HistoryModal);
 
   private resizeListener?: () => void;
 
@@ -116,6 +121,8 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   readonly UserRound = UserRound;
   readonly MapPin = MapPin;
   readonly Calendar1 = Calendar1;
+  readonly ChevronDown = ChevronDown;
+  readonly FilePlus = FilePlus;
 
   startDate!: Litepicker;
   endDate!: Litepicker;
@@ -127,6 +134,8 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   customerLogo = signal<string>('');
   stamp = signal<string>('');
   quoterLogo = signal<string>('');
+  selectedHistoryIndex = signal<number | null>(null);
+  showToast = signal<boolean>(false);
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
@@ -369,26 +378,58 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     }
   }
 
-  onHistoryChange(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    const index = target.value;
-
-    if (index) {
-      this.analytics.trackHistoryLoaded(parseInt(index, 10));
-    }
-
-    if (!index) {
-      this.resetForm();
+  onCreateNewForm(): void {
+    // 確認是否要建立新表單
+    if (this.form.dirty && !confirm('目前表單尚未儲存，確定要建立新表單嗎？')) {
       return;
     }
 
-    const data = this.historyData()[parseInt(index, 10)];
+    this.selectedHistoryIndex.set(null);
+    this.resetForm();
+  }
+
+  onLoadHistory(index: number): void {
+    this.analytics.trackHistoryLoaded(index);
+
+    const data = this.historyData()[index];
     if (!data) {
       console.warn(`History data not found at index: ${index}`);
       return;
     }
 
+    this.selectedHistoryIndex.set(index);
     this.loadQuotationData(data);
+  }
+
+  onDeleteHistory(index: number): void {
+    // 確認刪除
+    if (!confirm('確定要刪除此筆歷史記錄嗎？')) {
+      return;
+    }
+
+    this.analytics.trackHistoryDeleted(index);
+
+    // 如果刪除的是目前選取的項目，重置選取狀態
+    if (this.selectedHistoryIndex() === index) {
+      this.selectedHistoryIndex.set(null);
+    } else if (this.selectedHistoryIndex() !== null && this.selectedHistoryIndex()! > index) {
+      // 如果刪除的項目在目前選取項目之前，需要調整索引
+      this.selectedHistoryIndex.update(current => current! - 1);
+    }
+
+    // 從陣列中移除指定索引的項目
+    this.historyData.update((history) => {
+      const newHistory = [...history];
+      newHistory.splice(index, 1);
+      return newHistory;
+    });
+
+    // 更新 localStorage
+    try {
+      localStorage.setItem('quotation', JSON.stringify(this.historyData()));
+    } catch (error) {
+      console.error('Failed to update quotation history in localStorage:', error);
+    }
   }
 
   private resetForm(): void {
@@ -458,8 +499,17 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     };
     this.saveLocalStorage(dataWithImages);
     this.analytics.trackQuotationGenerated();
-    // TODO: Maybe show a success toast/notification here
-    console.log('Quotation data saved.');
+
+    // 顯示成功通知
+    this.showSuccessToast();
+  }
+
+  private showSuccessToast(): void {
+    this.showToast.set(true);
+    // 3 秒後自動隱藏
+    setTimeout(() => {
+      this.showToast.set(false);
+    }, 3000);
   }
 
   ngOnDestroy() {
