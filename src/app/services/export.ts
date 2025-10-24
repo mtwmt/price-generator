@@ -173,8 +173,10 @@ export class ExportService {
   /**
    * 匯出為圖片
    * 在手機上若支援 Web Share API，會開啟分享選單；否則直接下載
+   * @param elementId - 要匯出的元素 ID
+   * @param customerName - 客戶名稱（用於分享文字）
    */
-  async exportAsImage(elementId: string): Promise<void> {
+  async exportAsImage(elementId: string, customerName?: string): Promise<void> {
     try {
       const canvas = await this.captureElement(elementId);
       const fileName = this.generateFileName('jpg');
@@ -185,10 +187,14 @@ export class ExportService {
           const file = await this.canvasToFile(canvas, fileName);
 
           if (this.canUseWebShare(file)) {
+            const shareText = customerName
+              ? `${customerName} - 報價單`
+              : '報價單';
+
             await navigator.share({
               files: [file],
-              title: '報價單',
-              text: '報價單圖片',
+              title: shareText,
+              text: shareText,
             });
             this.analytics.trackExport('image_share');
             return;
