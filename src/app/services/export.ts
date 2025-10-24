@@ -15,6 +15,7 @@ export class ExportService {
   private readonly IMAGE_QUALITY = 0.95;
   private readonly URL_REVOKE_DELAY_MS = 100;
   private readonly MIN_ELEMENT_SIZE = 0;
+  private readonly A4_WIDTH_PX = 794; // A4 寬度（以 96 DPI 計算：210mm ≈ 794px）
 
   private analytics = inject(AnalyticsService);
 
@@ -65,17 +66,8 @@ export class ExportService {
     let element: HTMLElement | null = null;
     for (const el of Array.from(elements)) {
       const rect = (el as HTMLElement).getBoundingClientRect();
-      console.log(
-        `元素 ${Array.from(elements).indexOf(el)} 尺寸:`,
-        rect.width,
-        'x',
-        rect.height
-      );
       if (rect.width > this.MIN_ELEMENT_SIZE && rect.height > this.MIN_ELEMENT_SIZE) {
         element = el as HTMLElement;
-        console.log(
-          `選擇元素 ${Array.from(elements).indexOf(el)}（尺寸不為 0）`
-        );
         break;
       }
     }
@@ -84,6 +76,16 @@ export class ExportService {
       throw new Error(`無法找到尺寸不為 0 的元素: ${elementId}`);
     }
 
+    // 儲存原始樣式
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    const originalMinWidth = element.style.minWidth;
+
+    // 在擷取前設定固定寬度以符合 A4 尺寸
+    element.style.width = `${this.A4_WIDTH_PX}px`;
+    element.style.maxWidth = `${this.A4_WIDTH_PX}px`;
+    element.style.minWidth = `${this.A4_WIDTH_PX}px`;
+
     return html2canvas(element, {
       backgroundColor: '#ffffff',
       scale: this.CANVAS_SCALE,
@@ -91,19 +93,26 @@ export class ExportService {
       useCORS: true,
       allowTaint: true,
       onclone: (clonedDoc) => {
-        // 在 clone 的文檔中移除不需要的元素（如按鈕）
+        // 在 clone 的文檔中處理元素
         const clonedElements = clonedDoc.querySelectorAll(`#${elementId}`);
         clonedElements.forEach((clonedElement) => {
+          const el = clonedElement as HTMLElement;
+
           // 移除按鈕
-          const buttons = clonedElement.querySelectorAll('button');
+          const buttons = el.querySelectorAll('button');
           buttons.forEach((btn) => btn.remove());
 
           // 移除邊框、圓角和陰影
-          (clonedElement as HTMLElement).style.border = 'none';
-          (clonedElement as HTMLElement).style.borderRadius = '0';
-          (clonedElement as HTMLElement).style.boxShadow = 'none';
+          el.style.border = 'none';
+          el.style.borderRadius = '0';
+          el.style.boxShadow = 'none';
         });
       },
+    }).finally(() => {
+      // 恢復原始樣式
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
+      element.style.minWidth = originalMinWidth;
     });
   }
 
@@ -368,7 +377,7 @@ export class ExportService {
     summaryData.push(['', '', taxLabel + '稅', data.percentage + '%', data.tax]);
     summaryData.push(['', '', '', '含稅計', data.includingTax]);
 
-    summaryData.forEach((rowData, index) => {
+    summaryData.forEach((rowData) => {
       const row = worksheet.addRow(rowData);
       row.eachCell((cell) => {
         cell.font = { size: 12 };

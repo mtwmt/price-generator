@@ -53,7 +53,7 @@
 <!-- 專業報價單格式 (使用 Wireframe 主題) - 優化 A4 列印 -->
 <div
   id="quotation-preview-content"
-  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-xs print:p-6 print:text-sm"
+  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-sm print:p-6"
   style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 標題區：左右佈局 -->
@@ -134,7 +134,7 @@
   <!-- 客戶資訊：表單式佈局 -->
   <div class="mb-3">
     <div class="flex justify-between items-end mb-3">
-      <div class="text-primary flex-1">客戶資訊</div>
+      <div class="flex-1">客戶資訊</div>
       <!-- @if(form().get('endDate')?.value) {
       <div class="">
         <span class="text-base-content/60 italic">Quote Valid Till :</span>
@@ -288,8 +288,8 @@
       <div
         class="flex justify-between items-center py-1.5 border-b border-base-300"
       >
-        <span class="text-base-content">小計：</span>
-        <span class="font-semibold text-base-content">
+        <span class="text-base text-base-content">小計：</span>
+        <span class="font-semibold text-base-content text-sm">
           ${{ form().get('excludingTax')?.value || 0 | number }}
         </span>
       </div>
@@ -306,15 +306,15 @@
             }
             ：
           </span>
-          <span class="text-green-600">
+          <span class="text-green-600 text-sm">
             -${{ form().get('discountAmount')?.value || 0 | number }}
           </span>
         </div>
         <div
           class="flex justify-between items-center py-1.5 border-b border-base-300"
         >
-          <span class="text-base-content">折扣後：</span>
-          <span class="text-base-content">
+          <span class="text-base-content text-base">折扣後：</span>
+          <span class="text-base-content font-semibold text-sm">
             ${{ form().get('afterDiscount')?.value || 0 | number }}
           </span>
         </div>
@@ -326,7 +326,7 @@
         <div
           class="flex justify-between items-center py-1.5 border-b border-base-300"
         >
-          <span class="text-base-content">
+          <span class="text-sm text-base-content">
             @if (
               form().get('taxName')?.value === '自訂' &&
               form().get('customTaxName')?.value
@@ -341,7 +341,7 @@
             :
           </span>
 
-          <span class="text-base-content">
+          <span class="text-rose-500 text-sm">
             ${{ form().get('tax')?.value || 0 | number }}
           </span>
         </div>
@@ -350,7 +350,7 @@
         class="flex justify-between items-center text-primary-content rounded py-1 mt-1"
       >
         <span class="font-bold text-xl">總計：</span>
-        <span class="text-lg font-bold text-red-500">
+        <span class="text-xl font-bold text-red-500">
           ${{ form().get('includingTax')?.value || 0 | number }}
         </span>
       </div>
@@ -377,8 +377,8 @@
         <div class="font-semibold text-base-content mb-2">報價人簽章：</div>
         <div class="flex flex-col">
           <div class="w-full">
-            <div class="text-base-content/50 text-xs">簽章：______________</div>
-            <div class="text-base-content/50 text-xs mt-1">
+            <div class="text-base-content/50 text-sm">簽章：______________</div>
+            <div class="text-base-content/50 text-sm mt-1">
               日期：______________
             </div>
           </div>
@@ -390,8 +390,8 @@
         <div class="font-semibold text-base-content mb-2">客戶簽章確認：</div>
         <div class="flex flex-col">
           <div class="w-full">
-            <div class="text-base-content/50 text-xs">簽章：______________</div>
-            <div class="text-base-content/50 text-xs mt-1">
+            <div class="text-base-content/50 text-sm">簽章：______________</div>
+            <div class="text-base-content/50 text-sm mt-1">
               日期：______________
             </div>
           </div>

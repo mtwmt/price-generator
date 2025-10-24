@@ -24,6 +24,8 @@ export class AppComponent {
   private analytics = inject(AnalyticsService);
   activeTab = signal<'quotation' | 'changelog'>('quotation');
 
+  readonly currentYear = new Date().getFullYear();
+
   onTabChange(tab: 'quotation' | 'changelog') {
     this.activeTab.set(tab);
     this.analytics.trackTabChange(tab);
