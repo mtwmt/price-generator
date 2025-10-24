@@ -54,7 +54,12 @@ import {
   Calendar1,
   ChevronDown,
   FilePlus,
+  GripVertical,
+  EyeOff,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-angular';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-price-generator',
@@ -81,6 +86,7 @@ import {
     QuotationPreview,
     LucideAngularModule,
     FileUpload,
+    DragDropModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './price-generator.component.html',
@@ -130,6 +136,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   readonly Calendar1 = Calendar1;
   readonly ChevronDown = ChevronDown;
   readonly FilePlus = FilePlus;
+  readonly GripVertical = GripVertical;
+  readonly EyeOff = EyeOff;
+  readonly PanelLeftClose = PanelLeftClose;
+  readonly PanelLeftOpen = PanelLeftOpen;
 
   startDate!: Litepicker;
   endDate!: Litepicker;
@@ -143,6 +153,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   quoterLogo = signal<string>('');
   selectedHistoryIndex = signal<number | null>(null);
   showToast = signal<boolean>(false);
+  showPreview = signal<boolean>(true);
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
@@ -166,7 +177,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       const storedData = localStorage.getItem(this.LOCALSTORAGE_KEY) || '[]';
       this.historyData.set(JSON.parse(storedData));
     } catch (error) {
-      console.error('Failed to load quotation history from localStorage:', error);
+      console.error(
+        'Failed to load quotation history from localStorage:',
+        error
+      );
       this.historyData.set([]);
     }
   }
@@ -225,7 +239,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
     // 3. 計算稅額和總計
     const taxPercentage = Number(this.form.get('percentage')?.value) || 0;
-    const { tax, includingTax } = calculateTaxAndTotal(afterDiscount, taxPercentage);
+    const { tax, includingTax } = calculateTaxAndTotal(
+      afterDiscount,
+      taxPercentage
+    );
 
     // 4. 更新表單
     this.form.patchValue(
@@ -275,10 +292,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
    * - 移除前導零
    * - 可選的最大值限制
    */
-  private normalizeNumberInput(
-    controlName: string,
-    maxValue?: number
-  ): void {
+  private normalizeNumberInput(controlName: string, maxValue?: number): void {
     const control = this.form.get(controlName);
     if (!control) return;
 
@@ -471,6 +485,27 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     if (this.serviceItems.value.length > 1) {
       this.serviceItems.removeAt(index);
     }
+  }
+
+  /**
+   * 處理拖曳排序事件
+   */
+  onDrop(event: CdkDragDrop<any>): void {
+    const previousIndex = event.previousIndex;
+    const currentIndex = event.currentIndex;
+
+    if (previousIndex === currentIndex) {
+      return;
+    }
+
+    // 取得被移動的項目
+    const movedItem = this.serviceItems.at(previousIndex);
+
+    // 先移除原位置的項目
+    this.serviceItems.removeAt(previousIndex);
+
+    // 插入到新位置
+    this.serviceItems.insert(currentIndex, movedItem);
   }
 
   onCreateNewForm(): void {

@@ -15,7 +15,7 @@ export class ChangelogComponent {
   changelog = [
     {
       date: '2025-10-25',
-      features: ['新增折扣設定'],
+      features: ['新增折扣設定', '新增項目拖曳功能'],
     },
     {
       date: '2025-10-24',

@@ -11,3 +11,20 @@ body {
   background: #f9fafb;
   min-height: 100vh;
 }
+
+/* Angular CDK 拖曳樣式 - 使用 Tailwind 類別 */
+.cdk-drag-preview {
+  @apply shadow-2xl opacity-90 rounded-lg;
+}
+
+.cdk-drag-placeholder {
+  @apply opacity-50;
+}
+
+.cdk-drag-animating {
+  @apply transition-transform duration-250 ease-out;
+}
+
+.cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+  @apply transition-transform duration-250;
+}
