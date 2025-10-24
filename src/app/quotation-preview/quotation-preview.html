@@ -306,7 +306,7 @@
             }
             ：
           </span>
-          <span class="font-semibold text-green-600">
+          <span class="text-green-600">
             -${{ form().get('discountAmount')?.value || 0 | number }}
           </span>
         </div>
@@ -314,7 +314,7 @@
           class="flex justify-between items-center py-1.5 border-b border-base-300"
         >
           <span class="text-base-content">折扣後：</span>
-          <span class="font-semibold text-base-content">
+          <span class="text-base-content">
             ${{ form().get('afterDiscount')?.value || 0 | number }}
           </span>
         </div>
@@ -341,16 +341,16 @@
             :
           </span>
 
-          <span class="font-semibold text-base-content">
+          <span class="text-base-content">
             ${{ form().get('tax')?.value || 0 | number }}
           </span>
         </div>
       }
       <div
-        class="flex justify-between items-center bg-primary text-primary-content rounded py-1 px-2 mt-1"
+        class="flex justify-between items-center text-primary-content rounded py-1 mt-1"
       >
-        <span class="font-bold">總計：</span>
-        <span class="text-lg font-bold">
+        <span class="font-bold text-xl">總計：</span>
+        <span class="text-lg font-bold text-red-500">
           ${{ form().get('includingTax')?.value || 0 | number }}
         </span>
       </div>
@@ -403,12 +403,12 @@
   <!-- 頁尾資訊 -->
   <div class="mt-2 pt-2 border-base-300 text-center text-base-content/50">
     <p>
-      本報價單由 {{ form().get('quoterName')?.value || '[公司名稱]' }} 提供 |
+      本報價單由 {{ form().get('quoterName')?.value || '[公司名稱]' }} 提供
       @if (form().get('quoterAddress')?.value) {
-        地址：{{ form().get('quoterAddress')?.value }} |
+        | 地址：{{ form().get('quoterAddress')?.value }}
       }
       @if (form().get('quoterPhone')?.value) {
-        電話：{{ form().get('quoterPhone')?.value }}
+        | 電話：{{ form().get('quoterPhone')?.value }}
       }
     </p>
   </div>
