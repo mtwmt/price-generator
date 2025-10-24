@@ -1,6 +1,9 @@
 <div class="lg:flex lg:gap-4">
   <!-- Left Column: Form -->
-  <div class="lg:w-6/11">
+  <div
+    class="transition-all duration-300"
+    [ngClass]="showPreview() ? 'lg:w-6/11' : 'lg:w-full'"
+  >
     <form id="form" [formGroup]="form">
       <!-- 基本資料 -->
       <div class="card bg-base-100 md:shadow-sm mb-4">
@@ -19,68 +22,91 @@
               </div>
               <h2 class="text-lg font-semibold text-base-content">基本資料</h2>
             </div>
-            @if (hasHistory()) {
-              <div class="dropdown dropdown-end">
-                <div
-                  tabindex="0"
-                  role="button"
-                  class="btn btn-sm btn-ghost gap-2"
-                >
-                  <lucide-icon [img]="History" [size]="16" />
-                  <span tabindex="0" role="button">載入歷史記錄</span>
-                  <lucide-icon [img]="ChevronDown" [size]="16" />
-                </div>
-                <ul
-                  tabindex="-1"
-                  class="dropdown-content menu bg-base-100 rounded-box z-[1] p-2 shadow-lg border border-base-300"
-                >
-                  <li>
-                    <a
-                      class="flex items-center gap-2"
-                      (click)="onCreateNewForm()"
-                    >
-                      <lucide-icon [img]="FilePlus" [size]="16" />
-                      <span class="font-semibold">空白表單</span>
-                    </a>
-                  </li>
-                  @if (historyData().length > 0) {
+            <div class="flex items-center gap-2">
+              @if (hasHistory()) {
+                <div class="dropdown dropdown-end">
+                  <div
+                    tabindex="0"
+                    role="button"
+                    class="btn btn-sm btn-ghost gap-2"
+                  >
+                    <lucide-icon [img]="History" [size]="16" />
+                    <span tabindex="0" role="button">載入歷史記錄</span>
+                    <lucide-icon [img]="ChevronDown" [size]="16" />
+                  </div>
+                  <ul
+                    tabindex="-1"
+                    class="dropdown-content menu bg-base-100 rounded-box z-[1] p-2 shadow-lg border border-base-300"
+                  >
                     <li>
-                      <span class="text-xs divider my-1">歷史記錄</span>
-                    </li>
-                  }
-                  @for (item of historyData(); track $index) {
-                    <li>
-                      <div
-                        class="flex items-center justify-between gap-2 py-2 px-2"
+                      <a
+                        class="flex items-center gap-2"
+                        (click)="onCreateNewForm()"
                       >
-                        <a
-                          class="flex-1 min-w-0 p-0 hover:bg-transparen w-full"
-                          (click)="onLoadHistory($index)"
-                        >
-                          <span class="truncate font-semibold">
-                            {{ item.startDate }} - {{ item.customerCompany }}
-                          </span>
-                        </a>
-                        <button
-                          type="button"
-                          class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
-                          (click)="
-                            onDeleteHistory($index); $event.stopPropagation()
-                          "
-                          title="刪除此筆記錄"
-                        >
-                          <lucide-icon
-                            [img]="X"
-                            [size]="14"
-                            class="text-error"
-                          />
-                        </button>
-                      </div>
+                        <lucide-icon [img]="FilePlus" [size]="16" />
+                        <span class="font-semibold">空白表單</span>
+                      </a>
                     </li>
-                  }
-                </ul>
-              </div>
-            }
+                    @if (historyData().length > 0) {
+                      <li>
+                        <span class="text-xs divider my-1">歷史記錄</span>
+                      </li>
+                    }
+                    @for (item of historyData(); track $index) {
+                      <li>
+                        <div
+                          class="flex items-center justify-between gap-2 py-2 px-2"
+                        >
+                          <a
+                            class="flex-1 min-w-0 p-0 hover:bg-transparen w-full"
+                            (click)="onLoadHistory($index)"
+                          >
+                            <span class="truncate font-semibold">
+                              {{ item.startDate }} - {{ item.customerCompany }}
+                            </span>
+                          </a>
+                          <button
+                            type="button"
+                            class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
+                            (click)="
+                              onDeleteHistory($index); $event.stopPropagation()
+                            "
+                            title="刪除此筆記錄"
+                          >
+                            <lucide-icon
+                              [img]="X"
+                              [size]="14"
+                              class="text-error"
+                            />
+                          </button>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+              @if (!showPreview()) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost gap-2 hidden lg:flex"
+                  (click)="showPreview.set(true)"
+                  title="顯示預覽"
+                >
+                  <lucide-icon [img]="PanelLeftClose" [size]="16" />
+                  <span>顯示預覽</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost gap-2 hidden lg:flex"
+                  (click)="showPreview.set(false)"
+                  title="隱藏預覽"
+                >
+                  <lucide-icon [img]="PanelLeftOpen" [size]="16" />
+                  <span>隱藏預覽</span>
+                </button>
+              }
+            </div>
           </div>
           <div class="collapse collapse-arrow bg-base-200 md:mb-4">
             <input type="checkbox" checked />
@@ -537,19 +563,73 @@
           </div>
 
           <!-- 服務項目列表 -->
-          <ng-container formArrayName="serviceItems">
-            @for (
-              item of serviceItems.controls;
-              track $index;
-              let idx = $index
-            ) {
-              <app-service-item-control
-                [formGroup]="$any(item)"
-                [index]="idx"
-                (removeField)="onRemoveField(idx)"
-              />
-            }
-          </ng-container>
+          <div
+            cdkDropList
+            (cdkDropListDropped)="onDrop($event)"
+            class="space-y-2"
+          >
+            <ng-container formArrayName="serviceItems">
+              @for (
+                item of serviceItems.controls;
+                track $index;
+                let idx = $index
+              ) {
+                <div
+                  cdkDrag
+                  [cdkDragDisabled]="serviceItems.length <= 1"
+                  class="group relative"
+                >
+                  <!-- 拖曳預覽 -->
+                  <div
+                    *cdkDragPreview
+                    class="bg-base-100 shadow-xl rounded-lg p-4 opacity-90"
+                  >
+                    <div class="flex items-center gap-2">
+                      <lucide-icon
+                        [img]="GripVertical"
+                        [size]="20"
+                        class="text-base-content/50"
+                      />
+                      <span class="font-semibold">拖曳中...</span>
+                    </div>
+                  </div>
+
+                  <!-- 拖曳佔位符 -->
+                  <div
+                    *cdkDragPlaceholder
+                    class="bg-base-200/50 border-2 border-dashed border-primary rounded-lg"
+                    style="height: 100%"
+                  ></div>
+
+                  <!-- 拖曳手柄與服務項目 -->
+                  <div class="flex items-center gap-2">
+                    @if (serviceItems.length > 1) {
+                      <div
+                        cdkDragHandle
+                        class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
+                        title="拖曳排序"
+                      >
+                        <lucide-icon
+                          [img]="GripVertical"
+                          [size]="20"
+                          class="text-base-content"
+                        />
+                      </div>
+                    }
+
+                    <!-- 服務項目元件 -->
+                    <div class="flex-1">
+                      <app-service-item-control
+                        [formGroup]="$any(item)"
+                        [index]="idx"
+                        (removeField)="onRemoveField(idx)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              }
+            </ng-container>
+          </div>
 
           <!-- Tax Rate & Summary -->
           <div class="divider my-0"></div>
@@ -639,7 +719,7 @@
             <div class="md:w-1/4 space-y-2 mt-6">
               <div class="flex justify-between items-center">
                 <span class="text-base font-medium">小計</span>
-                <span class="text-base">
+                <span class="text-base font-semibold">
                   ${{ form.get('excludingTax')?.value || 0 }}
                 </span>
               </div>
@@ -647,7 +727,7 @@
               <!-- 折扣區 -->
               @if (form.get('discountValue')?.value > 0) {
                 <div class="flex justify-between items-center text-sm">
-                  <span class="text-base-content/70">
+                  <span class="text-sm">
                     折扣
                     @if (form.get('discountType')?.value === 'percentage') {
                       <span class="text-xs">
@@ -661,14 +741,14 @@
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="text-base font-medium">折扣後</span>
-                  <span class="text-base">
+                  <span class="text-base font-semibold">
                     ${{ form.get('afterDiscount')?.value || 0 }}
                   </span>
                 </div>
               }
 
               <div class="flex justify-between items-center">
-                <span class="text-base font-medium">
+                <span class="text-sm font-medium">
                   @if (
                     form.get('taxName')?.value === '自訂' &&
                     form.get('customTaxName')?.value
@@ -689,7 +769,7 @@
                   !!form.get('taxName')?.value ||
                   !!form.get('customTaxName')?.value
                 ) {
-                  <span class="text-base font-bold text-red-500">
+                  <span class="text-base text-red-500">
                     ${{ form.get('tax')?.value || 0 }}
                   </span>
                 }
@@ -771,7 +851,10 @@
     </form>
   </div>
   <!-- Right Column: Preview -->
-  <div class="lg:w-5/11 hidden lg:block">
+  <div
+    class="transition-all duration-300"
+    [ngClass]="showPreview() ? 'lg:w-5/11 lg:block' : 'lg:w-0 lg:hidden'"
+  >
     <div class="lg:sticky lg:top-4">
       <div class="bg-base-100 rounded-lg shadow-lg p-4 mt-4 lg:mt-0">
         <div
