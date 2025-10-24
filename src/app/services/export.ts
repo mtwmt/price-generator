@@ -9,6 +9,13 @@ import { AnalyticsService } from './analytics';
   providedIn: 'root',
 })
 export class ExportService {
+  // Constants
+  private readonly DATA_URL_PARTS_COUNT = 2;
+  private readonly CANVAS_SCALE = 2;
+  private readonly IMAGE_QUALITY = 0.95;
+  private readonly URL_REVOKE_DELAY_MS = 100;
+  private readonly MIN_ELEMENT_SIZE = 0;
+
   private analytics = inject(AnalyticsService);
 
   /**
@@ -37,7 +44,7 @@ export class ExportService {
       throw new Error(`無效的${imageName}格式`);
     }
     const parts = dataUrl.split(',');
-    if (parts.length !== 2) {
+    if (parts.length !== this.DATA_URL_PARTS_COUNT) {
       throw new Error(`無效的${imageName}格式`);
     }
     return parts[1];
@@ -64,7 +71,7 @@ export class ExportService {
         'x',
         rect.height
       );
-      if (rect.width > 0 && rect.height > 0) {
+      if (rect.width > this.MIN_ELEMENT_SIZE && rect.height > this.MIN_ELEMENT_SIZE) {
         element = el as HTMLElement;
         console.log(
           `選擇元素 ${Array.from(elements).indexOf(el)}（尺寸不為 0）`
@@ -79,7 +86,7 @@ export class ExportService {
 
     return html2canvas(element, {
       backgroundColor: '#ffffff',
-      scale: 2,
+      scale: this.CANVAS_SCALE,
       logging: false,
       useCORS: true,
       allowTaint: true,
@@ -106,7 +113,7 @@ export class ExportService {
   async exportAsImage(elementId: string): Promise<void> {
     try {
       const canvas = await this.captureElement(elementId);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const dataUrl = canvas.toDataURL('image/jpeg', this.IMAGE_QUALITY);
       const fileName = this.generateFileName('jpg');
 
       this.downloadFile(dataUrl, fileName);
@@ -176,7 +183,7 @@ export class ExportService {
       const date = new Date().toLocaleString('roc', { hour12: false });
 
       this.downloadFile(url, `${date}_quotation.xlsx`);
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      setTimeout(() => URL.revokeObjectURL(url), this.URL_REVOKE_DELAY_MS);
 
       this.analytics.trackExport('excel');
     } catch (error) {
@@ -343,21 +350,37 @@ export class ExportService {
         ? data.customTaxName
         : data.taxName;
 
-    const summaryData = [
-      ['', '', '', '未稅', data.excludingTax],
-      ['', '', taxLabel + '稅', data.percentage + '%', data.tax],
-      ['', '', '', '含稅計', data.includingTax],
+    const summaryData: any[] = [
+      ['', '', '', '小計', data.excludingTax],
     ];
 
-    summaryData.forEach((rowData) => {
+    // 如果有折扣，加入折扣行
+    if (data.discountValue && data.discountValue > 0) {
+      const discountLabel =
+        data.discountType === 'percentage'
+          ? `折扣 (${data.discountValue} 折)`
+          : '折扣';
+      summaryData.push(['', '', '', discountLabel, -(data.discountAmount || 0)]);
+      summaryData.push(['', '', '', '折扣後', data.afterDiscount || 0]);
+    }
+
+    // 加入稅額和總計
+    summaryData.push(['', '', taxLabel + '稅', data.percentage + '%', data.tax]);
+    summaryData.push(['', '', '', '含稅計', data.includingTax]);
+
+    summaryData.forEach((rowData, index) => {
       const row = worksheet.addRow(rowData);
       row.eachCell((cell) => {
         cell.font = { size: 12 };
       });
+
+      // 檢查是否為折扣行（金額為負數）
+      const isDiscountRow = typeof rowData[4] === 'number' && rowData[4] < 0;
+
       row.getCell(5).font = {
         size: 12,
         bold: true,
-        color: { argb: 'FFFF0000' },
+        color: { argb: isDiscountRow ? 'FF008000' : 'FFFF0000' }, // 折扣用綠色，其他用紅色
       };
       row.getCell(5).alignment = { horizontal: 'right' };
     });
