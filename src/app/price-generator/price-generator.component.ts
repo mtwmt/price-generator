@@ -30,6 +30,7 @@ import { AnalyticsService } from '../services/analytics';
 import { taxIdValidator } from '../validators/tax-id.validator';
 import { phoneValidator } from '../validators/phone.validator';
 import { FileUpload } from '../file-upload/file-upload';
+import { calculateDiscount, calculateTaxAndTotal } from '../utils/calculator';
 import {
   LucideAngularModule,
   ListPlus,
@@ -85,17 +86,26 @@ import {
   templateUrl: './price-generator.component.html',
 })
 export class PriceGeneratorComponent implements OnInit, OnDestroy {
+  // Constants
+  private readonly MAX_HISTORY_ITEMS = 5;
+  private readonly TOAST_DISPLAY_DURATION_MS = 3000;
+  private readonly DESKTOP_BREAKPOINT_PX = 1024;
+  private readonly LOCALSTORAGE_KEY = 'quotation';
+
+  // Dependencies
   private fb = inject(FormBuilder);
   private renderer = inject(Renderer2);
   private analytics = inject(AnalyticsService);
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
 
+  // View Children
   private startDateInput = viewChild<ElementRef>('startDate');
   private endDateInput = viewChild<ElementRef>('endDate');
   private previewModal =
     viewChild<ElementRef<HTMLDialogElement>>('preview_modal');
 
+  // Listeners
   private resizeListener?: () => void;
 
   // Lucide Icons
@@ -144,60 +154,94 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.setStartDate();
     this.setEndDate();
-    try {
-      this.historyData.set(
-        JSON.parse(localStorage.getItem('quotation') || '[]')
-      );
-    } catch (error) {
-      console.error(
-        'Failed to load quotation history from localStorage:',
-        error
-      );
-      this.historyData.set([]);
-    }
+    this.loadHistoryFromLocalStorage();
     this.initForm();
-    this.createTodoItem();
+    this.createServiceItem();
     this.setupFormListeners();
     this.setupResizeListener();
   }
 
+  private loadHistoryFromLocalStorage(): void {
+    try {
+      const storedData = localStorage.getItem(this.LOCALSTORAGE_KEY) || '[]';
+      this.historyData.set(JSON.parse(storedData));
+    } catch (error) {
+      console.error('Failed to load quotation history from localStorage:', error);
+      this.historyData.set([]);
+    }
+  }
+
   private setupResizeListener(): void {
     this.resizeListener = this.renderer.listen('window', 'resize', () => {
-      // DaisyUI 的 lg 斷點是 1024px
-      if (window.innerWidth >= 1024) {
-        const modal = this.previewModal()?.nativeElement;
-        if (modal?.open) {
-          modal.close();
-        }
+      if (this.isDesktopView()) {
+        this.closePreviewModal();
       }
     });
   }
 
+  private isDesktopView(): boolean {
+    return window.innerWidth >= this.DESKTOP_BREAKPOINT_PX;
+  }
+
+  private closePreviewModal(): void {
+    const modal = this.previewModal()?.nativeElement;
+    if (modal?.open) {
+      modal.close();
+    }
+  }
+
   private setupFormListeners(): void {
+    this.subscribeToServiceItemsChanges();
+    this.subscribeToFormControlChanges('percentage');
+    this.subscribeToFormControlChanges('discountType');
+    this.subscribeToFormControlChanges('discountValue');
+  }
+
+  private subscribeToServiceItemsChanges(): void {
     this.serviceItems.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.calculateTotals());
+  }
 
+  private subscribeToFormControlChanges(controlName: string): void {
     this.form
-      .get('percentage')
+      .get(controlName)
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.calculateTotals());
   }
 
   private calculateTotals(): void {
-    const items = this.serviceItems.value;
-    const excludingTax = items.reduce((acc: number, item: any) => {
-      return acc + (item.amount || 0);
-    }, 0);
+    // 1. 計算小計（服務項目總和）
+    const excludingTax = this.calculateSubtotal();
 
-    const percentage = Number(this.form.get('percentage')?.value) || 0;
-    const tax = Math.ceil((percentage / 100) * excludingTax);
-    const includingTax = excludingTax + tax;
+    // 2. 計算折扣
+    const discountType = this.form.get('discountType')?.value || 'amount';
+    const discountValue = Number(this.form.get('discountValue')?.value) || 0;
+    const { discountAmount, afterDiscount } = calculateDiscount(
+      excludingTax,
+      discountType,
+      discountValue
+    );
 
+    // 3. 計算稅額和總計
+    const taxPercentage = Number(this.form.get('percentage')?.value) || 0;
+    const { tax, includingTax } = calculateTaxAndTotal(afterDiscount, taxPercentage);
+
+    // 4. 更新表單
     this.form.patchValue(
-      { excludingTax, tax, includingTax },
+      { excludingTax, discountAmount, afterDiscount, tax, includingTax },
       { emitEvent: false }
     );
+  }
+
+  /**
+   * 計算小計（所有服務項目的金額總和）
+   */
+  private calculateSubtotal(): number {
+    const items = this.serviceItems.value;
+    return items.reduce((acc: number, item: any) => {
+      return acc + (item.amount || 0);
+    }, 0);
   }
 
   onTaxRateChange(event: Event): void {
@@ -217,12 +261,62 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
         break;
       case '自訂':
         // 不自動設定稅率，讓使用者手動輸入
-        return;
+        break;
       default:
+        this.form.get('customTaxName')?.patchValue('');
         percentage = 0;
     }
 
     this.form.patchValue({ percentage });
+  }
+
+  /**
+   * 統一處理數字輸入欄位的正規化
+   * - 移除前導零
+   * - 可選的最大值限制
+   */
+  private normalizeNumberInput(
+    controlName: string,
+    maxValue?: number
+  ): void {
+    const control = this.form.get(controlName);
+    if (!control) return;
+
+    const value = control.value;
+    if (value === null || value === undefined || value === '') return;
+
+    let numValue = Number(value);
+    if (isNaN(numValue)) return;
+
+    // 如果有最大值限制
+    if (maxValue !== undefined && numValue > maxValue) {
+      numValue = maxValue;
+    }
+
+    control.setValue(numValue);
+  }
+
+  /**
+   * 處理折扣值的正規化
+   * 固定金額折扣不可超過小計
+   */
+  normalizeDiscountValue(): void {
+    const discountType = this.form.get('discountType')?.value;
+    const maxValue =
+      discountType === 'amount'
+        ? this.form.get('excludingTax')?.value || 0
+        : undefined;
+
+    this.normalizeNumberInput('discountValue', maxValue);
+  }
+
+  /**
+   * 處理稅率的正規化
+   * - 移除前導零
+   * - 限制在 0-100 之間
+   */
+  normalizePercentage(): void {
+    this.normalizeNumberInput('percentage', 100);
   }
 
   initForm() {
@@ -247,6 +341,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       // 服務項目與稅率
       serviceItems: this.fb.array([], Validators.required),
       excludingTax: [0],
+      discountType: ['amount'], // 折扣類型：amount 或 percentage
+      discountValue: [0], // 折扣值
+      discountAmount: [0], // 計算後的折扣金額
+      afterDiscount: [0], // 折扣後金額
       taxName: [''],
       customTaxName: [''], // 自訂稅別名稱
       percentage: [0],
@@ -352,7 +450,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     });
   }
 
-  createTodoItem() {
+  private createServiceItem(): void {
     this.serviceItems.push(
       this.fb.group({
         category: [''],
@@ -365,8 +463,8 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     );
   }
 
-  onAddField() {
-    this.createTodoItem();
+  onAddField(): void {
+    this.createServiceItem();
   }
 
   onRemoveField(index: number) {
@@ -399,40 +497,36 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
   }
 
   onDeleteHistory(index: number): void {
-    // 確認刪除
-    if (!confirm('確定要刪除此筆歷史記錄嗎？')) {
+    if (!this.confirmDelete()) {
       return;
     }
 
     this.analytics.trackHistoryDeleted(index);
+    this.updateSelectedIndexAfterDelete(index);
+    this.removeHistoryItem(index);
+    this.persistHistoryToStorage();
+  }
 
-    // 如果刪除的是目前選取的項目，重置選取狀態
-    if (this.selectedHistoryIndex() === index) {
+  private confirmDelete(): boolean {
+    return confirm('確定要刪除此筆歷史記錄嗎？');
+  }
+
+  private updateSelectedIndexAfterDelete(deletedIndex: number): void {
+    const currentIndex = this.selectedHistoryIndex();
+
+    if (currentIndex === deletedIndex) {
       this.selectedHistoryIndex.set(null);
-    } else if (
-      this.selectedHistoryIndex() !== null &&
-      this.selectedHistoryIndex()! > index
-    ) {
-      // 如果刪除的項目在目前選取項目之前，需要調整索引
+    } else if (currentIndex !== null && currentIndex > deletedIndex) {
       this.selectedHistoryIndex.update((current) => current! - 1);
     }
+  }
 
-    // 從陣列中移除指定索引的項目
+  private removeHistoryItem(index: number): void {
     this.historyData.update((history) => {
       const newHistory = [...history];
       newHistory.splice(index, 1);
       return newHistory;
     });
-
-    // 更新 localStorage
-    try {
-      localStorage.setItem('quotation', JSON.stringify(this.historyData()));
-    } catch (error) {
-      console.error(
-        'Failed to update quotation history in localStorage:',
-        error
-      );
-    }
   }
 
   private resetForm(): void {
@@ -451,6 +545,10 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       startDate: this.getTodayDate(),
       endDate: '',
       excludingTax: 0,
+      discountType: 'amount',
+      discountValue: 0,
+      discountAmount: 0,
+      afterDiscount: 0,
       taxName: '',
       customTaxName: '',
       percentage: 0,
@@ -463,7 +561,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
     this.stamp.set('');
     this.quoterLogo.set('');
     this.serviceItems.clear();
-    this.createTodoItem();
+    this.createServiceItem();
   }
 
   private loadQuotationData(data: QuotationData): void {
@@ -509,29 +607,44 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
 
   private showSuccessToast(): void {
     this.showToast.set(true);
-    // 3 秒後自動隱藏
     setTimeout(() => {
       this.showToast.set(false);
-    }, 3000);
+    }, this.TOAST_DISPLAY_DURATION_MS);
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
+    this.cleanupResources();
+  }
+
+  private cleanupResources(): void {
     this.startDate?.destroy();
     this.endDate?.destroy();
     this.resizeListener?.();
   }
 
-  saveLocalStorage(data: QuotationData) {
+  private saveLocalStorage(data: QuotationData): void {
+    this.updateHistoryData(data);
+    this.persistHistoryToStorage();
+  }
+
+  private updateHistoryData(data: QuotationData): void {
     this.historyData.update((history) => {
       const newHistory = [data, ...history];
-      if (newHistory.length > 5) {
-        newHistory.pop();
-      }
-      return newHistory;
+      return this.limitHistorySize(newHistory);
     });
+  }
 
+  private limitHistorySize(history: QuotationData[]): QuotationData[] {
+    if (history.length > this.MAX_HISTORY_ITEMS) {
+      return history.slice(0, this.MAX_HISTORY_ITEMS);
+    }
+    return history;
+  }
+
+  private persistHistoryToStorage(): void {
     try {
-      localStorage.setItem('quotation', JSON.stringify(this.historyData()));
+      const historyJson = JSON.stringify(this.historyData());
+      localStorage.setItem(this.LOCALSTORAGE_KEY, historyJson);
     } catch (error) {
       console.error('Failed to save quotation to localStorage:', error);
     }

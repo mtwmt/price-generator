@@ -16,56 +16,82 @@ import { LucideAngularModule, Trash2 } from 'lucide-angular';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceItemControlComponent {
-  // 使用 Signal Input/Output API
+  // Constants
+  private readonly DEFAULT_COUNT = 1;
+  private readonly DEFAULT_PRICE = 0;
+  private readonly DECIMAL_POINT = '.';
+  private readonly ZERO = '0';
+
+  // Signal Input/Output API
   formGroup = input.required<FormGroup>();
   index = input<number>(0);
   removeField = output<void>();
 
-  // Lucide Icons
+  // Icons
   readonly Trash2 = Trash2;
 
-  onAmountChange() {
-    const form = this.formGroup();
-    const price = Number(form.get('price')?.value) || 0;
-    const count = Number(form.get('count')?.value) || 1;
-    const amount = price * count;
-
-    // 移除 { emitEvent: false }，讓變更能觸發父元件的 valueChanges
-    form.get('amount')?.setValue(amount);
+  onAmountChange(): void {
+    const amount = this.calculateAmount();
+    this.updateAmount(amount);
   }
 
-  onInput(event: Event, controlName: string) {
+  onInput(event: Event, controlName: string): void {
     const input = event.target as HTMLInputElement;
-    let value = input.value;
+    const normalizedValue = this.normalizeLeadingZeros(input.value);
 
-    // 移除前導零：如果輸入的是 "0123"，自動轉換為 "123"
-    // 但保留單純的 "0" 和小數點開頭的數字如 "0.5"
-    if (
-      value &&
-      value.length > 1 &&
-      value.startsWith('0') &&
-      value[1] !== '.'
-    ) {
-      value = value.replace(/^0+/, '');
-      // 如果移除後變成空字串（例如輸入 "000"），保留一個 0
-      if (value === '') {
-        value = '0';
-      }
-      // 更新 input 的值（這會移除前導零）
-      input.value = value;
-
-      // 更新表單控制項的值
-      const form = this.formGroup();
-      const numValue = value === '' ? null : Number(value);
-      form.get(controlName)?.setValue(numValue);
+    if (normalizedValue !== input.value) {
+      this.updateInputAndControl(input, controlName, normalizedValue);
     }
 
-    // 觸發金額計算（無論是否移除前導零，都需要計算）
     this.onAmountChange();
   }
 
   onRemoveField(e?: MouseEvent): void {
     e?.preventDefault();
     this.removeField.emit();
+  }
+
+  private calculateAmount(): number {
+    const price = this.getNumericValue('price', this.DEFAULT_PRICE);
+    const count = this.getNumericValue('count', this.DEFAULT_COUNT);
+    return price * count;
+  }
+
+  private getNumericValue(controlName: string, defaultValue: number): number {
+    const form = this.formGroup();
+    return Number(form.get(controlName)?.value) || defaultValue;
+  }
+
+  private updateAmount(amount: number): void {
+    const form = this.formGroup();
+    form.get('amount')?.setValue(amount);
+  }
+
+  private normalizeLeadingZeros(value: string): string {
+    if (!this.hasLeadingZero(value)) {
+      return value;
+    }
+
+    const normalized = value.replace(/^0+/, '');
+    return normalized === '' ? this.ZERO : normalized;
+  }
+
+  private hasLeadingZero(value: string): boolean {
+    return (
+      value.length > 1 &&
+      value.startsWith(this.ZERO) &&
+      value[1] !== this.DECIMAL_POINT
+    );
+  }
+
+  private updateInputAndControl(
+    input: HTMLInputElement,
+    controlName: string,
+    value: string
+  ): void {
+    input.value = value;
+    const form = this.formGroup();
+    const numValue = value === '' ? null : Number(value);
+    form.get(controlName)?.setValue(numValue);
   }
 }

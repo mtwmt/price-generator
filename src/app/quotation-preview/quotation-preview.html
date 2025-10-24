@@ -293,27 +293,59 @@
           ${{ form().get('excludingTax')?.value || 0 | number }}
         </span>
       </div>
-      <div
-        class="flex justify-between items-center py-1.5 border-b border-base-300"
-      >
-        <span class="text-base-content">
-          @if (
-            form().get('taxName')?.value === '自訂' &&
-            form().get('customTaxName')?.value
-          ) {
-            {{ form().get('customTaxName')?.value }}
-          } @else {
-            {{ form().get('taxName')?.value || '稅額' }}
-          }
-          @if (form().get('percentage')?.value) {
-            ({{ form().get('percentage')?.value }}%)
-          }
-          :
-        </span>
-        <span class="font-semibold text-base-content">
-          ${{ form().get('tax')?.value || 0 | number }}
-        </span>
-      </div>
+
+      <!-- 折扣 -->
+      @if (form().get('discountValue')?.value > 0) {
+        <div
+          class="flex justify-between items-center py-1.5 border-b border-base-300"
+        >
+          <span class="text-base-content/70 text-sm">
+            折扣
+            @if (form().get('discountType')?.value === 'percentage') {
+              ({{ form().get('discountValue')?.value }} 折)
+            }
+            ：
+          </span>
+          <span class="font-semibold text-green-600">
+            -${{ form().get('discountAmount')?.value || 0 | number }}
+          </span>
+        </div>
+        <div
+          class="flex justify-between items-center py-1.5 border-b border-base-300"
+        >
+          <span class="text-base-content">折扣後：</span>
+          <span class="font-semibold text-base-content">
+            ${{ form().get('afterDiscount')?.value || 0 | number }}
+          </span>
+        </div>
+      }
+
+      @if (
+        !!form().get('taxName')?.value || !!form().get('customTaxName')?.value
+      ) {
+        <div
+          class="flex justify-between items-center py-1.5 border-b border-base-300"
+        >
+          <span class="text-base-content">
+            @if (
+              form().get('taxName')?.value === '自訂' &&
+              form().get('customTaxName')?.value
+            ) {
+              {{ form().get('customTaxName')?.value }}
+            } @else {
+              {{ form().get('taxName')?.value || '稅額' }}
+            }
+            @if (form().get('percentage')?.value) {
+              ({{ form().get('percentage')?.value }}%)
+            }
+            :
+          </span>
+
+          <span class="font-semibold text-base-content">
+            ${{ form().get('tax')?.value || 0 | number }}
+          </span>
+        </div>
+      }
       <div
         class="flex justify-between items-center bg-primary text-primary-content rounded py-1 px-2 mt-1"
       >
