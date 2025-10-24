@@ -62,7 +62,11 @@ export class QuotationPreview {
 
   async onExportImage() {
     try {
-      await this.exportService.exportAsImage('quotation-preview-content');
+      const customerName = this.form().get('customerCompany')?.value || '';
+      await this.exportService.exportAsImage(
+        'quotation-preview-content',
+        customerName
+      );
     } catch (error) {
       alert((error as Error).message);
     }
