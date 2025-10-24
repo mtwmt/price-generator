@@ -59,8 +59,16 @@ export interface QuotationData {
   // 服務項目與稅率
   /** 服務項目列表 */
   serviceItems: ServiceItem[];
-  /** 未稅金額 */
+  /** 未稅金額（小計） */
   excludingTax: number;
+  /** 折扣類型 */
+  discountType?: 'amount' | 'percentage';
+  /** 折扣值（金額或百分比） */
+  discountValue?: number;
+  /** 計算後的折扣金額 */
+  discountAmount?: number;
+  /** 折扣後金額 */
+  afterDiscount?: number;
   /** 稅目名稱 */
   taxName?: string;
   /** 自訂稅別名稱 */
