@@ -33,7 +33,7 @@ export class AnalyticsService {
   }
 
   // 匯出相關事件
-  trackExport(format: 'pdf' | 'image' | 'excel') {
+  trackExport(format: 'pdf' | 'image' | 'excel' | 'image_share') {
     this.trackEvent('export', {
       event_category: 'export',
       event_label: format,
