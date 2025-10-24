@@ -52,9 +52,23 @@ export class ExportService {
   }
 
   /**
-   * 捕捉指定元素為 Canvas
+   * 偵測是否為行動裝置
    */
-  async captureElement(elementId: string): Promise<HTMLCanvasElement> {
+  private isMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+  }
+
+  /**
+   * 捕捉指定元素為 Canvas
+   * @param elementId - 要捕捉的元素 ID
+   * @param forceA4Width - 強制使用 A4 寬度（用於 PDF 匯出）
+   */
+  async captureElement(
+    elementId: string,
+    forceA4Width = false
+  ): Promise<HTMLCanvasElement> {
     // 等待 DOM 更新以確保所有樣式已套用
     await new Promise((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
@@ -81,10 +95,16 @@ export class ExportService {
     const originalMaxWidth = element.style.maxWidth;
     const originalMinWidth = element.style.minWidth;
 
-    // 在擷取前設定固定寬度以符合 A4 尺寸
-    element.style.width = `${this.A4_WIDTH_PX}px`;
-    element.style.maxWidth = `${this.A4_WIDTH_PX}px`;
-    element.style.minWidth = `${this.A4_WIDTH_PX}px`;
+    // 判斷是否需要設定固定寬度
+    // 手機匯出圖片時使用實際寬度，桌面或 PDF 匯出時使用 A4 寬度
+    const shouldUseA4Width = forceA4Width || !this.isMobileDevice();
+
+    if (shouldUseA4Width) {
+      // 在擷取前設定固定寬度以符合 A4 尺寸
+      element.style.width = `${this.A4_WIDTH_PX}px`;
+      element.style.maxWidth = `${this.A4_WIDTH_PX}px`;
+      element.style.minWidth = `${this.A4_WIDTH_PX}px`;
+    }
 
     return html2canvas(element, {
       backgroundColor: '#ffffff',
@@ -139,7 +159,8 @@ export class ExportService {
    */
   async exportAsPDF(elementId: string): Promise<void> {
     try {
-      const canvas = await this.captureElement(elementId);
+      // PDF 匯出強制使用 A4 寬度
+      const canvas = await this.captureElement(elementId, true);
       const dataUrl = canvas.toDataURL('image/png');
       const fileName = this.generateFileName('pdf');
 
