@@ -61,6 +61,40 @@ export class ExportService {
   }
 
   /**
+   * 檢查瀏覽器是否支援 Web Share API
+   */
+  private canUseWebShare(file: File): boolean {
+    return (
+      this.isMobileDevice() &&
+      'canShare' in navigator &&
+      navigator.canShare?.({ files: [file] }) === true
+    );
+  }
+
+  /**
+   * 將 canvas 轉換為 File 物件
+   */
+  private async canvasToFile(
+    canvas: HTMLCanvasElement,
+    fileName: string
+  ): Promise<File> {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('無法轉換圖片'));
+            return;
+          }
+          const file = new File([blob], fileName, { type: 'image/jpeg' });
+          resolve(file);
+        },
+        'image/jpeg',
+        this.IMAGE_QUALITY
+      );
+    });
+  }
+
+  /**
    * 捕捉指定元素為 Canvas
    * @param elementId - 要捕捉的元素 ID
    * @param forceA4Width - 強制使用 A4 寬度（用於 PDF 匯出）
@@ -138,13 +172,35 @@ export class ExportService {
 
   /**
    * 匯出為圖片
+   * 在手機上若支援 Web Share API，會開啟分享選單；否則直接下載
    */
   async exportAsImage(elementId: string): Promise<void> {
     try {
       const canvas = await this.captureElement(elementId);
-      const dataUrl = canvas.toDataURL('image/jpeg', this.IMAGE_QUALITY);
       const fileName = this.generateFileName('jpg');
 
+      // 嘗試使用 Web Share API（手機優先）
+      if (this.isMobileDevice()) {
+        try {
+          const file = await this.canvasToFile(canvas, fileName);
+
+          if (this.canUseWebShare(file)) {
+            await navigator.share({
+              files: [file],
+              title: '報價單',
+              text: '報價單圖片',
+            });
+            this.analytics.trackExport('image_share');
+            return;
+          }
+        } catch (shareError) {
+          // Web Share API 失敗或使用者取消，繼續使用下載方式
+          console.log('分享取消或不支援，改用下載方式');
+        }
+      }
+
+      // 降級方案：使用傳統下載方式
+      const dataUrl = canvas.toDataURL('image/jpeg', this.IMAGE_QUALITY);
       this.downloadFile(dataUrl, fileName);
       this.analytics.trackExport('image');
     } catch (error) {
