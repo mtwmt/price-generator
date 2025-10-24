@@ -639,7 +639,7 @@
             <div class="md:w-1/4 space-y-2 mt-6">
               <div class="flex justify-between items-center">
                 <span class="text-base font-medium">小計</span>
-                <span class="text-xl font-bold text-red-500">
+                <span class="text-base">
                   ${{ form.get('excludingTax')?.value || 0 }}
                 </span>
               </div>
@@ -655,13 +655,13 @@
                       </span>
                     }
                   </span>
-                  <span class="text-green-600 font-medium">
+                  <span class="text-green-600 font-medium text-base">
                     -${{ form.get('discountAmount')?.value || 0 }}
                   </span>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="text-base font-medium">折扣後</span>
-                  <span class="text-xl font-bold text-red-500">
+                  <span class="text-base">
                     ${{ form.get('afterDiscount')?.value || 0 }}
                   </span>
                 </div>
@@ -689,7 +689,7 @@
                   !!form.get('taxName')?.value ||
                   !!form.get('customTaxName')?.value
                 ) {
-                  <span class="text-xl font-bold text-red-500">
+                  <span class="text-base font-bold text-red-500">
                     ${{ form.get('tax')?.value || 0 }}
                   </span>
                 }
@@ -698,7 +698,7 @@
               <div class="border-t pt-3">
                 <div class="flex justify-between items-center">
                   <span class="text-lg font-semibold">總計</span>
-                  <span class="text-2xl font-bold text-red-500">
+                  <span class="text-xl font-bold text-red-500">
                     ${{ form.get('includingTax')?.value || 0 }}
                   </span>
                 </div>
