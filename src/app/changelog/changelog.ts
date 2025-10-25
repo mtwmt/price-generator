@@ -15,7 +15,11 @@ export class ChangelogComponent {
   changelog = [
     {
       date: '2025-10-25',
-      features: ['新增折扣設定', '新增項目拖曳功能'],
+      features: [
+        '新增折扣設定',
+        '新增項目拖曳功能',
+        '新增 MIT License 授權條款，明確使用規範',
+      ],
     },
     {
       date: '2025-10-24',
