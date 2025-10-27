@@ -170,8 +170,10 @@
                   />
                   <input
                     formControlName="customerTaxID"
-                    type="number"
+                    type="text"
+                    inputmode="numeric"
                     placeholder="請輸入統一編號"
+                    maxlength="8"
                   />
                 </label>
                 @if (
@@ -369,8 +371,10 @@
                     class="opacity-70" />
                   <input
                     formControlName="quoterTaxID"
-                    type="number"
+                    type="text"
+                    inputmode="numeric"
                     placeholder="請輸入統一編號"
+                    maxlength="8"
                 /></label>
                 @if (
                   form.get('quoterTaxID')?.touched &&
@@ -882,9 +886,7 @@
   >
     <div class="lg:sticky lg:top-4">
       <div class="bg-base-100 rounded-lg shadow-lg p-4 mt-4 lg:mt-0">
-        <div
-          class="flex items-center justify-between mb-4 bg-base-100 pb-2 border-b"
-        >
+        <div class="flex items-center mb-4 bg-base-100 pb-2 border-b">
           <h3 class="text-lg font-bold flex items-center">
             <lucide-icon [img]="Eye" [size]="16" class="mr-1" />
             即時預覽
@@ -892,7 +894,7 @@
         </div>
         @if (form) {
           <app-quotation-preview
-            class="aspect-[210/297]"
+            class="block"
             [form]="form"
             [customerLogo]="customerLogo()"
             [quoterLogo]="quoterLogo()"
@@ -912,14 +914,18 @@
         ✕
       </button>
     </form>
-    <app-quotation-preview
-      class="mt-8 block"
-      [form]="form"
-      [customerLogo]="customerLogo()"
-      [quoterLogo]="quoterLogo()"
-      [stamp]="stamp()"
-    />
+    <div class="mt-8">
+      <app-quotation-preview
+        [form]="form"
+        [customerLogo]="customerLogo()"
+        [quoterLogo]="quoterLogo()"
+        [stamp]="stamp()"
+      />
+    </div>
   </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
 </dialog>
 
 <!-- 成功通知 Toast -->
