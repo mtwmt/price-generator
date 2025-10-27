@@ -1,0 +1,26 @@
+import { Component, input } from '@angular/core';
+import { FormGroup } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
+/**
+ * 簡潔版報價單渲染器
+ * 純內容渲染，無匯出按鈕
+ */
+@Component({
+  selector: 'app-renderer-classic',
+  imports: [CommonModule],
+  templateUrl: './renderer-classic.html',
+  standalone: true,
+})
+export class RendererClassic {
+  // 接收表單資料
+  form = input.required<FormGroup>();
+  quoterLogo = input<string>('');
+  customerLogo = input<string>('');
+  stamp = input<string>('');
+
+  // 取得服務項目 FormArray
+  get serviceItems() {
+    return this.form().get('serviceItems') as any;
+  }
+}

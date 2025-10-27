@@ -1,0 +1,108 @@
+<!-- 表單驗證提示 -->
+@if (!form().valid) {
+  <div class="alert alert-warning alert-soft my-2 px-4 py-2">
+    <lucide-icon [img]="Info" [size]="16" />
+    <span>請先完成必填欄位後才能匯出報價單</span>
+  </div>
+}
+
+<!-- 匯出按鈕列 -->
+<div class="flex justify-end gap-2 mb-4">
+  <button
+    type="button"
+    class="btn btn-sm btn-ghost btn-outline gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
+    (click)="onExportPDF()"
+  >
+    <lucide-icon [img]="FileDown" [size]="16" />
+    PDF
+  </button>
+  <button
+    type="button"
+    class="btn btn-sm btn-ghost btn-outline gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
+    (click)="onExportImage()"
+  >
+    <lucide-icon [img]="Image" [size]="16" />
+    圖片
+  </button>
+  <button
+    type="button"
+    class="btn btn-sm btn-success gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    [disabled]="!form().valid"
+    [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
+    (click)="onExportExcel()"
+  >
+    <lucide-icon [img]="FileSpreadsheet" [size]="16" />
+    Excel
+  </button>
+</div>
+
+<!-- 樣式選擇器 -->
+<div class="divider text-xs">選擇報價單樣式</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+  @for (template of templates; track template.id) {
+    <button
+      type="button"
+      class="card card-compact bg-base-100 border-2 transition-all hover:shadow-md cursor-pointer"
+      [ngClass]="{
+        'border-primary': selectedTemplate() === template.id,
+        'bg-primary/5': selectedTemplate() === template.id,
+        'border-base-300': selectedTemplate() !== template.id,
+      }"
+      (click)="onTemplateChange(template.id)"
+      [title]="template.name"
+    >
+      <div class="card-body p-2">
+        <!-- Icon/Emoji 作為縮圖 -->
+        <!-- <div class="text-xl">{{ template.icon }}</div> -->
+
+        <!-- 樣式名稱 -->
+        <h3 class="card-title text-sm">{{ template.name }}</h3>
+
+        <!-- 標籤 -->
+        @if (template.tags && template.tags.length > 0) {
+          <div class="flex gap-1 flex-wrap justify-center">
+            @for (tag of template.tags.slice(0, 2); track $index) {
+              <span class="badge badge-sm badge-ghost">{{ tag }}</span>
+            }
+          </div>
+        }
+
+        <!-- 選中標記 -->
+        @if (selectedTemplate() === template.id) {
+          <div class="absolute top-0 right-0 text-info">
+            <lucide-icon [img]="CircleCheck" [size]="20" />
+          </div>
+        }
+      </div>
+    </button>
+  }
+</div>
+
+<!-- 當前樣式說明 -->
+<!-- @if (getCurrentTemplate()) {
+  <div class="alert alert-info py-2 px-3">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="stroke-current shrink-0 w-5 h-5"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      ></path>
+    </svg>
+    <span class="text-xs">
+      <strong>{{ getCurrentTemplate()?.name }}</strong
+      >：
+      {{ getCurrentTemplate()?.description }}
+    </span>
+  </div>
+} -->
