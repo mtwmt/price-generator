@@ -1,91 +1,57 @@
-import { Component, input, inject } from '@angular/core';
+import { Component, input, signal, computed } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import {
-  LucideAngularModule,
-  MapPin,
-  Phone,
-  Mail,
-  User,
-  Printer,
-  FileDown,
-  Image,
-  FileSpreadsheet,
-  Info,
-} from 'lucide-angular';
-import { ExportService } from '../services/export';
-import { QuotationData } from '../quotation.model';
+import { ExportControls } from '../quotation-export-controls/export-controls';
+import { QUOTATION_TEMPLATES } from './quotation-preview.config';
 
+/**
+ * 報價單預覽容器元件
+ * 整合匯出控制和多樣式渲染器
+ * 使用動態元件載入實現樣式切換
+ */
 @Component({
   selector: 'app-quotation-preview',
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, ExportControls],
   templateUrl: './quotation-preview.html',
+  standalone: true,
 })
 export class QuotationPreview {
-  // Lucide Icons
-  readonly MapPin = MapPin;
-  readonly Phone = Phone;
-  readonly Mail = Mail;
-  readonly User = User;
-  readonly Printer = Printer;
-  readonly FileDown = FileDown;
-  readonly Image = Image;
-  readonly FileSpreadsheet = FileSpreadsheet;
-  readonly Info = Info;
+  // Constants
+  private readonly DEFAULT_TEMPLATE = 'classic';
 
-  // Services
-  private exportService = inject(ExportService);
-
-  // 接收表單資料
+  // Inputs
   form = input.required<FormGroup>();
   quoterLogo = input<string>('');
   customerLogo = input<string>('');
   stamp = input<string>('');
 
-  // 取得服務項目 FormArray
-  get serviceItems() {
-    return this.form().get('serviceItems') as any;
-  }
+  // State
+  selectedTemplate = signal<string>(this.DEFAULT_TEMPLATE);
 
-  // 匯出功能
-  async onPrint() {
-    this.exportService.print();
-  }
+  /**
+   * 根據選擇的樣式 ID 動態取得對應的渲染器元件
+   */
+  currentRenderer = computed(() => {
+    const template = QUOTATION_TEMPLATES.find(
+      (t) => t.id === this.selectedTemplate()
+    );
+    return template?.component;
+  });
 
-  async onExportPDF() {
-    try {
-      await this.exportService.exportAsPDF('quotation-preview-content');
-    } catch (error) {
-      alert((error as Error).message);
-    }
-  }
+  /**
+   * 準備傳入渲染器的 inputs
+   */
+  rendererInputs = computed(() => ({
+    form: this.form(),
+    customerLogo: this.customerLogo(),
+    quoterLogo: this.quoterLogo(),
+    stamp: this.stamp(),
+  }));
 
-  async onExportImage() {
-    try {
-      const customerName = this.form().get('customerCompany')?.value || '';
-      await this.exportService.exportAsImage(
-        'quotation-preview-content',
-        customerName
-      );
-    } catch (error) {
-      alert((error as Error).message);
-    }
-  }
-
-  async onExportExcel() {
-    try {
-      const formValue = this.form().getRawValue();
-      const data: QuotationData = {
-        ...formValue,
-        serviceItems: formValue.serviceItems || [],
-      };
-      await this.exportService.exportAsExcel(
-        data,
-        this.customerLogo(),
-        this.stamp()
-      );
-    } catch (error) {
-      alert((error as Error).message);
-    }
+  /**
+   * 處理樣式切換
+   */
+  onTemplateChange(templateId: string): void {
+    this.selectedTemplate.set(templateId);
   }
 }
