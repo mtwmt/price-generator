@@ -3,7 +3,7 @@
   class="flex flex-wrap md:flex-nowrap gap-x-2 items-center bg-base-100 "
   [formGroup]="formGroup()"
 >
-  <div class="flex gap-2 w-full md:w-1/2">
+  <div class="flex gap-2 w-full md:w-3/7">
     <!-- 類別 -->
     <fieldset class="fieldset w-1/2 md:flex-1">
       <input
@@ -35,7 +35,7 @@
       }
     </fieldset>
   </div>
-  <div class="flex gap-2 w-full md:w-1/2">
+  <div class="flex gap-2 w-full md:w-4/7">
     <!-- 單價 -->
     <fieldset class="fieldset flex-1">
       <input
@@ -52,21 +52,21 @@
       />
     </fieldset>
     <!-- 數量 -->
-    <fieldset class="fieldset flex-1">
+    <fieldset class="fieldset">
       <input
         formControlName="count"
         type="number"
-        class="input"
+        class="input max-w-16"
         placeholder="1"
         (input)="onInput($event, 'count')"
       />
     </fieldset>
     <!-- 單位 -->
-    <fieldset class="fieldset flex-1">
+    <fieldset class="fieldset">
       <input
         formControlName="unit"
         type="text"
-        class="input"
+        class="input max-w-16"
         placeholder="單位"
       />
     </fieldset>
