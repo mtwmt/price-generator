@@ -551,7 +551,7 @@
       <!-- 服務項目 -->
       <div class="card bg-base-100 shadow-sm mb-4">
         <div class="card-body p-4 md:p-4">
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
               <div
                 class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
@@ -574,29 +574,8 @@
             </button>
           </div>
 
-          <!-- 表格標題列 -->
-          <div
-            class="hidden md:flex gap-2 py-2 bg-base-200 font-semibold text-center"
-          >
-            <div class="flex gap-2 w-3/7">
-              <div class="flex-1">類別</div>
-              <div class="flex-1">項目名稱</div>
-            </div>
-            <div class="flex gap-2 w-4/7">
-              <div class="flex-1">單價</div>
-              <div class="w-16">數量</div>
-              <div class="w-16">單位</div>
-              <div class="flex-1">金額</div>
-              <div class=" w-10"></div>
-            </div>
-          </div>
-
           <!-- 服務項目列表 -->
-          <div
-            cdkDropList
-            (cdkDropListDropped)="onDrop($event)"
-            class="space-y-2"
-          >
+          <div cdkDropList (cdkDropListDropped)="onDrop($event)" >
             <ng-container formArrayName="serviceItems">
               @for (
                 item of serviceItems.controls;
@@ -606,33 +585,13 @@
                 <div
                   cdkDrag
                   [cdkDragDisabled]="serviceItems.length <= 1"
-                  class="group relative"
+                  class="group relative md:mb-3"
+                  [ngClass]=""
                 >
-                  <!-- 拖曳預覽 -->
-                  <div
-                    *cdkDragPreview
-                    class="bg-base-100 shadow-xl rounded-lg p-4 opacity-90"
-                  >
-                    <div class="flex items-center gap-2">
-                      <lucide-icon
-                        [img]="GripVertical"
-                        [size]="20"
-                        class="text-base-content/50"
-                      />
-                      <span class="font-semibold">拖曳中...</span>
-                    </div>
-                  </div>
-
-                  <!-- 拖曳佔位符 -->
-                  <div
-                    *cdkDragPlaceholder
-                    class="bg-base-200/50 border-2 border-dashed border-primary rounded-lg"
-                    style="height: 100%"
-                  ></div>
-
-                  <!-- 拖曳手柄與服務項目 -->
+                  <!-- 服務項目 -->
                   <div class="flex items-center gap-2">
                     @if (serviceItems.length > 1) {
+                      <!-- Drag Handle -->
                       <div
                         cdkDragHandle
                         class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
@@ -653,6 +612,10 @@
                         [index]="idx"
                         (removeField)="onRemoveField(idx)"
                       />
+                      <hr class="my-4 border-secondary md:hidden"
+                      [class.hidden]="$last"
+                       />
+                      <!-- <div class="divider h-[1px] my-2"></div> -->
                     </div>
                   </div>
                 </div>
@@ -820,7 +783,7 @@
       <!-- 其他資訊 -->
       <div class="card bg-base-100 shadow-sm mb-4">
         <div class="card-body p-4 md:p-4">
-          <div class="flex items-center gap-3 mb-4">
+          <div class="flex items-center gap-3 mb-3">
             <div
               class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
             >
