@@ -1,32 +1,37 @@
 <!-- 服務項目（響應式佈局） -->
 <div
-  class="flex flex-wrap md:flex-nowrap gap-x-2 items-center bg-base-100 "
+  class="flex flex-wrap md:flex-nowrap gap-2 items-center bg-base-100"
   [formGroup]="formGroup()"
 >
   <div class="flex gap-2 w-full md:w-3/7">
     <!-- 類別 -->
     <fieldset class="fieldset w-1/2 md:flex-1">
-      <input
-        formControlName="category"
-        type="text"
-        class="input"
-        placeholder="類別"
-      />
+      <label class="floating-label">
+        <span>類別</span>
+        <input
+          formControlName="category"
+          type="text"
+          class="input"
+          placeholder="類別"
+        />
+      </label>
     </fieldset>
     <!-- 項目 -->
     <fieldset class="fieldset w-1/2 md:flex-1">
-      <input
-        formControlName="item"
-        type="text"
-        class="input"
-        [ngClass]="
-          formGroup().get('item')?.touched &&
-          formGroup().get('item')?.errors?.['required']
-            ? 'input-error'
-            : ''
-        "
-        placeholder="項目"
-      />
+      <label class="floating-label">
+        <span>項目</span>
+        <input
+          formControlName="item"
+          type="text"
+          class="input"
+          [ngClass]="
+            formGroup().get('item')?.touched &&
+            formGroup().get('item')?.errors?.['required']
+              ? 'input-error'
+              : ''
+          "
+          placeholder="項目"
+      /></label>
       @if (
         formGroup().get('item')?.touched &&
         formGroup().get('item')?.errors?.['required']
@@ -38,47 +43,55 @@
   <div class="flex gap-2 w-full md:w-4/7">
     <!-- 單價 -->
     <fieldset class="fieldset flex-1">
-      <input
-        formControlName="price"
-        type="number"
-        class="input"
-        [class.input-error]="
-          formGroup().get('price')?.touched &&
-          formGroup().get('price')?.errors?.['required']
-        "
-        placeholder="單價"
-        min="0"
-        (input)="onInput($event, 'price')"
-      />
+      <label class="floating-label">
+        <span>單價</span>
+        <input
+          formControlName="price"
+          type="number"
+          class="input"
+          [class.input-error]="
+            formGroup().get('price')?.touched &&
+            formGroup().get('price')?.errors?.['required']
+          "
+          placeholder="單價"
+          min="0"
+          (input)="onInput($event, 'price')"
+      /></label>
     </fieldset>
     <!-- 數量 -->
     <fieldset class="fieldset">
-      <input
-        formControlName="count"
-        type="number"
-        class="input max-w-16"
-        placeholder="1"
-        (input)="onInput($event, 'count')"
-      />
+      <label class="floating-label">
+        <span>數量</span>
+        <input
+          formControlName="count"
+          type="number"
+          class="input max-w-16"
+          placeholder="1"
+          (input)="onInput($event, 'count')"
+      /></label>
     </fieldset>
     <!-- 單位 -->
     <fieldset class="fieldset">
-      <input
-        formControlName="unit"
-        type="text"
-        class="input max-w-16"
-        placeholder="單位"
-      />
+      <label class="floating-label">
+        <span>單位</span>
+        <input
+          formControlName="unit"
+          type="text"
+          class="input max-w-16"
+          placeholder="單位"
+      /></label>
     </fieldset>
     <!-- 金額 -->
     <fieldset class="fieldset flex-1">
-      <input
-        formControlName="amount"
-        type="number"
-        class="input font-bold bg-base-200 cursor-not-allowed opacity-60 focus:outline-none focus:border-base-300"
-        placeholder="0"
-        readonly
-      />
+      <label class="floating-label">
+        <span>金額</span>
+        <input
+          formControlName="amount"
+          type="number"
+          class="input font-bold bg-base-200 cursor-not-allowed opacity-60 focus:outline-none focus:border-base-300"
+          placeholder="0"
+          readonly
+      /></label>
     </fieldset>
     <!-- 操作 -->
     <fieldset class="fieldset">

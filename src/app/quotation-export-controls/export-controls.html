@@ -10,7 +10,7 @@
 <div class="flex justify-end gap-2 mb-4">
   <button
     type="button"
-    class="btn btn-sm btn-ghost btn-outline gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="btn btn-sm  btn-outline gap-2  disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
     (click)="onExportPDF()"
@@ -20,7 +20,7 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-ghost btn-outline gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="btn btn-sm  btn-outline gap-2  disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
     (click)="onExportImage()"
@@ -30,7 +30,7 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-success gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="btn btn-sm btn-success btn-outline gap-2  disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
     (click)="onExportExcel()"
@@ -48,18 +48,15 @@
     <button
       type="button"
       class="card card-compact bg-base-100 border-2 transition-all hover:shadow-md cursor-pointer"
-      [ngClass]="{
-        'border-primary': selectedTemplate() === template.id,
-        'bg-primary/5': selectedTemplate() === template.id,
-        'border-base-300': selectedTemplate() !== template.id,
-      }"
+      [ngClass]="
+        selectedTemplate() === template.id
+          ? ['border-info', 'bg-primary/5']
+          : ['border-base-300']
+      "
       (click)="onTemplateChange(template.id)"
       [title]="template.name"
     >
       <div class="card-body p-2">
-        <!-- Icon/Emoji 作為縮圖 -->
-        <!-- <div class="text-xl">{{ template.icon }}</div> -->
-
         <!-- 樣式名稱 -->
         <h3 class="card-title text-sm">{{ template.name }}</h3>
 
