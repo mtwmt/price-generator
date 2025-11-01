@@ -14,6 +14,10 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2025-11-02',
+      features: ['新增匯出並列樣式'],
+    },
+    {
       date: '2025-10-27',
       features: ['新增報價單樣板選擇'],
     },
