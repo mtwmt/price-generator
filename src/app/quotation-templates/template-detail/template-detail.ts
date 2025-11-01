@@ -16,11 +16,11 @@ import {
  * 純內容渲染，無匯出按鈕
  */
 @Component({
-  selector: 'app-renderer-full',
+  selector: 'app-template-detail',
   imports: [CommonModule, LucideAngularModule],
-  templateUrl: './renderer-full.html',
+  templateUrl: './template-detail.html',
 })
-export class RendererFull {
+export class TemplateDetail {
   // Lucide Icons
   readonly MapPin = MapPin;
   readonly Phone = Phone;

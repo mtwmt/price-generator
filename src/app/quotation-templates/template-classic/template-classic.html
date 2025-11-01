@@ -72,7 +72,7 @@
       }
     </div>
     @if (stamp()) {
-      <div class=" text-center">
+      <div class="text-center">
         <img
           [src]="stamp()"
           alt="公司發票章"
@@ -100,19 +100,21 @@
         @for (item of serviceItems().controls; track $index) {
           <tr class="text-sm">
             <td class="border border-base-300 text-center">
-              {{ item.get('category')?.value || '' }}
+              {{ item.value.category }}
             </td>
             <td class="border border-base-300 px-3">
-              {{ item.get('item')?.value || '' }}
+              {{ item.value.item || '-' }}
             </td>
             <td class="border border-base-300 text-right px-3">
-              {{ item.get('price')?.value || 0 | number: '1.0-0' }}
+              ${{ item.value.price || 0 | number }}
             </td>
             <td class="border border-base-300 text-center">
-              {{ item.get('count')?.value || 0 }}
+              {{ item.value.count || 0 }}
+              {{ !!item.value.unit ? '/' : '' }}
+              {{ item.value.unit }}
             </td>
             <td class="border border-base-300 text-right px-3">
-              NT$ {{ item.get('amount')?.value || 0 | number: '1.0-0' }}
+              ${{ item.value.amount || 0 | number }}
             </td>
           </tr>
         }
@@ -179,7 +181,7 @@
         <h3 class="card-title">客戶簽章</h3>
       </div>
     </div>
-    }
+  }
 
   <!-- 總計區 -->
   <!-- <div class="flex justify-end mb-6">
