@@ -1,5 +1,5 @@
-import { Component, input } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { Component, computed, input } from '@angular/core';
+import { FormArray, FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -10,7 +10,6 @@ import { CommonModule } from '@angular/common';
   selector: 'app-renderer-classic',
   imports: [CommonModule],
   templateUrl: './renderer-classic.html',
-  standalone: true,
 })
 export class RendererClassic {
   // 接收表單資料
@@ -20,7 +19,7 @@ export class RendererClassic {
   stamp = input<string>('');
 
   // 取得服務項目 FormArray
-  get serviceItems() {
-    return this.form().get('serviceItems') as any;
-  }
+  serviceItems = computed(() => {
+    return this.form().get('serviceItems') as FormArray;
+  });
 }

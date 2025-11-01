@@ -1,5 +1,5 @@
-import { Component, input } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { Component, computed, input } from '@angular/core';
+import { FormArray, FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {
   LucideAngularModule,
@@ -8,7 +8,7 @@ import {
   Mail,
   User,
   ReceiptText,
-  UserRound
+  UserRound,
 } from 'lucide-angular';
 
 /**
@@ -19,7 +19,6 @@ import {
   selector: 'app-renderer-full',
   imports: [CommonModule, LucideAngularModule],
   templateUrl: './renderer-full.html',
-  standalone: true,
 })
 export class RendererFull {
   // Lucide Icons
@@ -36,8 +35,7 @@ export class RendererFull {
   customerLogo = input<string>('');
   stamp = input<string>('');
 
-  // 取得服務項目 FormArray
-  get serviceItems() {
-    return this.form().get('serviceItems') as any;
-  }
+  serviceItems = computed(() => {
+    return this.form().get('serviceItems') as FormArray;
+  });
 }

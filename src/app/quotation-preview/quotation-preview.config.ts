@@ -1,6 +1,7 @@
 import { Type } from '@angular/core';
 import { RendererClassic } from '../quotation-renderers/renderer-classic/renderer-classic';
 import { RendererFull } from '../quotation-renderers/renderer-full/renderer-full';
+import { RendererSideBySide } from '../quotation-renderers/renderer-side-by-side/renderer-side-by-side';
 
 /**
  * 報價單樣式模板配置
@@ -12,12 +13,6 @@ export interface QuotationTemplate {
   name: string;
   /** 對應的渲染器元件 */
   component: Type<any>;
-  /** 簡短描述 */
-  description?: string;
-  /** 文字縮圖（emoji 或文字） */
-  icon?: string;
-  /** 標籤 */
-  tags?: string[];
 }
 
 /**
@@ -31,7 +26,12 @@ export const QUOTATION_TEMPLATES: QuotationTemplate[] = [
   },
   {
     id: 'full',
-    name: '完整版',
+    name: '詳細版',
     component: RendererFull,
+  },
+  {
+    id: 'invoice',
+    name: '並列版',
+    component: RendererSideBySide,
   },
 ];
