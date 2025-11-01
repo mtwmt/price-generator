@@ -2,7 +2,7 @@ import { Component, input, signal, computed } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ExportControls } from '../quotation-export-controls/export-controls';
-import { QUOTATION_TEMPLATES } from './quotation-preview.config';
+import { QUOTATION_TEMPLATES } from '../configs/quotation-templates.config';
 
 /**
  * 報價單預覽容器元件
