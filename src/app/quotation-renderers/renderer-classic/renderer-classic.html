@@ -97,7 +97,7 @@
       </thead>
       <!-- 表身 -->
       <tbody>
-        @for (item of serviceItems?.controls; track $index) {
+        @for (item of serviceItems().controls; track $index) {
           <tr class="text-sm">
             <td class="border border-base-300 text-center">
               {{ item.get('category')?.value || '' }}

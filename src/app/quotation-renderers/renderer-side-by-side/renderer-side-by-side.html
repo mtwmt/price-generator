@@ -1,144 +1,116 @@
 <div
-  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-sm print:p-4"
+  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-sm print:p-6"
   style="max-width: 210mm; margin: 0 auto"
 >
-  <!-- 標題區：左右佈局 -->
+  <!-- 頂部：LOGO + 標題 -->
   <div
-    class="flex justify-between items-start mb-3 pb-2 border-b-2 border-neutral"
+    class="flex justify-between items-center mb-6 pb-4 border-b border-primary"
   >
-    <!-- 左側：報價方資訊 -->
-    <div class="flex-1">
-      <div class="flex items-end mb-2">
-        @if (quoterLogo()) {
-          <img
-            [src]="quoterLogo()"
-            class="h-10 mr-2 object-contain m-auto"
-            alt="logo"
-          />
-        }
-        <div class="font-bold text-2xl text-base-content flex-1">
-          {{ form().get('quoterName')?.value || '[公司名稱]' }}
-        </div>
+    <div class="flex justify-between gap-3 w-full">
+      <div>
+        <div class="text-3xl font-bold text-primary">QUOTATION</div>
+        <div class="text-lg text-base-content/70">報價單</div>
       </div>
-      <div class="text-base-content/70 space-y-0.5">
-        @if (form().get('quoterTaxID')?.value) {
-          <div class="flex">
-            <span class="text-base-content/60 w-20">統編：</span>
-            <span class="text-base-content">
-              {{ form().get('quoterTaxID')?.value || '' }}
-            </span>
+      <!-- 日期資訊 -->
+      <div class="gap-4 mt-4">
+        @if (form().get('startDate')?.value) {
+          <div class="flex pb-1">
+            <span class="text-base-content/70">報價日期：</span>
+            <span class="font-semibold">{{
+              form().get('startDate')?.value
+            }}</span>
           </div>
         }
-        @if (form().get('quoterAddress')?.value) {
-          <div class="flex">
-            <span class="text-base-content/60 w-20">地址：</span>
-            <span class="text-base-content">
-              {{ form().get('quoterAddress')?.value || '' }}
-            </span>
-          </div>
-        }
-        @if (form().get('quoterPhone')?.value) {
-          <div class="flex">
-            <span class="text-base-content/60 w-20">電話：</span>
-            <span class="text-base-content">
-              {{ form().get('quoterPhone')?.value || '' }}
-            </span>
-          </div>
-        }
-        @if (form().get('quoterEmail')?.value) {
-          <div class="flex">
-            <span class="text-base-content/60 w-20">E-Mail：</span>
-            <span class="text-base-content">
-              {{ form().get('quoterEmail')?.value || '' }}
-            </span>
-          </div>
-        }
-      </div>
-    </div>
-
-    <!-- 右側：報價單資訊 -->
-    <div class="text-right">
-      <h1 class="text-2xl font-bold text-base-content mb-3">報價單</h1>
-      <div class="space-y-1">
-        <div class="flex justify-between gap-4">
-          <span class="font-semibold">報價日期：</span>
-          <span class="text-base-content">
-            {{ form().get('startDate')?.value || '-' }}
-          </span>
-        </div>
         @if (form().get('endDate')?.value) {
-          <div class="flex justify-between gap-4">
-            <span class="font-semibold">有效期限：</span>
-            <span class="text-base-content">
-              {{ form().get('endDate')?.value }}
-            </span>
+          <div class="flex pb-1">
+            <span class="text-base-content/70">有效期限：</span>
+            <span class="font-semibold">{{
+              form().get('endDate')?.value
+            }}</span>
           </div>
         }
       </div>
     </div>
   </div>
 
-  <!-- 客戶資訊：表單式佈局 -->
-  <div class="mb-3">
-    <div class="flex justify-between items-end mb-3">
-      <div class="flex-1">客戶資訊</div>
+  <!-- 賣方資訊（左）+ 客戶資訊（右）-->
+  <div class="grid grid-cols-2 gap-8 mb-6">
+    <!-- 賣方資訊 FROM -->
+    <div>
+      <div class="font-bold mb-2 tracking-wider">
+        FORM {{ form().get('quoterName')?.value || '[公司名稱]' }}
+      </div>
+      <div class="bg-base-50 rounded space-y-1">
+        <!-- <div class="font-bold text-base text-base-content">
+          {{ form().get('quoterName')?.value || '[公司名稱]' }}
+        </div> -->
+        @if (form().get('quoterTaxID')?.value) {
+          <div class="text-base-content/70">
+            統編：{{ form().get('quoterTaxID')?.value }}
+          </div>
+        }
+        @if (form().get('quoterAddress')?.value) {
+          <div class="text-base-content/70">
+            地址：{{ form().get('quoterAddress')?.value }}
+          </div>
+        }
+        @if (form().get('quoterPhone')?.value) {
+          <div class="text-base-content/70">
+            電話：{{ form().get('quoterPhone')?.value }}
+          </div>
+        }
+        @if (form().get('quoterEmail')?.value) {
+          <div class="text-base-content/70">
+            Email：{{ form().get('quoterEmail')?.value }}
+          </div>
+        }
+      </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-x-8 gap-y-0.5">
-      <div class="flex items-center mb-1 col-span-2">
-        @if (customerLogo()) {
-          <img
-            [src]="customerLogo()"
-            class="mr-1 h-10 object-contain"
-            alt="logo"
-          />
-        }
-        <span class="text-base-content font-semibold text-lg">
-          {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
-        </span>
+    <!-- 客戶資訊 TO -->
+    <div>
+      <div class="font-bold mb-2 tracking-wider">
+        TO {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
       </div>
-      @if (form().get('customerContact')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">聯絡人：</span>
-          <span class="text-base-content">
-            {{ form().get('customerContact')?.value || '' }}
-          </span>
+      <div class="bg-base-50 rounded space-y-1">
+        <div class="flex items-center gap-2">
+          <!-- @if (customerLogo()) {
+            <img
+              [src]="customerLogo()"
+              class="h-8 object-contain"
+              alt="Customer Logo"
+            />
+          } -->
+          <!-- <div class="font-bold text-base text-base-content">
+            {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
+          </div> -->
         </div>
-      }
-      @if (form().get('customerPhone')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">電話：</span>
-          <span class="text-base-content">
-            {{ form().get('customerPhone')?.value || '' }}
-          </span>
-        </div>
-      }
-
-      @if (form().get('customerEmail')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">E-Mail：</span>
-          <span class="text-base-content break-all">
-            {{ form().get('customerEmail')?.value || '' }}
-          </span>
-        </div>
-      }
-
-      @if (form().get('customerAddress')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">地址：</span>
-          <span class="text-base-content">
-            {{ form().get('customerAddress')?.value }}
-          </span>
-        </div>
-      }
-      @if (form().get('customerTaxID')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">統編：</span>
-          <span class="text-base-content">
-            {{ form().get('customerTaxID')?.value }}
-          </span>
-        </div>
-      }
+        @if (form().get('customerContact')?.value) {
+          <div class="text-base-content/70">
+            聯絡人：{{ form().get('customerContact')?.value }}
+          </div>
+        }
+        @if (form().get('customerTaxID')?.value) {
+          <div class="text-base-content/70">
+            統編：{{ form().get('customerTaxID')?.value }}
+          </div>
+        }
+        @if (form().get('customerAddress')?.value) {
+          <div class="text-base-content/70">
+            地址：{{ form().get('customerAddress')?.value }}
+          </div>
+        }
+        @if (form().get('customerPhone')?.value) {
+          <div class="text-base-content/70">
+            電話：{{ form().get('customerPhone')?.value }}
+          </div>
+        }
+        @if (form().get('customerEmail')?.value) {
+          <div class="text-base-content/70">
+            Email：{{ form().get('customerEmail')?.value }}
+          </div>
+        }
+      </div>
     </div>
   </div>
 
@@ -248,14 +220,6 @@
             -${{ form().get('discountAmount')?.value || 0 | number }}
           </span>
         </div>
-        <!-- <div
-          class="flex justify-between items-center py-1.5 border-b border-base-300"
-        >
-          <span class="text-base-content text-base">折扣後：</span>
-          <span class="text-base-content font-semibold text-sm">
-            ${{ form().get('afterDiscount')?.value || 0 | number }}
-          </span>
-        </div> -->
       }
 
       @if (

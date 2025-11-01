@@ -10,7 +10,7 @@
 <div class="flex justify-end gap-2 mb-4">
   <button
     type="button"
-    class="btn btn-sm  btn-outline gap-2  disabled:cursor-not-allowed"
+    class="btn btn-sm btn-outline gap-2 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
     (click)="onExportPDF()"
@@ -20,7 +20,7 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm  btn-outline gap-2  disabled:cursor-not-allowed"
+    class="btn btn-sm btn-outline gap-2 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
     (click)="onExportImage()"
@@ -30,7 +30,7 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-success btn-outline gap-2  disabled:cursor-not-allowed"
+    class="btn btn-sm btn-success btn-outline gap-2 disabled:cursor-not-allowed"
     [disabled]="!form().valid"
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
     (click)="onExportExcel()"
@@ -59,15 +59,6 @@
       <div class="card-body p-2">
         <!-- 樣式名稱 -->
         <h3 class="card-title text-sm">{{ template.name }}</h3>
-
-        <!-- 標籤 -->
-        @if (template.tags && template.tags.length > 0) {
-          <div class="flex gap-1 flex-wrap justify-center">
-            @for (tag of template.tags.slice(0, 2); track $index) {
-              <span class="badge badge-sm badge-ghost">{{ tag }}</span>
-            }
-          </div>
-        }
 
         <!-- 選中標記 -->
         @if (selectedTemplate() === template.id) {
