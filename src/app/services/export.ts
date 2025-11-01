@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import * as ExcelJS from 'exceljs';
-import { QuotationData } from '../quotation.model';
+import { QuotationData } from '../models/quotation.model';
+import { ExcelExporter } from '../models/quotation-template.model';
 import { AnalyticsService } from './analytics';
 
 @Injectable({
@@ -10,7 +11,6 @@ import { AnalyticsService } from './analytics';
 })
 export class ExportService {
   // Constants
-  private readonly DATA_URL_PARTS_COUNT = 2;
   private readonly CANVAS_SCALE = 2;
   private readonly IMAGE_QUALITY = 0.95;
   private readonly URL_REVOKE_DELAY_MS = 100;
@@ -35,20 +35,6 @@ export class ExportService {
     link.href = dataUrl;
     link.download = fileName;
     link.click();
-  }
-
-  /**
-   * 從 data URL 提取 base64 編碼
-   */
-  private extractBase64(dataUrl: string, imageName: string): string {
-    if (!dataUrl || !dataUrl.includes(',')) {
-      throw new Error(`無效的${imageName}格式`);
-    }
-    const parts = dataUrl.split(',');
-    if (parts.length !== this.DATA_URL_PARTS_COUNT) {
-      throw new Error(`無效的${imageName}格式`);
-    }
-    return parts[1];
   }
 
   /**
@@ -243,9 +229,14 @@ export class ExportService {
 
   /**
    * 匯出為 Excel
+   * @param data - 報價單資料
+   * @param exporter - Excel 匯出器類別
+   * @param logo - 客戶 LOGO（base64）
+   * @param stamp - 公司章（base64）
    */
   async exportAsExcel(
     data: QuotationData,
+    exporter: new () => ExcelExporter,
     logo: string = '',
     stamp: string = ''
   ): Promise<void> {
@@ -253,28 +244,18 @@ export class ExportService {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('報價單');
 
-      const titleBgColor = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFD9D9D9' },
-      } as const;
-
-      this.setupWorksheetStyles(worksheet);
-      this.createTitleSection(worksheet, workbook, data, logo, titleBgColor);
-      this.createCompanyInfoSection(worksheet, workbook, data, stamp);
-      this.createServiceItemsTable(worksheet, data);
-      this.createSummarySection(worksheet, data);
-      this.createNotesAndSignature(worksheet, data, titleBgColor);
-      this.applyBorders(worksheet);
+      // 使用傳入的匯出器實例來生成 Excel
+      const exporterInstance = new exporter();
+      exporterInstance.export(worksheet, workbook, data, logo, stamp);
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
       const url = URL.createObjectURL(blob);
-      const date = new Date().toLocaleString('roc', { hour12: false });
+      const fileName = this.generateFileName('xlsx');
 
-      this.downloadFile(url, `${date}_quotation.xlsx`);
+      this.downloadFile(url, fileName);
       setTimeout(() => URL.revokeObjectURL(url), this.URL_REVOKE_DELAY_MS);
 
       this.analytics.trackExport('excel');
@@ -294,232 +275,5 @@ export class ExportService {
       event_category: 'export',
       event_label: 'print',
     });
-  }
-
-  // === Excel 相關私有方法 ===
-
-  private setupWorksheetStyles(worksheet: ExcelJS.Worksheet): void {
-    worksheet.properties.defaultRowHeight = 20;
-    worksheet.properties.defaultColWidth = 12;
-    worksheet.pageSetup.printArea = 'A1:E25';
-
-    worksheet.columns = [
-      { width: 16 }, // A - 類別
-      { width: 24 }, // B - 項目名稱
-      { width: 12 }, // C - 單價
-      { width: 12 }, // D - 數量
-      { width: 12 }, // E - 金額
-    ];
-  }
-
-  private createTitleSection(
-    worksheet: ExcelJS.Worksheet,
-    workbook: ExcelJS.Workbook,
-    data: QuotationData,
-    logo: string,
-    titleBgColor: ExcelJS.Fill
-  ): void {
-    const titleStartCol = logo ? 'B1:C2' : 'A1:C2';
-    worksheet.mergeCells(titleStartCol);
-    const titleCell = worksheet.getCell(titleStartCol.split(':')[0]);
-    titleCell.value = data.customerCompany + ' - 報價單';
-    titleCell.font = { size: 18, bold: true };
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    titleCell.fill = titleBgColor;
-
-    if (logo) {
-      const logoImageId = workbook.addImage({
-        base64: this.extractBase64(logo, 'LOGO'),
-        extension: 'png',
-      });
-      worksheet.addImage(logoImageId, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 80, height: 60 },
-        editAs: 'oneCell',
-      });
-    }
-
-    ['D1', 'E1', 'D2', 'E2'].forEach((cellAddr) => {
-      worksheet.getCell(cellAddr).fill = titleBgColor;
-    });
-
-    if (data.customerTaxID) {
-      const taxIdLabelCell = worksheet.getCell('D2');
-      taxIdLabelCell.value = '統一編號：';
-      taxIdLabelCell.font = { size: 12, bold: true };
-      taxIdLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
-
-      const taxIdValueCell = worksheet.getCell('E2');
-      taxIdValueCell.value = data.customerTaxID;
-      taxIdValueCell.font = { size: 12 };
-      taxIdValueCell.alignment = { horizontal: 'left', vertical: 'middle' };
-    }
-  }
-
-  private createCompanyInfoSection(
-    worksheet: ExcelJS.Worksheet,
-    workbook: ExcelJS.Workbook,
-    data: QuotationData,
-    stamp: string
-  ): void {
-    const infoRows = [
-      ['報價公司/人員', data.quoterName],
-      ...(data.quoterTaxID ? [['統一編號：', data.quoterTaxID]] : []),
-      ...(data.quoterPhone ? [['聯絡電話', data.quoterPhone]] : []),
-      ['E-Mail', data.quoterEmail],
-      ['報價日期：', data.startDate],
-      ...(data.endDate ? [['有效日期：', data.endDate]] : []),
-    ];
-
-    infoRows.forEach((rowData) => {
-      const row = worksheet.addRow(rowData);
-      row.getCell(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFF2F2F2' },
-      };
-      row.getCell(1).font = { size: 12, bold: true };
-      row.getCell(2).font = { size: 12 };
-    });
-
-    if (stamp) {
-      const stampImageId = workbook.addImage({
-        base64: this.extractBase64(stamp, '公司章'),
-        extension: 'png',
-      });
-      worksheet.addImage(stampImageId, {
-        tl: { col: 2, row: 3 },
-        ext: { width: 120, height: 80 },
-        editAs: 'oneCell',
-      });
-    }
-  }
-
-  private createServiceItemsTable(
-    worksheet: ExcelJS.Worksheet,
-    data: QuotationData
-  ): void {
-    worksheet.addRow([]);
-
-    const headerRow = worksheet.addRow([
-      '類別',
-      '項目',
-      '單價',
-      '數量',
-      '金額',
-    ]);
-    headerRow.font = { size: 12, bold: true };
-    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-    for (let col = 1; col <= 5; col++) {
-      headerRow.getCell(col).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE8E8E8' },
-      };
-    }
-
-    data.serviceItems.forEach((item) => {
-      const row = worksheet.addRow([
-        item.category,
-        item.item,
-        item.price,
-        item.count + (item.unit ? ' ' + item.unit : ''),
-        item.amount,
-      ]);
-      row.eachCell((cell) => {
-        cell.font = { size: 12 };
-      });
-      row.getCell(5).alignment = { horizontal: 'right' };
-    });
-  }
-
-  private createSummarySection(
-    worksheet: ExcelJS.Worksheet,
-    data: QuotationData
-  ): void {
-    const taxLabel =
-      data.taxName === '自訂' && data.customTaxName
-        ? data.customTaxName
-        : data.taxName;
-
-    const summaryData: any[] = [
-      ['', '', '', '小計', data.excludingTax],
-    ];
-
-    // 如果有折扣，加入折扣行
-    if (data.discountValue && data.discountValue > 0) {
-      const discountLabel =
-        data.discountType === 'percentage'
-          ? `折扣 (${data.discountValue} 折)`
-          : '折扣';
-      summaryData.push(['', '', '', discountLabel, -(data.discountAmount || 0)]);
-      summaryData.push(['', '', '', '折扣後', data.afterDiscount || 0]);
-    }
-
-    // 加入稅額和總計
-    summaryData.push(['', '', taxLabel + '稅', data.percentage + '%', data.tax]);
-    summaryData.push(['', '', '', '含稅計', data.includingTax]);
-
-    summaryData.forEach((rowData) => {
-      const row = worksheet.addRow(rowData);
-      row.eachCell((cell) => {
-        cell.font = { size: 12 };
-      });
-
-      // 檢查是否為折扣行（金額為負數）
-      const isDiscountRow = typeof rowData[4] === 'number' && rowData[4] < 0;
-
-      row.getCell(5).font = {
-        size: 12,
-        bold: true,
-        color: { argb: isDiscountRow ? 'FF008000' : 'FFFF0000' }, // 折扣用綠色，其他用紅色
-      };
-      row.getCell(5).alignment = { horizontal: 'right' };
-    });
-  }
-
-  private createNotesAndSignature(
-    worksheet: ExcelJS.Worksheet,
-    data: QuotationData,
-    titleBgColor: ExcelJS.Fill
-  ): void {
-    if (data.desc) {
-      worksheet.addRow([]);
-      const remarkTitleRow = worksheet.addRow(['【備 註】']);
-      remarkTitleRow.getCell(1).font = { size: 12, bold: true };
-      remarkTitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      for (let col = 1; col <= 5; col++) {
-        remarkTitleRow.getCell(col).fill = titleBgColor;
-      }
-
-      const descRow = worksheet.addRow([data.desc]);
-      const descRowIndex = descRow.number;
-      worksheet.mergeCells(`A${descRowIndex}:E${descRowIndex}`);
-      descRow.getCell(1).font = { size: 12 };
-    }
-
-    worksheet.addRow([]);
-    const signRow = worksheet.addRow(['客戶簽章：']);
-    signRow.getCell(1).font = { size: 12 };
-    worksheet.addRow([]);
-  }
-
-  private applyBorders(worksheet: ExcelJS.Worksheet): void {
-    const lastRow = worksheet.rowCount;
-    const borderStyle = {
-      style: 'thin' as const,
-      color: { argb: 'FF000000' },
-    };
-    for (let row = 1; row <= lastRow; row++) {
-      for (let col = 1; col <= 5; col++) {
-        const cell = worksheet.getCell(row, col);
-        cell.border = {
-          top: row === 1 ? borderStyle : undefined,
-          left: col === 1 ? borderStyle : undefined,
-          bottom: row === lastRow ? borderStyle : undefined,
-          right: col === 5 ? borderStyle : undefined,
-        };
-      }
-    }
   }
 }

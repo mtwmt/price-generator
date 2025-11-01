@@ -7,11 +7,11 @@ import { CommonModule } from '@angular/common';
  * 純內容渲染，無匯出按鈕
  */
 @Component({
-  selector: 'app-renderer-classic',
+  selector: 'app-template-classic',
   imports: [CommonModule],
-  templateUrl: './renderer-classic.html',
+  templateUrl: './template-classic.html',
 })
-export class RendererClassic {
+export class TemplateClassic {
   // 接收表單資料
   form = input.required<FormGroup>();
   quoterLogo = input<string>('');

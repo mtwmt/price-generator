@@ -25,7 +25,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ServiceItemControlComponent } from '../service-item-control/service-item-control.component';
 import Litepicker from 'litepicker';
 import { QuotationPreview } from '../quotation-preview/quotation-preview';
-import { QuotationData } from '../quotation.model';
+import { QuotationData } from '../models/quotation.model';
 import { AnalyticsService } from '../services/analytics';
 import { taxIdValidator } from '../validators/tax-id.validator';
 import { phoneValidator } from '../validators/phone.validator';

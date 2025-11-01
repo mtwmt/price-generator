@@ -10,8 +10,9 @@ import {
   Info
 } from 'lucide-angular';
 import { ExportService } from '../services/export';
-import { QuotationData } from '../quotation.model';
-import { QUOTATION_TEMPLATES, QuotationTemplate } from '../quotation-preview/quotation-preview.config';
+import { QuotationData } from '../models/quotation.model';
+import { QuotationTemplate } from '../models/quotation-template.model';
+import { QUOTATION_TEMPLATES } from '../configs/quotation-templates.config';
 
 /**
  * 報價單匯出控制元件
@@ -96,8 +97,16 @@ export class ExportControls {
         ...formValue,
         serviceItems: formValue.serviceItems || [],
       };
+
+      // 取得當前樣板的 Excel 匯出器
+      const currentTemplate = this.getCurrentTemplate();
+      if (!currentTemplate) {
+        throw new Error('無法找到當前樣板配置');
+      }
+
       await this.exportService.exportAsExcel(
         data,
+        currentTemplate.excelExporter,
         this.customerLogo(),
         this.stamp()
       );
