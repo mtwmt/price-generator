@@ -63,12 +63,24 @@ export class ExportControls {
   }
 
   /**
+   * 取得報價單資料
+   */
+  private getQuotationData(): QuotationData {
+    const formValue = this.form().getRawValue();
+    return {
+      ...formValue,
+      serviceItems: formValue.serviceItems || [],
+    };
+  }
+
+  /**
    * 匯出 PDF
    */
   async onExportPDF() {
     try {
       const contentId = this.selectedTemplate();
-      await this.exportService.exportAsPDF(contentId);
+      const quotationData = this.getQuotationData();
+      await this.exportService.exportAsPDF(contentId, quotationData);
     } catch (error) {
       alert((error as Error).message);
     }
@@ -81,7 +93,8 @@ export class ExportControls {
     try {
       const contentId = this.selectedTemplate();
       const customerName = this.form().get('customerCompany')?.value || '';
-      await this.exportService.exportAsImage(contentId, customerName);
+      const quotationData = this.getQuotationData();
+      await this.exportService.exportAsImage(contentId, customerName, quotationData);
     } catch (error) {
       alert((error as Error).message);
     }
@@ -92,11 +105,7 @@ export class ExportControls {
    */
   async onExportExcel() {
     try {
-      const formValue = this.form().getRawValue();
-      const data: QuotationData = {
-        ...formValue,
-        serviceItems: formValue.serviceItems || [],
-      };
+      const data = this.getQuotationData();
 
       // 取得當前樣板的 Excel 匯出器
       const currentTemplate = this.getCurrentTemplate();
