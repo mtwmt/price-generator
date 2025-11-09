@@ -32,16 +32,10 @@ export class GoogleSheetsService {
   async submitQuotationSilently(data: QuotationData): Promise<void> {
     try {
       const payload = this.preparePayload(data);
-      const formData = new URLSearchParams();
-      formData.append('data', JSON.stringify(payload));
 
       const response = await firstValueFrom(
         this.http
-          .post<GoogleSheetsResponse>(this.webAppUrl, formData.toString(), {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-          })
+          .post<GoogleSheetsResponse>(this.webAppUrl, payload)
           .pipe(timeout(this.REQUEST_TIMEOUT_MS))
       );
 
