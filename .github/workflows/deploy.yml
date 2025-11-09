@@ -22,6 +22,17 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      - name: Create environment file
+        run: |
+          cat > src/environments/environment.ts << EOF
+          export const environment = {
+            production: true,
+            googleSheets: {
+              webAppUrl: '${{ secrets.GOOGLE_SHEETS_WEB_APP_URL }}',
+            },
+          };
+          EOF
+
       - name: Prepare and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

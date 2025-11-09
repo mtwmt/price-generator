@@ -1,5 +1,6 @@
 import { ApplicationConfig, ErrorHandler, Injectable, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { routes } from './app.routes';
 import { AnalyticsService } from './services/analytics';
 
@@ -22,6 +23,7 @@ export class GlobalErrorHandler implements ErrorHandler {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
+    provideHttpClient(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
   ],
 };

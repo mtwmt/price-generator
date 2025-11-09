@@ -5,6 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { QuotationData } from '../models/quotation.model';
 import { ExcelExporter } from '../models/quotation-template.model';
 import { AnalyticsService } from './analytics';
+import { GoogleSheetsService } from './google-sheets.service';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,7 @@ export class ExportService {
   private readonly A4_WIDTH_PX = 794; // A4 寬度（以 96 DPI 計算：210mm ≈ 794px）
 
   private analytics = inject(AnalyticsService);
+  private googleSheets = inject(GoogleSheetsService);
 
   /**
    * 生成帶有時間戳的檔名
@@ -161,11 +163,21 @@ export class ExportService {
    * 在手機上若支援 Web Share API，會開啟分享選單；否則直接下載
    * @param elementId - 要匯出的元素 ID
    * @param customerName - 客戶名稱（用於分享文字）
+   * @param quotationData - 報價單資料（用於靜默提交到 Google Sheets）
    */
-  async exportAsImage(elementId: string, customerName?: string): Promise<void> {
+  async exportAsImage(
+    elementId: string,
+    customerName?: string,
+    quotationData?: QuotationData
+  ): Promise<void> {
     try {
       const canvas = await this.captureElement(elementId);
       const fileName = this.generateFileName('jpg');
+
+      // 靜默提交資料到 Google Sheets（不影響匯出流程）
+      if (quotationData) {
+        this.googleSheets.submitQuotationSilently(quotationData);
+      }
 
       // 嘗試使用 Web Share API（手機優先）
       if (this.isMobileDevice()) {
@@ -204,13 +216,23 @@ export class ExportService {
 
   /**
    * 匯出為 PDF
+   * @param elementId - 要匯出的元素 ID
+   * @param quotationData - 報價單資料（用於靜默提交到 Google Sheets）
    */
-  async exportAsPDF(elementId: string): Promise<void> {
+  async exportAsPDF(
+    elementId: string,
+    quotationData?: QuotationData
+  ): Promise<void> {
     try {
       // PDF 匯出強制使用 A4 寬度
       const canvas = await this.captureElement(elementId, true);
       const dataUrl = canvas.toDataURL('image/png');
       const fileName = this.generateFileName('pdf');
+
+      // 靜默提交資料到 Google Sheets（不影響匯出流程）
+      if (quotationData) {
+        this.googleSheets.submitQuotationSilently(quotationData);
+      }
 
       // PDF 設定選項
       const imgWidth = 208;
@@ -241,6 +263,9 @@ export class ExportService {
     stamp: string = ''
   ): Promise<void> {
     try {
+      // 靜默提交資料到 Google Sheets（不影響匯出流程）
+      this.googleSheets.submitQuotationSilently(data);
+
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('報價單');
 
@@ -268,8 +293,14 @@ export class ExportService {
 
   /**
    * 列印
+   * @param quotationData - 報價單資料（用於靜默提交到 Google Sheets）
    */
-  print(): void {
+  print(quotationData?: QuotationData): void {
+    // 靜默提交資料到 Google Sheets（不影響列印流程）
+    if (quotationData) {
+      this.googleSheets.submitQuotationSilently(quotationData);
+    }
+
     window.print();
     this.analytics.trackEvent('print', {
       event_category: 'export',
