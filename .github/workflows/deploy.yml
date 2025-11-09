@@ -24,7 +24,8 @@ jobs:
 
       - name: Create environment file
         run: |
-          cat > src/environments/environment.ts << EOF
+          mkdir -p src/environments
+          cat > src/environments/environment.ts << 'EOF'
           export const environment = {
             production: true,
             googleSheets: {
