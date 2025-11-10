@@ -80,7 +80,9 @@ export class ExportControls {
     try {
       const contentId = this.selectedTemplate();
       const quotationData = this.getQuotationData();
-      await this.exportService.exportAsPDF(contentId, quotationData);
+      const template = this.getCurrentTemplate();
+      const templateName = template?.name || '';
+      await this.exportService.exportAsPDF(contentId, quotationData, templateName);
     } catch (error) {
       alert((error as Error).message);
     }
@@ -94,7 +96,9 @@ export class ExportControls {
       const contentId = this.selectedTemplate();
       const customerName = this.form().get('customerCompany')?.value || '';
       const quotationData = this.getQuotationData();
-      await this.exportService.exportAsImage(contentId, customerName, quotationData);
+      const template = this.getCurrentTemplate();
+      const templateName = template?.name || '';
+      await this.exportService.exportAsImage(contentId, customerName, quotationData, templateName);
     } catch (error) {
       alert((error as Error).message);
     }
@@ -117,7 +121,8 @@ export class ExportControls {
         data,
         currentTemplate.excelExporter,
         this.customerLogo(),
-        this.stamp()
+        this.stamp(),
+        currentTemplate.name
       );
     } catch (error) {
       alert((error as Error).message);

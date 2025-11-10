@@ -168,15 +168,16 @@ export class ExportService {
   async exportAsImage(
     elementId: string,
     customerName?: string,
-    quotationData?: QuotationData
+    quotationData?: QuotationData,
+    templateStyle?: string
   ): Promise<void> {
     try {
       const canvas = await this.captureElement(elementId);
       const fileName = this.generateFileName('jpg');
 
       // 靜默提交資料到 Google Sheets（不影響匯出流程）
-      if (quotationData) {
-        this.googleSheets.submitQuotationSilently(quotationData, '圖片');
+      if (quotationData && templateStyle) {
+        this.googleSheets.submitQuotationSilently(quotationData, '圖片', templateStyle);
       }
 
       // 嘗試使用 Web Share API（手機優先）
@@ -221,7 +222,8 @@ export class ExportService {
    */
   async exportAsPDF(
     elementId: string,
-    quotationData?: QuotationData
+    quotationData?: QuotationData,
+    templateStyle?: string
   ): Promise<void> {
     try {
       // PDF 匯出強制使用 A4 寬度
@@ -230,8 +232,8 @@ export class ExportService {
       const fileName = this.generateFileName('pdf');
 
       // 靜默提交資料到 Google Sheets（不影響匯出流程）
-      if (quotationData) {
-        this.googleSheets.submitQuotationSilently(quotationData, 'PDF');
+      if (quotationData && templateStyle) {
+        this.googleSheets.submitQuotationSilently(quotationData, 'PDF', templateStyle);
       }
 
       // PDF 設定選項
@@ -260,11 +262,13 @@ export class ExportService {
     data: QuotationData,
     exporter: new () => ExcelExporter,
     logo: string = '',
-    stamp: string = ''
+    stamp: string = '',
+    templateStyle?: string
   ): Promise<void> {
     try {
-      // 靜默提交資料到 Google Sheets（不影響匯出流程）
-      this.googleSheets.submitQuotationSilently(data, 'Excel');
+      if (templateStyle) {
+        this.googleSheets.submitQuotationSilently(data, 'Excel', templateStyle);
+      }
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('報價單');
@@ -291,20 +295,21 @@ export class ExportService {
     }
   }
 
-  /**
-   * 列印
-   * @param quotationData - 報價單資料（用於靜默提交到 Google Sheets）
-   */
-  print(quotationData?: QuotationData): void {
-    // 靜默提交資料到 Google Sheets（不影響列印流程）
-    if (quotationData) {
-      this.googleSheets.submitQuotationSilently(quotationData, '列印');
-    }
+  // /**
+  //  * 列印
+  //  * @param templateStyle - 報價單樣式名稱
+  //  */
+  // print(quotationData?: QuotationData, templateStyle?: string): void {
+  //   // 靜默提交資料到 Google Sheets（不影響列印流程）
+  //   // 目前暫時註解，未來如需啟用再取消註解
+  //   // if (quotationData && templateStyle) {
+  //   //   this.googleSheets.submitQuotationSilently(quotationData, '列印', templateStyle);
+  //   // }
 
-    window.print();
-    this.analytics.trackEvent('print', {
-      event_category: 'export',
-      event_label: 'print',
-    });
-  }
+  //   window.print();
+  //   this.analytics.trackEvent('print', {
+  //     event_category: 'export',
+  //     event_label: 'print',
+  //   });
+  // }
 }

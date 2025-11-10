@@ -22,10 +22,16 @@ export class GoogleSheetsService {
 
   async submitQuotationSilently(
     data: QuotationData,
-    exportMethod: string
+    exportMethod: string,
+    templateStyle: string
   ): Promise<void> {
     try {
-      const payload = { ...this.preparePayload(data), exportMethod };
+      // 偵測裝置類型
+      const deviceType = this.getDeviceType();
+
+      const exportInfo = `${templateStyle} - ${exportMethod} - ${deviceType}`;
+
+      const payload = { ...this.preparePayload(data), exportMethod: exportInfo };
       const params = new URLSearchParams({
         data: JSON.stringify(payload),
       });
@@ -58,5 +64,11 @@ export class GoogleSheetsService {
   private preparePayload(data: QuotationData): Partial<QuotationData> {
     const { customerLogo, quoterLogo, quoterStamp, ...payload } = data;
     return payload;
+  }
+
+  private getDeviceType(): string {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    return isMobile ? '行動版' : '桌面版';
   }
 }
