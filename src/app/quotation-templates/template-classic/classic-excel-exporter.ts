@@ -104,7 +104,15 @@ export class ClassicExcelExporter implements ExcelExporter {
     const infoRows = [
       ['報價公司/人員', data.quoterName],
       ...(data.quoterTaxID ? [['統一編號：', data.quoterTaxID]] : []),
-      ...(data.quoterPhone ? [['聯絡電話', data.quoterPhone]] : []),
+      ...(data.quoterPhone
+        ? [
+            [
+              '聯絡電話',
+              data.quoterPhone +
+                (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : ''),
+            ],
+          ]
+        : []),
       ['E-Mail', data.quoterEmail],
       ['報價日期：', data.startDate],
       ...(data.endDate ? [['有效日期：', data.endDate]] : []),
