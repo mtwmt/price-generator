@@ -49,6 +49,9 @@
           <span class="text-base-content font-semibold w-24">聯絡電話：</span>
           <span class="text-base-content">
             {{ form().get('quoterPhone')?.value }}
+            @if (form().get('quoterPhoneExt')?.value) {
+              #{{ form().get('quoterPhoneExt')?.value }}
+            }
           </span>
         </div>
       }

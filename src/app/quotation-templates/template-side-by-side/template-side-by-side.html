@@ -57,6 +57,9 @@
         @if (form().get('quoterPhone')?.value) {
           <div class="text-base-content/70">
             電話：{{ form().get('quoterPhone')?.value }}
+            @if (form().get('quoterPhoneExt')?.value) {
+              #{{ form().get('quoterPhoneExt')?.value }}
+            }
           </div>
         }
         @if (form().get('quoterEmail')?.value) {
@@ -103,6 +106,9 @@
         @if (form().get('customerPhone')?.value) {
           <div class="text-base-content/70">
             電話：{{ form().get('customerPhone')?.value }}
+            @if (form().get('customerPhoneExt')?.value) {
+              #{{ form().get('customerPhoneExt')?.value }}
+            }
           </div>
         }
         @if (form().get('customerEmail')?.value) {
@@ -313,6 +319,9 @@
       }
       @if (form().get('quoterPhone')?.value) {
         | 電話：{{ form().get('quoterPhone')?.value }}
+        @if (form().get('quoterPhoneExt')?.value) {
+          #{{ form().get('quoterPhoneExt')?.value }}
+        }
       }
     </p>
   </div>

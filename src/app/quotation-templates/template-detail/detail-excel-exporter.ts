@@ -106,7 +106,15 @@ export class DetailExcelExporter implements ExcelExporter {
       ['公司名稱', data.quoterName || '[公司名稱]'],
       ...(data.quoterTaxID ? [['統編', data.quoterTaxID]] : []),
       ...(data.quoterAddress ? [['地址', data.quoterAddress]] : []),
-      ...(data.quoterPhone ? [['電話', data.quoterPhone]] : []),
+      ...(data.quoterPhone
+        ? [
+            [
+              '電話',
+              data.quoterPhone +
+                (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : ''),
+            ],
+          ]
+        : []),
       ...(data.quoterEmail ? [['Email', data.quoterEmail]] : []),
     ];
 
@@ -141,7 +149,15 @@ export class DetailExcelExporter implements ExcelExporter {
     const customerInfoRows = [
       ['客戶名稱', data.customerCompany],
       ...(data.customerContact ? [['聯絡人', data.customerContact]] : []),
-      ...(data.customerPhone ? [['電話', data.customerPhone]] : []),
+      ...(data.customerPhone
+        ? [
+            [
+              '電話',
+              data.customerPhone +
+                (data.customerPhoneExt ? ` #${data.customerPhoneExt}` : ''),
+            ],
+          ]
+        : []),
       ...(data.customerEmail ? [['E-Mail', data.customerEmail]] : []),
       ...(data.customerAddress ? [['地址', data.customerAddress]] : []),
       ...(data.customerTaxID ? [['統編', data.customerTaxID]] : []),
@@ -341,7 +357,13 @@ export class DetailExcelExporter implements ExcelExporter {
     worksheet.addRow([]);
     const footerText = `本報價單由 ${data.quoterName || '[公司名稱]'} 提供${
       data.quoterAddress ? ' | 地址：' + data.quoterAddress : ''
-    }${data.quoterPhone ? ' | 電話：' + data.quoterPhone : ''}`;
+    }${
+      data.quoterPhone
+        ? ' | 電話：' +
+          data.quoterPhone +
+          (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : '')
+        : ''
+    }`;
 
     const footerRow = worksheet.addRow([footerText]);
     worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);

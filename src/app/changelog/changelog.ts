@@ -14,6 +14,10 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2025-11-10',
+      features: ['新增電話分機欄位，支援市話分機號碼輸入'],
+    },
+    {
       date: '2025-11-02',
       features: ['新增匯出並列樣式'],
     },
