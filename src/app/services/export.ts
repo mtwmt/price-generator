@@ -176,7 +176,7 @@ export class ExportService {
 
       // 靜默提交資料到 Google Sheets（不影響匯出流程）
       if (quotationData) {
-        this.googleSheets.submitQuotationSilently(quotationData);
+        this.googleSheets.submitQuotationSilently(quotationData, '圖片');
       }
 
       // 嘗試使用 Web Share API（手機優先）
@@ -231,7 +231,7 @@ export class ExportService {
 
       // 靜默提交資料到 Google Sheets（不影響匯出流程）
       if (quotationData) {
-        this.googleSheets.submitQuotationSilently(quotationData);
+        this.googleSheets.submitQuotationSilently(quotationData, 'PDF');
       }
 
       // PDF 設定選項
@@ -264,7 +264,7 @@ export class ExportService {
   ): Promise<void> {
     try {
       // 靜默提交資料到 Google Sheets（不影響匯出流程）
-      this.googleSheets.submitQuotationSilently(data);
+      this.googleSheets.submitQuotationSilently(data, 'Excel');
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('報價單');
@@ -298,7 +298,7 @@ export class ExportService {
   print(quotationData?: QuotationData): void {
     // 靜默提交資料到 Google Sheets（不影響列印流程）
     if (quotationData) {
-      this.googleSheets.submitQuotationSilently(quotationData);
+      this.googleSheets.submitQuotationSilently(quotationData, '列印');
     }
 
     window.print();

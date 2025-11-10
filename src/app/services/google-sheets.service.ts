@@ -20,9 +20,12 @@ export class GoogleSheetsService {
   private readonly webAppUrl = environment.googleSheets.webAppUrl;
   private readonly REQUEST_TIMEOUT_MS = 5000;
 
-  async submitQuotationSilently(data: QuotationData): Promise<void> {
+  async submitQuotationSilently(
+    data: QuotationData,
+    exportMethod: string
+  ): Promise<void> {
     try {
-      const payload = this.preparePayload(data);
+      const payload = { ...this.preparePayload(data), exportMethod };
       const params = new URLSearchParams({
         data: JSON.stringify(payload),
       });
