@@ -31,6 +31,8 @@ export interface QuotationData {
   customerContact?: string;
   /** 客戶聯絡電話 */
   customerPhone?: string;
+  /** 客戶聯絡電話分機 */
+  customerPhoneExt?: string;
   /** 客戶 Email */
   customerEmail?: string;
   /** 客戶地址 */
@@ -51,6 +53,8 @@ export interface QuotationData {
   quoterEmail: string;
   /** 報價者聯絡電話 */
   quoterPhone?: string;
+  /** 報價者聯絡電話分機 */
+  quoterPhoneExt?: string;
   /** 報價日期 */
   startDate: string;
   /** 有效日期 */

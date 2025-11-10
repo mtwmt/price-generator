@@ -340,6 +340,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       customerTaxID: ['', taxIdValidator()],
       customerContact: [''],
       customerPhone: ['', phoneValidator()],
+      customerPhoneExt: [''],
       customerEmail: ['', Validators.email],
       customerAddress: [''],
 
@@ -349,6 +350,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       quoterAddress: [''],
       quoterEmail: ['', [Validators.required, Validators.email]],
       quoterPhone: ['', phoneValidator()],
+      quoterPhoneExt: [''],
       startDate: [this.getTodayDate()],
       endDate: [''],
 
@@ -570,6 +572,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       customerTaxID: '',
       customerContact: '',
       customerPhone: '',
+      customerPhoneExt: '',
       customerEmail: '',
       customerAddress: '',
       quoterName: '',
@@ -577,6 +580,7 @@ export class PriceGeneratorComponent implements OnInit, OnDestroy {
       quoterAddress: '',
       quoterEmail: '',
       quoterPhone: '',
+      quoterPhoneExt: '',
       startDate: this.getTodayDate(),
       endDate: '',
       excludingTax: 0,

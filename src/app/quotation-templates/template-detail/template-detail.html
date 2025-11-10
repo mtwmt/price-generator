@@ -42,6 +42,9 @@
             <span class="text-base-content/60 w-20">電話：</span>
             <span class="text-base-content">
               {{ form().get('quoterPhone')?.value || '' }}
+              @if (form().get('quoterPhoneExt')?.value) {
+                #{{ form().get('quoterPhoneExt')?.value }}
+              }
             </span>
           </div>
         }
@@ -110,6 +113,9 @@
           <span class="text-base-content/60 w-20">電話：</span>
           <span class="text-base-content">
             {{ form().get('customerPhone')?.value || '' }}
+            @if (form().get('customerPhoneExt')?.value) {
+              #{{ form().get('customerPhoneExt')?.value }}
+            }
           </span>
         </div>
       }
@@ -349,6 +355,9 @@
       }
       @if (form().get('quoterPhone')?.value) {
         | 電話：{{ form().get('quoterPhone')?.value }}
+        @if (form().get('quoterPhoneExt')?.value) {
+          #{{ form().get('quoterPhoneExt')?.value }}
+        }
       }
     </p>
   </div>

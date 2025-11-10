@@ -14,7 +14,6 @@ import {
   styleSummaryRow,
 } from '../../utils/excel-helpers';
 
-
 export class SideBySideExcelExporter implements ExcelExporter {
   private readonly PRINT_AREA = 'A1:E30';
   private readonly TABLE_COLUMNS = 5;
@@ -313,7 +312,13 @@ export class SideBySideExcelExporter implements ExcelExporter {
     worksheet.addRow([]);
     const footerText = `本報價單由 ${data.quoterName || '[公司名稱]'} 提供${
       data.quoterAddress ? ' | 地址：' + data.quoterAddress : ''
-    }${data.quoterPhone ? ' | 電話：' + data.quoterPhone : ''}`;
+    }${
+      data.quoterPhone
+        ? ' | 電話：' +
+          data.quoterPhone +
+          (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : '')
+        : ''
+    }`;
 
     const footerRow = worksheet.addRow([footerText]);
     worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
@@ -343,7 +348,10 @@ export class SideBySideExcelExporter implements ExcelExporter {
     const rows: string[] = [];
     if (data.quoterTaxID) rows.push(`統編：${data.quoterTaxID}`);
     if (data.quoterAddress) rows.push(`地址：${data.quoterAddress}`);
-    if (data.quoterPhone) rows.push(`電話：${data.quoterPhone}`);
+    if (data.quoterPhone)
+      rows.push(
+        `電話：${data.quoterPhone}${data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : ''}`
+      );
     if (data.quoterEmail) rows.push(`Email：${data.quoterEmail}`);
     return rows;
   }
@@ -353,7 +361,10 @@ export class SideBySideExcelExporter implements ExcelExporter {
     if (data.customerContact) rows.push(`聯絡人：${data.customerContact}`);
     if (data.customerTaxID) rows.push(`統編：${data.customerTaxID}`);
     if (data.customerAddress) rows.push(`地址：${data.customerAddress}`);
-    if (data.customerPhone) rows.push(`電話：${data.customerPhone}`);
+    if (data.customerPhone)
+      rows.push(
+        `電話：${data.customerPhone}${data.customerPhoneExt ? ` #${data.customerPhoneExt}` : ''}`
+      );
     if (data.customerEmail) rows.push(`Email：${data.customerEmail}`);
     return rows;
   }

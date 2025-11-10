@@ -226,26 +226,35 @@
 
                   <fieldset class="fieldset">
                     <legend class="fieldset-legend">聯絡電話</legend>
-                    <label
-                      class="input w-full"
-                      [ngClass]="
-                        form.get('customerPhone')?.touched &&
-                        form.get('customerPhone')?.errors?.['phone']
-                          ? 'input-error'
-                          : ''
-                      "
-                    >
-                      <lucide-icon
-                        [img]="Phone"
-                        [size]="16"
-                        class="opacity-70"
-                      />
-                      <input
-                        formControlName="customerPhone"
-                        type="tel"
-                        placeholder="09xx-xxx-xxx 或 0x-xxxx-xxxx"
-                      />
-                    </label>
+                    <div class="flex gap-2">
+                      <label
+                        class="input w-full flex-1"
+                        [ngClass]="
+                          form.get('customerPhone')?.touched &&
+                          form.get('customerPhone')?.errors?.['phone']
+                            ? 'input-error'
+                            : ''
+                        "
+                      >
+                        <lucide-icon
+                          [img]="Phone"
+                          [size]="16"
+                          class="opacity-70"
+                        />
+                        <input
+                          formControlName="customerPhone"
+                          type="tel"
+                          placeholder="09xx-xxx-xxx 或 0x-xxxx-xxxx"
+                        />
+                      </label>
+                      <label class="input w-24 flex-shrink-0">
+                        <input
+                          formControlName="customerPhoneExt"
+                          type="text"
+                          placeholder="分機"
+                        />
+                      </label>
+                    </div>
                     @if (
                       form.get('customerPhone')?.touched &&
                       form.get('customerPhone')?.errors?.['phone']
@@ -424,22 +433,31 @@
               <!-- Phone -->
               <fieldset class="fieldset col-span-2 md:col-span-1">
                 <legend class="fieldset-legend">聯絡電話</legend>
-                <label
-                  class="input w-full"
-                  [ngClass]="
-                    form.get('quoterPhone')?.touched &&
-                    form.get('quoterPhone')?.errors?.['phone']
-                      ? 'input-error'
-                      : ''
-                  "
-                >
-                  <lucide-icon [img]="Phone" [size]="16" class="opacity-70" />
-                  <input
-                    formControlName="quoterPhone"
-                    type="tel"
-                    placeholder="09xx-xxx-xxx 或 0x-xxxx-xxxx"
-                  />
-                </label>
+                <div class="flex gap-2">
+                  <label
+                    class="input w-full flex-1"
+                    [ngClass]="
+                      form.get('quoterPhone')?.touched &&
+                      form.get('quoterPhone')?.errors?.['phone']
+                        ? 'input-error'
+                        : ''
+                    "
+                  >
+                    <lucide-icon [img]="Phone" [size]="16" class="opacity-70" />
+                    <input
+                      formControlName="quoterPhone"
+                      type="tel"
+                      placeholder="09xx-xxx-xxx 或 0x-xxxx-xxxx"
+                    />
+                  </label>
+                  <label class="input w-24 flex-shrink-0">
+                    <input
+                      formControlName="quoterPhoneExt"
+                      type="text"
+                      placeholder="分機"
+                    />
+                  </label>
+                </div>
                 @if (
                   form.get('quoterPhone')?.touched &&
                   form.get('quoterPhone')?.errors?.['phone']
