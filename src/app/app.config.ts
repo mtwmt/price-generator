@@ -11,7 +11,7 @@ import { routes } from './app.routes';
 import { AuthService } from '@app/core/services/auth.service';
 import { FirestoreService } from '@app/core/services/firestore.service';
 import { GlobalErrorHandler } from '@app/core/services/error-handler.service';
-import { environment } from '../environments/environment.dev';
+import { environment } from 'src/environments/environment';
 
 /**
  * Firebase 初始化工廠函數
