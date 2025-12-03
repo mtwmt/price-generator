@@ -17,32 +17,99 @@
   </header>
 
   <!-- Tabs -->
-  <div role="tablist" class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm">
-    <button
-      role="tab"
-      class="tab"
-      [class.tab-active]="activeTab() === 'quotation'"
-      (click)="onTabChange('quotation')"
-    >
-      報價單
-    </button>
-    <button
-      role="tab"
-      class="tab"
-      [class.tab-active]="activeTab() === 'changelog'"
-      (click)="onTabChange('changelog')"
-    >
-      更新記錄
-    </button>
+  <div
+    role="tablist"
+    class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm justify-between items-center"
+  >
+    <div>
+      <a
+        role="tab"
+        class="tab"
+        routerLink="/quotation"
+        routerLinkActive="tab-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        報價單
+      </a>
+      <a
+        role="tab"
+        class="tab"
+        routerLink="/changelog"
+        routerLinkActive="tab-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        更新記錄
+      </a>
+    </div>
+
+    <!-- <div class="px-2">
+      @if (authService.isAuthenticated()) {
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            (click)="navigateToTab('member')"
+            title="會員中心"
+          >
+            <div class="avatar">
+              <div class="w-8 h-8 rounded-full bg-primary text-primary-content">
+                @if (authService.userPhotoURL()) {
+                  <img
+                    [src]="authService.userPhotoURL()"
+                    [alt]="authService.userDisplayName()"
+                    referrerpolicy="no-referrer"
+                    class="object-cover"
+                  />
+                } @else {
+                  <span
+                    class="text-xs flex items-center justify-center w-full h-full"
+                  >
+                    {{ authService.userDisplayName().charAt(0).toUpperCase() }}
+                  </span>
+                }
+              </div>
+            </div>
+            <div class="hidden sm:flex items-center gap-1">
+              <span class="text-sm font-medium">{{
+                authService.userDisplayName()
+              }}</span>
+              @if (authService.isPremium()) {
+                <span
+                  class="badge badge-warning badge-sm gap-1"
+                  title="贊助會員"
+                >
+                  <lucide-icon [img]="Crown" [size]="12" />
+                  贊助
+                </span>
+              }
+            </div>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost gap-1"
+            (click)="logout()"
+            title="登出"
+          >
+            <lucide-icon [img]="LogOut" [size]="16" />
+            <span class="hidden sm:inline">登出</span>
+          </button>
+        </div>
+      } @else {
+        <button
+          type="button"
+          class="btn btn-sm btn-primary gap-1"
+          (click)="loginWithGoogle()"
+          title="使用 Google 帳號登入"
+        >
+          <lucide-icon [img]="LogIn" [size]="16" />
+          <span class="hidden sm:inline">登入</span>
+        </button>
+      }
+    </div> -->
   </div>
 
   <!-- Main Content -->
-  @if (activeTab() === 'quotation') {
-    <app-price-generator />
-  }
-  @if (activeTab() === 'changelog') {
-    <app-changelog />
-  }
+  <router-outlet />
 
   <app-donate />
   <app-comments />
@@ -57,11 +124,7 @@
       </p>
       <p class="text-sm">
         © 2022-{{ currentYear }}
-        <a
-          href="https://mtwmt.com/"
-          target="_blank"
-          class="link link-hover"
-        >
+        <a href="https://mtwmt.com/" target="_blank" class="link link-hover">
           Mandy
         </a>
         . All rights reserved.
@@ -70,3 +133,52 @@
   </footer>
 </div>
 
+<!-- 全域 Toast 通知 -->
+@if (toastService.visible()) {
+  <div class="toast toast-top toast-center z-50">
+    @if (toastService.type() === 'success') {
+      <div class="alert alert-success shadow-lg">
+        <div class="flex items-center gap-2">
+          <lucide-icon [img]="Check" [size]="20" class="text-success-content" />
+          <span class="text-success-content font-medium">{{
+            toastService.message()
+          }}</span>
+        </div>
+      </div>
+    }
+    @if (toastService.type() === 'error') {
+      <div class="alert alert-error shadow-lg">
+        <div class="flex items-center gap-2">
+          <lucide-icon [img]="X" [size]="20" class="text-error-content" />
+          <span class="text-error-content font-medium">{{
+            toastService.message()
+          }}</span>
+        </div>
+      </div>
+    }
+    @if (toastService.type() === 'info') {
+      <div class="alert alert-info shadow-lg">
+        <div class="flex items-center gap-2">
+          <lucide-icon [img]="FileText" [size]="20" class="text-info-content" />
+          <span class="text-info-content font-medium">{{
+            toastService.message()
+          }}</span>
+        </div>
+      </div>
+    }
+    @if (toastService.type() === 'warning') {
+      <div class="alert alert-warning shadow-lg">
+        <div class="flex items-center gap-2">
+          <lucide-icon
+            [img]="MessageSquareQuote"
+            [size]="20"
+            class="text-warning-content"
+          />
+          <span class="text-warning-content font-medium">{{
+            toastService.message()
+          }}</span>
+        </div>
+      </div>
+    }
+  </div>
+}

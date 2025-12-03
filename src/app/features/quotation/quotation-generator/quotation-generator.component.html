@@ -1,0 +1,165 @@
+<div class="lg:flex lg:gap-4">
+  <!-- Left Column: Form -->
+  <div
+    class="transition-all duration-300"
+    [ngClass]="showPreview() ? 'lg:w-6/11' : 'lg:w-full'"
+  >
+    <form id="form" [formGroup]="form">
+      <!-- 基本資料 -->
+      <div class="card bg-base-100 md:shadow-sm mb-4">
+        <div class="card-body p-2 md:p-4">
+          <!-- 標題 -->
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div
+                class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
+              >
+                <lucide-icon
+                  [img]="FileText"
+                  [size]="20"
+                  class="text-base-content/70"
+                />
+              </div>
+              <h2 class="text-lg font-semibold text-base-content">基本資料</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              @if (hasHistory()) {
+                <app-quotation-history
+                  [history]="historyData()"
+                  [selectedIndex]="selectedHistoryIndex()"
+                  (load)="onLoadHistory($event)"
+                  (delete)="onDeleteHistory($event)"
+                  (createNew)="onCreateNewForm()"
+                />
+              }
+              @if (!showPreview()) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost gap-2 hidden lg:flex"
+                  (click)="showPreview.set(true)"
+                  title="顯示預覽"
+                >
+                  <lucide-icon [img]="PanelLeftClose" [size]="16" />
+                  <span>顯示預覽</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost gap-2 hidden lg:flex"
+                  (click)="showPreview.set(false)"
+                  title="隱藏預覽"
+                >
+                  <lucide-icon [img]="PanelLeftOpen" [size]="16" />
+                  <span>隱藏預覽</span>
+                </button>
+              }
+            </div>
+          </div>
+          <!-- 客戶基本資料 -->
+          <app-customer-info-section
+            [form]="form"
+            [customerLogo]="customerLogo()"
+            (logoChange)="onLogoChange($event)"
+            (logoRemove)="removeLogo()"
+          />
+
+          <!-- 報價人員基本資料 -->
+          <app-quoter-info-section
+            [form]="form"
+            [quoterLogo]="quoterLogo()"
+            [stamp]="stamp()"
+            (quoterLogoChange)="onQuoterLogoChange($event)"
+            (quoterLogoRemove)="removeQuoterLogo()"
+            (stampChange)="onStampChange($event)"
+            (stampRemove)="removeStamp()"
+            (datePickersReady)="onDatePickersReady($event)"
+          />
+        </div>
+      </div>
+
+      <!-- 服務項目 -->
+      <app-service-items-section
+        [form]="form"
+        (addField)="onAddField()"
+        (removeField)="onRemoveField($event)"
+        (drop)="onDrop($event)"
+        (taxRateChange)="onTaxRateChange($event)"
+        (normalizePercentageValue)="normalizePercentage()"
+        (normalizeDiscountAmount)="normalizeDiscountValue()"
+      />
+
+      <!-- 其他資訊 -->
+      <app-other-info-section [form]="form" />
+      <!-- Action Buttons -->
+      <div class="card bg-base-100 shadow-lg bottom-4 z-10">
+        <div class="card-body p-4">
+          <div class="flex flex-row justify-end gap-3">
+            <button
+              type="button"
+              class="btn btn-primary btn-md lg:hidden"
+              (click)="preview_modal.showModal()"
+            >
+              <lucide-icon [img]="Eye" [size]="16" />
+              預覽
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-md"
+              (click)="onSubmit()"
+            >
+              <lucide-icon [img]="Check" [size]="16" />
+              儲存記錄
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <!-- Right Column: Preview -->
+  <div
+    class="transition-all duration-300 hidden"
+    [ngClass]="showPreview() ? 'lg:w-5/11 lg:block' : 'lg:w-0 lg:hidden'"
+  >
+    <div class="lg:sticky lg:top-4">
+      <div class="bg-base-100 rounded-lg shadow-lg p-4 mt-4 lg:mt-0">
+        <div class="flex items-center mb-4 bg-base-100 pb-2 border-b">
+          <h3 class="text-lg font-bold flex items-center">
+            <lucide-icon [img]="Eye" [size]="16" class="mr-1" />
+            即時預覽
+          </h3>
+        </div>
+        @if (form) {
+          <app-quotation-preview
+            class="block"
+            [form]="form"
+            [customerLogo]="customerLogo()"
+            [quoterLogo]="quoterLogo()"
+            [stamp]="stamp()"
+          />
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 預覽 Modal (手機版) -->
+<dialog #preview_modal id="preview_modal" class="modal">
+  <div class="modal-box w-full max-w-[210mm] p-2">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+        ✕
+      </button>
+    </form>
+    <div class="mt-8">
+      <app-quotation-preview
+        [form]="form"
+        [customerLogo]="customerLogo()"
+        [quoterLogo]="quoterLogo()"
+        [stamp]="stamp()"
+      />
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

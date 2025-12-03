@@ -1,0 +1,30 @@
+<div class="mt-8">
+  <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+    <lucide-icon [img]="Shield" [size]="28" />
+    管理員功能
+  </h2>
+
+  <app-user-list
+    [users]="users()"
+    [loading]="loading()"
+    (refresh)="refreshUsers.emit()"
+    (editUser)="startEdit($event)"
+    (deleteUser)="confirmDelete($event)"
+  />
+
+  <!-- 編輯使用者彈窗 -->
+  @if (editingUser()) {
+    <dialog class="modal modal-open">
+      <div class="modal-box">
+        <app-user-edit-form
+          [user]="editingUser()!"
+          (save)="handleSave($event)"
+          (cancel)="cancelEdit()"
+        />
+      </div>
+      <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
+        <button>close</button>
+      </form>
+    </dialog>
+  }
+</div>

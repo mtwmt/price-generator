@@ -1,0 +1,141 @@
+<div class="card bg-base-100 shadow-xl">
+  <div class="card-body">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="card-title flex items-center gap-2">
+        <lucide-icon [img]="Users" [size]="24" />
+        使用者管理
+      </h2>
+      <button
+        type="button"
+        class="btn btn-sm btn-primary"
+        (click)="refresh.emit()"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        }
+        重新整理
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="flex justify-center py-8">
+        <span class="loading loading-spinner loading-lg"></span>
+      </div>
+    } @else if (users().length === 0) {
+      <div class="text-center py-8 text-base-content/60">
+        <lucide-icon
+          [img]="Users"
+          [size]="48"
+          class="mx-auto mb-2 opacity-30"
+        />
+        <p>目前沒有使用者資料</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th>使用者</th>
+              <th>Email</th>
+              <th>角色</th>
+              <th>贊助到期日</th>
+              <th>註冊時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.uid) {
+              <tr>
+                <td>
+                  <div class="flex items-center gap-3">
+                    <div class="avatar">
+                      <div
+                        class="w-10 h-10 rounded-full bg-primary text-primary-content"
+                      >
+                        @if (user.photoURL) {
+                          <img
+                            [src]="user.photoURL"
+                            [alt]="user.displayName"
+                            referrerpolicy="no-referrer"
+                            class="object-cover"
+                          />
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <div class="font-medium">
+                        {{ user.displayName || '未命名' }}
+                      </div>
+                      <div class="text-xs text-base-content/60">
+                        {{ user.uid.substring(0, 8) }}...
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ user.email || '-' }}</td>
+                <td>
+                  @if (user.platforms.quotation; as quotation) {
+                    <span
+                      class="badge gap-1"
+                      [class]="getRoleBadgeClass(quotation.role)"
+                    >
+                      @if (quotation.role === 'admin') {
+                        <lucide-icon [img]="Shield" [size]="12" />
+                      } @else if (quotation.role === 'premium') {
+                        <lucide-icon [img]="Crown" [size]="12" />
+                      }
+                      {{ getRoleDisplayName(quotation.role) }}
+                    </span>
+                  } @else {
+                    <span class="badge">{{ getRoleDisplayName('free') }}</span>
+                  }
+                </td>
+                <td>
+                  @if (
+                    user.platforms.quotation?.premiumUntil;
+                    as premiumUntil
+                  ) {
+                    <div>
+                      <div>{{ formatDate(premiumUntil) }}</div>
+                      @if (getDaysUntilExpiry(premiumUntil); as days) {
+                        <div
+                          class="text-xs"
+                          [class.text-error]="days < 7"
+                          [class.text-warning]="days >= 7 && days < 30"
+                        >
+                          (剩餘 {{ days }} 天)
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <span class="text-base-content/40">-</span>
+                  }
+                </td>
+                <td>{{ formatDate(user.createdTime) }}</td>
+                <td>
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost"
+                      (click)="editUser.emit(user)"
+                    >
+                      編輯
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-error btn-outline"
+                      (click)="deleteUser.emit(user)"
+                    >
+                      刪除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,208 @@
+<!-- 客戶基本資料 -->
+<div class="mb-2 bg-base-200 p-4 rounded-sm" [formGroup]="form()">
+  <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
+    <lucide-icon
+      [img]="Users"
+      [size]="18"
+      class="text-base-content/70"
+    />
+    客戶資料
+  </h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3">
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">
+        客戶名稱
+        <span class="text-error">*</span>
+      </legend>
+      <label
+        class="input w-full"
+        [ngClass]="
+          form().get('customerCompany')?.touched &&
+          form().get('customerCompany')?.errors?.['required']
+            ? 'input-error'
+            : ''
+        "
+      >
+        <lucide-icon
+          [img]="Building2"
+          [size]="16"
+          class="opacity-70"
+        />
+        <input
+          formControlName="customerCompany"
+          type="text"
+          placeholder="請輸入客戶名稱"
+        />
+      </label>
+      @if (
+        form().get('customerCompany')?.touched &&
+        form().get('customerCompany')?.errors?.['required']
+      ) {
+        <p class="text-error">請輸入客戶名稱</p>
+      }
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">統一編號</legend>
+      <label
+        class="input w-full"
+        [ngClass]="
+          form().get('customerTaxID')?.touched &&
+          form().get('customerTaxID')?.invalid
+            ? 'input-error'
+            : ''
+        "
+      >
+        <lucide-icon
+          [img]="ReceiptText"
+          [size]="16"
+          class="opacity-70"
+        />
+        <input
+          formControlName="customerTaxID"
+          type="text"
+          inputmode="numeric"
+          placeholder="請輸入統一編號"
+          maxlength="8"
+        />
+      </label>
+      @if (
+        form().get('customerTaxID')?.touched &&
+        form().get('customerTaxID')?.invalid
+      ) {
+        <p class="text-error">
+          {{ form().get('customerTaxID')?.errors?.['taxId']?.message }}
+        </p>
+      }
+    </fieldset>
+  </div>
+
+  <!-- 客戶進階資料 (預設收合) -->
+  <div class="collapse collapse-arrow mt-2 bg-base-200">
+    <input type="checkbox" />
+    <div
+      class="collapse-title text-sm font-semibold py-3 after:start-5 after:end-auto pe-4 ps-12"
+    >
+      填寫更多
+    </div>
+    <div class="collapse-content">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3">
+        <!-- LOGO Upload -->
+        <fieldset class="fieldset md:col-span-2">
+          <legend class="fieldset-legend">客戶 LOGO</legend>
+          <app-file-upload
+            [label]="'上傳客戶 LOGO'"
+            [previewUrl]="customerLogo()"
+            (fileSelected)="onLogoChange($event)"
+            (fileRemoved)="onLogoRemove()"
+          />
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">聯絡人</legend>
+          <label class="input w-full">
+            <lucide-icon
+              [img]="UserRound"
+              [size]="16"
+              class="opacity-70"
+            />
+            <input
+              formControlName="customerContact"
+              type="text"
+              placeholder="請輸入聯絡人姓名"
+            />
+          </label>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">聯絡電話</legend>
+          <div class="flex gap-2">
+            <label
+              class="input w-full flex-1"
+              [ngClass]="
+                form().get('customerPhone')?.touched &&
+                form().get('customerPhone')?.errors?.['phone']
+                  ? 'input-error'
+                  : ''
+              "
+            >
+              <lucide-icon
+                [img]="Phone"
+                [size]="16"
+                class="opacity-70"
+              />
+              <input
+                formControlName="customerPhone"
+                type="tel"
+                placeholder="09xx-xxx-xxx 或 0x-xxxx-xxxx"
+              />
+            </label>
+            <label class="input w-24 flex-shrink-0">
+              <input
+                formControlName="customerPhoneExt"
+                type="text"
+                placeholder="分機"
+              />
+            </label>
+          </div>
+          @if (
+            form().get('customerPhone')?.touched &&
+            form().get('customerPhone')?.errors?.['phone']
+          ) {
+            <p class="text-error text-xs mt-1">
+              {{
+                form().get('customerPhone')?.errors?.['phone']?.message
+              }}
+            </p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">E-mail</legend>
+          <label
+            class="input w-full"
+            [ngClass]="
+              form().get('customerEmail')?.touched &&
+              form().get('customerEmail')?.errors?.['email']
+                ? 'input-error'
+                : ''
+            "
+          >
+            <lucide-icon
+              [img]="Mail"
+              [size]="16"
+              class="opacity-70"
+            />
+            <input
+              formControlName="customerEmail"
+              type="email"
+              placeholder="請輸入電子信箱"
+            />
+          </label>
+          @if (
+            form().get('customerEmail')?.touched &&
+            form().get('customerEmail')?.errors?.['email']
+          ) {
+            <p class="text-error">錯誤的電子信箱格式</p>
+          }
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">地址</legend>
+          <label class="input w-full">
+            <lucide-icon
+              [img]="MapPin"
+              [size]="16"
+              class="opacity-70"
+            />
+            <input
+              formControlName="customerAddress"
+              type="text"
+              placeholder="請輸入地址"
+            />
+          </label>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+</div>

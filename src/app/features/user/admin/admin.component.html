@@ -1,0 +1,36 @@
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+  @if (!authService.isAdmin()) {
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body text-center">
+        <lucide-icon [img]="Shield" [size]="48" class="mx-auto text-error" />
+        <h2 class="card-title justify-center">無權限存取</h2>
+        <p>您沒有管理員權限，無法存取此頁面。</p>
+      </div>
+    </div>
+  } @else {
+    <h1 class="text-3xl font-bold mb-6 flex items-center gap-2">
+      <lucide-icon [img]="Shield" [size]="32" />
+      管理員控制台
+    </h1>
+    <app-user-list
+      [users]="users()"
+      [loading]="loading()"
+      (refresh)="loadUsers()"
+      (editUser)="startEdit($event)"
+    />
+    @if (editingUser()) {
+      <dialog class="modal modal-open">
+        <div class="modal-box">
+          <app-user-edit-form
+            [user]="editingUser()!"
+            (save)="handleSave($event)"
+            (cancel)="cancelEdit()"
+          />
+        </div>
+        <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
+          <button>close</button>
+        </form>
+      </dialog>
+    }
+  }
+</div>

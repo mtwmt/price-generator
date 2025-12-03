@@ -1,0 +1,60 @@
+@if (history().length > 0) {
+  <div class="dropdown dropdown-end">
+    <div
+      tabindex="0"
+      role="button"
+      class="btn btn-sm btn-ghost gap-2"
+    >
+      <lucide-icon [img]="History" [size]="16" />
+      <span>載入歷史記錄</span>
+      <lucide-icon [img]="ChevronDown" [size]="16" />
+    </div>
+    <ul
+      tabindex="-1"
+      class="dropdown-content menu bg-base-100 rounded-box z-[1] p-2 shadow-lg border border-base-300"
+    >
+      <li>
+        <a
+          class="flex items-center gap-2"
+          (click)="onCreateNew()"
+        >
+          <lucide-icon [img]="FilePlus" [size]="16" />
+          <span class="font-semibold">空白表單</span>
+        </a>
+      </li>
+      @if (history().length > 0) {
+        <li>
+          <span class="text-xs divider my-1">歷史記錄</span>
+        </li>
+      }
+      @for (item of history(); track $index) {
+        <li>
+          <div
+            class="flex items-center justify-between gap-2 py-2 px-2"
+          >
+            <a
+              class="flex-1 min-w-0 p-0 hover:bg-transparent w-full"
+              (click)="onLoad($index)"
+            >
+              <span class="truncate font-semibold">
+                {{ item.startDate }} - {{ item.customerCompany }}
+              </span>
+            </a>
+            <button
+              type="button"
+              class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
+              (click)="onDelete($index, $event)"
+              title="刪除此筆記錄"
+            >
+              <lucide-icon
+                [img]="X"
+                [size]="14"
+                class="text-error"
+              />
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}
