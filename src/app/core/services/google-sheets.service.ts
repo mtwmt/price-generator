@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { AnalyticsService } from '@app/core/services/analytics.service';
-import { environment } from '../../../environments/environment.dev';
+import { environment } from 'src/environments/environment';
 
 interface GoogleSheetsResponse {
   success: boolean;
