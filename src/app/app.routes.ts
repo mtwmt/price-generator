@@ -4,8 +4,7 @@ import { MemberComponent } from '@app/features/user/member/member.component';
 import { QuotationGeneratorComponent } from './features/quotation/quotation-generator/quotation-generator.component';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/quotation', pathMatch: 'full' },
-  { path: 'quotation', component: QuotationGeneratorComponent },
+  { path: '', component: QuotationGeneratorComponent },
   { path: 'changelog', component: ChangelogComponent },
   { path: 'member', component: MemberComponent },
 ];
