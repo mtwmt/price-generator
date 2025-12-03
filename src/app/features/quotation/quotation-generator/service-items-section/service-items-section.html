@@ -1,0 +1,231 @@
+<!-- 服務項目 -->
+<div class="card bg-base-100 shadow-sm mb-4" [formGroup]="form()">
+  <div class="card-body p-4 md:p-4">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-3">
+        <div
+          class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
+        >
+          <lucide-icon
+            [img]="ShoppingCart"
+            [size]="20"
+            class="text-base-content/70"
+          />
+        </div>
+        <h2 class="text-lg font-semibold text-base-content">服務項目</h2>
+      </div>
+      <button
+        type="button"
+        class="btn btn-info btn-sm"
+        (click)="onAddField()"
+      >
+        <lucide-icon [img]="ListPlus" [size]="16" />
+        <span class="inline">新增項目</span>
+      </button>
+    </div>
+
+    <!-- 服務項目列表 -->
+    <div cdkDropList (cdkDropListDropped)="onDrop($event)" >
+      <ng-container formArrayName="serviceItems">
+        @for (
+          item of serviceItems.controls;
+          track $index;
+          let idx = $index
+        ) {
+          <div
+            cdkDrag
+            [cdkDragDisabled]="serviceItems.length <= 1"
+            class="group relative md:mb-3"
+            [ngClass]=""
+          >
+            <!-- 服務項目 -->
+            <div class="flex items-center gap-2">
+              @if (serviceItems.length > 1) {
+                <!-- Drag Handle -->
+                <div
+                  cdkDragHandle
+                  class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
+                  title="拖曳排序"
+                >
+                  <lucide-icon
+                    [img]="GripVertical"
+                    [size]="20"
+                    class="text-base-content"
+                  />
+                </div>
+              }
+
+              <!-- 服務項目元件 -->
+              <div class="flex-1">
+                <app-service-item-control
+                  [formGroup]="$any(item)"
+                  [index]="idx"
+                  (removeField)="onRemoveField(idx)"
+                />
+                <hr class="my-4 border-secondary md:hidden"
+                [class.hidden]="$last"
+                 />
+                <!-- <div class="divider h-[1px] my-2"></div> -->
+              </div>
+            </div>
+          </div>
+        }
+      </ng-container>
+    </div>
+
+    <!-- Tax Rate & Summary -->
+    <div class="divider my-0"></div>
+    <div class="md:flex justify-between">
+      <div class="md:w-1/2">
+        <!-- 折扣設定 -->
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend text-sm">折扣設定</legend>
+          <div class="flex gap-3">
+            <select formControlName="discountType" class="select w-32">
+              <option value="amount">固定金額</option>
+              <option value="percentage">折數</option>
+            </select>
+            <label class="input flex-1">
+              <input
+                formControlName="discountValue"
+                type="number"
+                min="0"
+                step="0.1"
+                [placeholder]="
+                  form().get('discountType')?.value === 'percentage'
+                    ? '例如：9 折、85 折'
+                    : '輸入折扣金額'
+                "
+                (input)="normalizeDiscountValue()"
+              />
+              @if (form().get('discountType')?.value === 'percentage') {
+                <span class="text-xs">折</span>
+              } @else {
+                <span class="text-xs">$</span>
+              }
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- 稅別設定 -->
+        <div
+          class="grid gap-x-3"
+          [ngClass]="
+            form().get('taxName')?.value === '自訂'
+              ? 'grid-cols-3'
+              : 'grid-cols-1'
+          "
+        >
+          <fieldset class="fieldset">
+            <label class="fieldset-legend text-sm">稅別</label>
+            <select
+              formControlName="taxName"
+              class="select w-full"
+              (change)="onTaxRateChange($event)"
+            >
+              <option value="">請選擇稅別</option>
+              <option value="免稅">免稅 (0%)</option>
+              <option value="營業稅">營業稅 (5%)</option>
+              <option value="二代健保">二代健保 (2.11%)</option>
+              <option value="自訂">自訂稅率</option>
+            </select>
+          </fieldset>
+
+          @if (form().get('taxName')?.value === '自訂') {
+            <fieldset class="fieldset">
+              <label class="fieldset-legend text-sm">稅別</label>
+              <input
+                formControlName="customTaxName"
+                type="text"
+                class="input"
+                placeholder="請輸入稅別名稱"
+              />
+            </fieldset>
+            <fieldset class="fieldset">
+              <label class="fieldset-legend text-sm">稅率 (%)</label>
+              <input
+                formControlName="percentage"
+                type="number"
+                class="input"
+                placeholder="請輸入稅率百分比"
+                min="0"
+                max="100"
+                step="0.01"
+                (input)="normalizePercentage()"
+              />
+            </fieldset>
+          }
+        </div>
+      </div>
+
+      <div class="md:w-1/4 space-y-2 mt-6">
+        <div class="flex justify-between items-center">
+          <span class="text-base font-medium">小計</span>
+          <span class="text-base font-semibold">
+            ${{ form().get('excludingTax')?.value || 0 }}
+          </span>
+        </div>
+
+        <!-- 折扣區 -->
+        @if (form().get('discountValue')?.value > 0) {
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-sm">
+              折扣
+              @if (form().get('discountType')?.value === 'percentage') {
+                <span class="text-xs">
+                  ({{ form().get('discountValue')?.value }} 折)
+                </span>
+              }
+            </span>
+            <span class="text-green-600 font-medium text-base">
+              -${{ form().get('discountAmount')?.value || 0 }}
+            </span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-base font-medium">折扣後</span>
+            <span class="text-base font-semibold">
+              ${{ form().get('afterDiscount')?.value || 0 }}
+            </span>
+          </div>
+        }
+
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-medium">
+            @if (
+              form().get('taxName')?.value === '自訂' &&
+              form().get('customTaxName')?.value
+            ) {
+              {{ form().get('customTaxName')?.value }}
+            } @else {
+              {{ form().get('taxName')?.value }}
+            }
+            @if (
+              form().get('taxName')?.value && form().get('percentage')?.value
+            ) {
+              <span class="text-sm opacity-70">
+                ({{ form().get('percentage')?.value }}%)
+              </span>
+            }
+          </span>
+          @if (
+            !!form().get('taxName')?.value ||
+            !!form().get('customTaxName')?.value
+          ) {
+            <span class="text-base text-red-500">
+              ${{ form().get('tax')?.value || 0 }}
+            </span>
+          }
+        </div>
+
+        <div class="border-t pt-3">
+          <div class="flex justify-between items-center">
+            <span class="text-lg font-semibold">總計</span>
+            <span class="text-xl font-bold text-red-500">
+              ${{ form().get('includingTax')?.value || 0 }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

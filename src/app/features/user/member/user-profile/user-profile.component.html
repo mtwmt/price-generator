@@ -1,0 +1,84 @@
+<div class="card bg-base-100 shadow-xl mb-6">
+  <div class="card-body">
+    <h2 class="card-title flex items-center gap-2">
+      <lucide-icon [img]="User" [size]="24" />
+      會員資訊
+      @if (isPremium()) {
+        <span class="badge badge-warning gap-1">
+          <lucide-icon [img]="Crown" [size]="14" />
+          贊助會員
+        </span>
+      }
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <!-- 使用者名稱 -->
+      <div class="flex items-center gap-3">
+        <lucide-icon [img]="User" [size]="20" class="text-base-content/70" />
+        <div>
+          <div class="text-sm text-base-content/70">使用者名稱</div>
+          <div class="font-medium">{{ userDisplayName() }}</div>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="flex items-center gap-3">
+        <lucide-icon [img]="Mail" [size]="20" class="text-base-content/70" />
+        <div>
+          <div class="text-sm text-base-content/70">Email</div>
+          <div class="font-medium">{{ userEmail() || '未提供' }}</div>
+        </div>
+      </div>
+
+      <!-- 會員等級 -->
+      <div class="flex items-center gap-3">
+        <lucide-icon [img]="Crown" [size]="20" class="text-base-content/70" />
+        <div>
+          <div class="text-sm text-base-content/70">會員等級</div>
+          <div class="font-medium">
+            @if (isAdmin()) {
+              <span class="text-error">管理員</span>
+            } @else if (isPremium()) {
+              <span class="text-warning">贊助會員</span>
+            } @else {
+              <span>免費會員</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- 會員到期日 -->
+      @if (isPremium() && formattedPremiumUntil()) {
+        <div class="flex items-center gap-3">
+          <lucide-icon
+            [img]="Calendar"
+            [size]="20"
+            class="text-base-content/70"
+          />
+          <div>
+            <div class="text-sm text-base-content/70">會員到期日</div>
+            <div class="font-medium">
+              {{ formattedPremiumUntil() }}
+              @if (daysUntilExpiry() !== null) {
+                <span class="text-sm text-base-content/70">
+                  (剩餘 {{ daysUntilExpiry() }} 天)
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 註冊時間 -->
+      @if (formattedCreatedTime()) {
+        <div class="flex items-center gap-3">
+          <lucide-icon [img]="Clock" [size]="20" class="text-base-content/70" />
+          <div>
+            <div class="text-sm text-base-content/70">註冊時間</div>
+            <div class="font-medium">{{ formattedCreatedTime() }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,62 @@
+<h3 class="font-bold text-lg mb-4">編輯使用者權限</h3>
+
+<!-- 使用者資訊 -->
+<div class="mb-4 p-4 bg-base-200 rounded-lg">
+  <div class="flex items-center gap-3">
+    <div class="avatar">
+      <div class="w-12 h-12 rounded-full bg-primary text-primary-content">
+        @if (user().photoURL) {
+          <img
+            [src]="user().photoURL"
+            [alt]="user().displayName"
+            referrerpolicy="no-referrer"
+            class="object-cover"
+          />
+        }
+      </div>
+    </div>
+    <div>
+      <div class="font-medium">{{ user().displayName || '未命名' }}</div>
+      <div class="text-sm text-base-content/60">{{ user().email }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- 角色選擇 -->
+<div class="form-control mb-4">
+  <label class="label">
+    <span class="label-text font-medium">角色</span>
+  </label>
+  <select class="select select-bordered" [(ngModel)]="selectedRole">
+    <option value="free">免費會員</option>
+    <option value="premium">贊助會員</option>
+    <option value="admin">管理員</option>
+  </select>
+</div>
+
+<!-- 贊助到期日（只在選擇 premium 時顯示） -->
+@if (selectedRole() === 'premium') {
+  <div class="form-control mb-4">
+    <label class="label">
+      <span class="label-text font-medium">贊助到期日</span>
+    </label>
+    <input
+      type="date"
+      class="input input-bordered"
+      [(ngModel)]="premiumUntilDate"
+    />
+    <label class="label">
+      <span class="label-text-alt">設定贊助會員的有效期限</span>
+    </label>
+  </div>
+}
+
+<!-- 按鈕 -->
+<div class="flex justify-end gap-2 mt-6">
+  <button type="button" class="btn btn-ghost" (click)="handleCancel()">
+    取消
+  </button>
+  <button type="button" class="btn btn-primary" (click)="handleSave()">
+    儲存
+  </button>
+</div>

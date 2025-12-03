@@ -1,0 +1,58 @@
+<div class="card bg-base-100 shadow-xl">
+  <div class="card-body">
+    <h2 class="card-title flex items-center gap-2">
+      <lucide-icon [img]="Crown" [size]="24" />
+      升級為贊助會員
+    </h2>
+    <p class="text-base-content/70">
+      感謝您的支持！上傳贊助憑證後，我們會儘快審核並升級您的會員等級。
+    </p>
+
+    <div class="divider"></div>
+
+    <!-- 上傳憑證 -->
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text font-medium">贊助憑證</span>
+        <span class="label-text-alt text-error">* 必填</span>
+      </label>
+      <app-file-upload
+        [label]="'上傳贊助憑證（轉帳截圖或收據）'"
+        [supportedFormats]="'支援 PNG、JPG、GIF'"
+        [accept]="'image/gif, image/jpeg, image/png'"
+        [previewUrl]="donationProof()"
+        (fileSelected)="handleDonationProof($event)"
+      />
+    </div>
+
+    <!-- 備註欄位 -->
+    <div class="form-control mt-4">
+      <label class="label">
+        <span class="label-text font-medium">備註（選填）</span>
+      </label>
+      <textarea
+        class="textarea textarea-bordered h-24 w-full"
+        placeholder="請輸入備註，例如：轉帳帳號後五碼、贊助日期等..."
+        [(ngModel)]="donationNote"
+        maxlength="500"
+      ></textarea>
+      <label class="label flex justify-between">
+        <span class="label-text-alt">提供更多資訊有助於我們更快完成審核</span>
+        <span class="label-text-alt">{{ donationNote().length }} / 500</span>
+      </label>
+    </div>
+
+    <!-- 提交按鈕 -->
+    <div class="card-actions justify-end mt-4">
+      <button
+        type="button"
+        class="btn btn-warning gap-2"
+        (click)="onSubmit()"
+        [disabled]="!donationProof()"
+      >
+        <lucide-icon [img]="Upload" [size]="18" />
+        提交贊助申請
+      </button>
+    </div>
+  </div>
+</div>

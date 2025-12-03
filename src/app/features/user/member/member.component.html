@@ -1,0 +1,55 @@
+<div class="mx-auto px-4 py-8">
+  @if (!authService.isAuthenticated()) {
+    <!-- 未登入狀態 -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body text-center">
+        <lucide-icon
+          [img]="User"
+          [size]="48"
+          class="mx-auto text-base-content/50"
+        />
+        <h2 class="card-title justify-center">請先登入</h2>
+        <p>登入後即可查看會員資訊和升級為贊助會員</p>
+      </div>
+    </div>
+  } @else {
+    <!-- 已登入狀態 -->
+    <h1 class="text-3xl font-bold mb-6">會員中心</h1>
+
+    <!-- 會員資料卡片 -->
+    <app-user-profile
+      [userDisplayName]="authService.userDisplayName()"
+      [userEmail]="authService.userEmail()"
+      [isPremium]="authService.isPremium()"
+      [isAdmin]="authService.isAdmin()"
+      [formattedCreatedTime]="formattedCreatedTime()"
+      [formattedPremiumUntil]="formattedPremiumUntil()"
+      [daysUntilExpiry]="daysUntilExpiry()"
+    />
+
+    <!-- 贊助申請表單 -->
+    @if (!authService.isPremium() && !authService.isAdmin()) {
+      <app-donation-form (submitDonation)="handleDonationSubmit($event)" />
+    }
+
+    <!-- 已經是贊助會員的感謝訊息 -->
+    @if (authService.isPremium()) {
+      <div class="alert alert-success">
+        <lucide-icon name="check" [size]="24" />
+        <div>
+          <h3 class="font-bold">感謝您的贊助！</h3>
+          <div class="text-sm">您已經是贊助會員,享有所有進階功能。</div>
+        </div>
+      </div>
+    }
+
+    <!-- 管理員面板 -->
+    @if (authService.isAdmin()) {
+      <app-admin-panel
+        [users]="users()"
+        [loading]="loading()"
+        (refreshUsers)="loadUsers()"
+      />
+    }
+  }
+</div>
