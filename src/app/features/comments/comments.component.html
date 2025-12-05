@@ -161,7 +161,8 @@
                       <button
                         class="btn btn-ghost btn-xs gap-1"
                         (click)="toggleReaction(comment.id, reaction.type)"
-                        [disabled]="store.loading()"
+                        [disabled]="store.loading() || !isAuthenticated()"
+                        [title]="isAuthenticated() ? '' : '請先登入'"
                       >
                         {{ reaction.emoji }}
                         {{ getReactionCount(comment, reaction.type) }}
@@ -169,12 +170,14 @@
                     }
 
                     <!-- 新增反應按鈕 (dropdown) -->
-                    <ng-container
-                      *ngTemplateOutlet="
-                        reactionPicker;
-                        context: { commentId: comment.id }
-                      "
-                    ></ng-container>
+                    @if (isAuthenticated()) {
+                      <ng-container
+                        *ngTemplateOutlet="
+                          reactionPicker;
+                          context: { commentId: comment.id }
+                        "
+                      ></ng-container>
+                    }
 
                     <div class="divider divider-horizontal mx-0"></div>
 
@@ -262,7 +265,10 @@
                                   (click)="
                                     toggleReaction(reply.id, reaction.type)
                                   "
-                                  [disabled]="store.loading()"
+                                  [disabled]="
+                                    store.loading() || !isAuthenticated()
+                                  "
+                                  [title]="isAuthenticated() ? '' : '請先登入'"
                                 >
                                   {{ reaction.emoji }}
                                   {{ getReactionCount(reply, reaction.type) }}
@@ -270,12 +276,14 @@
                               }
 
                               <!-- 新增反應按鈕 (dropdown) -->
-                              <ng-container
-                                *ngTemplateOutlet="
-                                  reactionPicker;
-                                  context: { commentId: reply.id }
-                                "
-                              ></ng-container>
+                              @if (isAuthenticated()) {
+                                <ng-container
+                                  *ngTemplateOutlet="
+                                    reactionPicker;
+                                    context: { commentId: reply.id }
+                                  "
+                                ></ng-container>
+                              }
                               @if (isAdmin()) {
                                 <button
                                   class="btn btn-ghost btn-xs text-error"

@@ -81,7 +81,6 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private setupDropdownListeners() {
-    console.log('Setting up dropdown listeners, count:', this.dropdowns.length);
     this.dropdowns.forEach((dropdown) => {
       const detailsEl = dropdown.nativeElement;
       detailsEl.removeEventListener('toggle', this.handleDropdownToggle);
