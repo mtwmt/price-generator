@@ -8,6 +8,7 @@ import {
   signOut,
   GoogleAuthProvider,
   onAuthStateChanged,
+  updateProfile,
 } from 'firebase/auth';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { FirestoreService } from '@app/core/services/firestore.service';
@@ -202,6 +203,49 @@ export class AuthService {
     } catch (error) {
       console.error('Failed to get ID token:', error);
       return null;
+    }
+  }
+
+  /**
+   * 更新使用者顯示名稱
+   * @param newDisplayName 新的顯示名稱
+   */
+  async updateDisplayName(newDisplayName: string): Promise<void> {
+    const user = this.currentUser();
+    if (!user) {
+      throw new Error('使用者未登入');
+    }
+
+    const trimmedName = newDisplayName.trim();
+    if (!trimmedName) {
+      throw new Error('顯示名稱不能為空');
+    }
+
+    if (trimmedName.length > 50) {
+      throw new Error('顯示名稱不能超過 50 個字');
+    }
+
+    try {
+      // 1. 更新 Firebase Auth Profile
+      await updateProfile(user, { displayName: trimmedName });
+
+      // 2. 更新 Firestore 中的 displayName
+      await this.firestoreService.updateUserDisplayName(user.uid, trimmedName);
+
+      // 3. 更新本地 userData
+      const currentData = this.userData();
+      if (currentData) {
+        this.userData.set({
+          ...currentData,
+          displayName: trimmedName,
+        });
+      }
+
+      this.toastService.success('顯示名稱已更新');
+    } catch (error: any) {
+      console.error('Failed to update display name:', error);
+      this.analyticsService.trackError(error, 'update_display_name');
+      throw error;
     }
   }
 }

@@ -163,6 +163,18 @@ export class MemberComponent {
   }
 
   /**
+   * 處理顯示名稱變更
+   */
+  async handleDisplayNameChange(newName: string): Promise<void> {
+    try {
+      await this.authService.updateDisplayName(newName);
+    } catch (error: any) {
+      console.error('Failed to update display name:', error);
+      this.toastService.error(error.message || '名稱更新失敗');
+    }
+  }
+
+  /**
    * 格式化日期
    */
   private formatDate(date: Date | { toDate(): Date }): string {
