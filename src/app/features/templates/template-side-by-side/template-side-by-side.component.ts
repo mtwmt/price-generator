@@ -5,7 +5,7 @@ import { FormArray, FormGroup } from '@angular/forms';
 @Component({
   selector: 'app-template-side-by-side',
   imports: [CommonModule],
-  templateUrl: './template-side-by-side.html',
+  templateUrl: './template-side-by-side.component.html',
 })
 export class TemplateSideBySide {
   form = input.required<FormGroup>();

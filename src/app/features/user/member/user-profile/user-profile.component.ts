@@ -25,9 +25,10 @@ export class UserProfileComponent {
   userEmail = input<string | null>(null);
   isPremium = input<boolean>(false);
   isAdmin = input<boolean>(false);
-  formattedCreatedTime = input<string | null>(null);
+  formattedCreatedAt = input<string | null>(null);
   formattedPremiumUntil = input<string | null>(null);
   daysUntilExpiry = input<number | null>(null);
+  showExpiryWarning = input<boolean>(false);
 
   // Icons
   readonly Crown = Crown;

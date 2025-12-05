@@ -1,0 +1,17 @@
+@if (isOpen()) {
+  <dialog class="modal modal-open">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg mb-4">{{ title() }}</h3>
+      <img
+        [src]="proofUrl()"
+        class="w-full rounded-lg"
+        alt="憑證"
+        loading="lazy"
+      />
+      <div class="modal-action">
+        <button class="btn" (click)="onClose()">關閉</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="onBackdropClick($event)"></div>
+  </dialog>
+}

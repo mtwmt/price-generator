@@ -26,7 +26,7 @@
         role="tab"
         class="tab"
         routerLink="/"
-        routerLinkActive="tab-active"
+        routerLinkActive="tab-active font-bold"
         [routerLinkActiveOptions]="{ exact: true }"
       >
         報價單
@@ -35,14 +35,25 @@
         role="tab"
         class="tab"
         routerLink="/changelog"
-        routerLinkActive="tab-active"
+        routerLinkActive="tab-active font-bold"
         [routerLinkActiveOptions]="{ exact: true }"
       >
         更新記錄
       </a>
+      @if (authService.isAuthenticated()) {
+        <a
+          role="tab"
+          class="tab"
+          routerLink="/member"
+          routerLinkActive="tab-active font-bold"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          會員中心
+        </a>
+      }
     </div>
 
-    <!-- <div class="px-2">
+    <div class="px-2">
       @if (authService.isAuthenticated()) {
         <div class="flex items-center gap-2">
           <button
@@ -105,14 +116,14 @@
           <span class="hidden sm:inline">登入</span>
         </button>
       }
-    </div> -->
+    </div>
   </div>
 
   <!-- Main Content -->
   <router-outlet />
 
   <app-donate />
-  <app-comments />
+  <app-comments pagePath="/" />
 
   <!-- Footer -->
   <footer

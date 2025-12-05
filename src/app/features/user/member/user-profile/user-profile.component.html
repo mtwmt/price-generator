@@ -1,83 +1,118 @@
-<div class="card bg-base-100 shadow-xl mb-6">
+<div class="card bg-base-100 shadow-sm mb-6">
   <div class="card-body">
     <h2 class="card-title flex items-center gap-2">
       <lucide-icon [img]="User" [size]="24" />
       會員資訊
-      @if (isPremium()) {
-        <span class="badge badge-warning gap-1">
-          <lucide-icon [img]="Crown" [size]="14" />
-          贊助會員
-        </span>
-      }
     </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-      <!-- 使用者名稱 -->
+      <!-- 使用者名稱 + 會員等級 -->
       <div class="flex items-center gap-3">
         <lucide-icon [img]="User" [size]="20" class="text-base-content/70" />
         <div>
           <div class="text-sm text-base-content/70">使用者名稱</div>
-          <div class="font-medium">{{ userDisplayName() }}</div>
-        </div>
-      </div>
-
-      <!-- Email -->
-      <div class="flex items-center gap-3">
-        <lucide-icon [img]="Mail" [size]="20" class="text-base-content/70" />
-        <div>
-          <div class="text-sm text-base-content/70">Email</div>
-          <div class="font-medium">{{ userEmail() || '未提供' }}</div>
-        </div>
-      </div>
-
-      <!-- 會員等級 -->
-      <div class="flex items-center gap-3">
-        <lucide-icon [img]="Crown" [size]="20" class="text-base-content/70" />
-        <div>
-          <div class="text-sm text-base-content/70">會員等級</div>
           <div class="font-medium">
-            @if (isAdmin()) {
-              <span class="text-error">管理員</span>
-            } @else if (isPremium()) {
-              <span class="text-warning">贊助會員</span>
-            } @else {
-              <span>免費會員</span>
-            }
+            {{ userDisplayName() }}
+            <span class="ml-1">
+              @if (isAdmin()) {
+                <span class="badge badge-soft badge-error badge-sm"
+                  >管理員</span
+                >
+              } @else if (isPremium()) {
+                <span class="badge badge-soft badge-warning badge-sm"
+                  >贊助會員</span
+                >
+              } @else {
+                <span class="badge badge-soft badge-sm">免費會員</span>
+              }
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- 會員到期日 -->
-      @if (isPremium() && formattedPremiumUntil()) {
+      <!-- Email -->
+      @if (userEmail()) {
         <div class="flex items-center gap-3">
-          <lucide-icon
-            [img]="Calendar"
-            [size]="20"
-            class="text-base-content/70"
-          />
+          <lucide-icon [img]="Mail" [size]="20" class="text-base-content/70" />
           <div>
-            <div class="text-sm text-base-content/70">會員到期日</div>
-            <div class="font-medium">
-              {{ formattedPremiumUntil() }}
-              @if (daysUntilExpiry() !== null) {
-                <span class="text-sm text-base-content/70">
-                  (剩餘 {{ daysUntilExpiry() }} 天)
-                </span>
-              }
-            </div>
+            <div class="text-sm text-base-content/70">Email</div>
+            <div class="font-medium">{{ userEmail() }}</div>
           </div>
         </div>
       }
 
       <!-- 註冊時間 -->
-      @if (formattedCreatedTime()) {
+      @if (formattedCreatedAt()) {
         <div class="flex items-center gap-3">
           <lucide-icon [img]="Clock" [size]="20" class="text-base-content/70" />
           <div>
             <div class="text-sm text-base-content/70">註冊時間</div>
-            <div class="font-medium">{{ formattedCreatedTime() }}</div>
+            <div class="font-medium">{{ formattedCreatedAt() }}</div>
           </div>
         </div>
+      }
+
+      <!-- 會員到期資訊 -->
+      @if (formattedPremiumUntil()) {
+        @if (showExpiryWarning()) {
+          <!-- 即將到期或已過期 -->
+          <div
+            class="flex items-center gap-3 p-3 rounded-lg border"
+            [ngClass]="{
+              'border-warning bg-warning/10':
+                daysUntilExpiry() !== null && daysUntilExpiry()! > 0,
+              'border-error bg-error/10':
+                daysUntilExpiry() !== null && daysUntilExpiry()! <= 0,
+            }"
+          >
+            <lucide-icon
+              [img]="Calendar"
+              [size]="20"
+              [ngClass]="{
+                'text-warning':
+                  daysUntilExpiry() !== null && daysUntilExpiry()! > 0,
+                'text-error':
+                  daysUntilExpiry() !== null && daysUntilExpiry()! <= 0,
+              }"
+            />
+            <div>
+              @if (daysUntilExpiry() !== null && daysUntilExpiry()! > 0) {
+                <div class="text-sm text-warning font-semibold">
+                  會員即將到期
+                </div>
+                <div class="font-medium">
+                  到期日：{{ formattedPremiumUntil() }}（剩餘
+                  {{ daysUntilExpiry() }} 天）
+                </div>
+              } @else {
+                <div class="text-sm text-error font-semibold">會員已到期</div>
+                <div class="font-medium">
+                  到期日：{{ formattedPremiumUntil() }}
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <!-- 正常狀態 -->
+          <div class="flex items-center gap-3">
+            <lucide-icon
+              [img]="Calendar"
+              [size]="20"
+              class="text-base-content/70"
+            />
+            <div>
+              <div class="text-sm text-base-content/70">會員到期日</div>
+              <div class="font-medium">
+                {{ formattedPremiumUntil() }}
+                @if (daysUntilExpiry() !== null) {
+                  <span class="text-sm text-base-content/70">
+                    (剩餘 {{ daysUntilExpiry() }} 天)
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+        }
       }
     </div>
   </div>

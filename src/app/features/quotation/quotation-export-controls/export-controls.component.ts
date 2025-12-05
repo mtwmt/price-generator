@@ -7,7 +7,7 @@ import {
   Image,
   FileSpreadsheet,
   CircleCheck,
-  Info
+  Info,
 } from 'lucide-angular';
 import { ExportService } from '@app/features/quotation/services/export.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
@@ -21,7 +21,7 @@ import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-t
 @Component({
   selector: 'app-export-controls',
   imports: [CommonModule, LucideAngularModule],
-  templateUrl: './export-controls.html',
+  templateUrl: './export-controls.component.html',
   standalone: true,
 })
 export class ExportControls {
@@ -59,7 +59,7 @@ export class ExportControls {
    * 取得當前選擇的樣式資訊
    */
   getCurrentTemplate(): QuotationTemplate | undefined {
-    return this.templates.find(t => t.id === this.selectedTemplate());
+    return this.templates.find((t) => t.id === this.selectedTemplate());
   }
 
   /**
@@ -82,7 +82,11 @@ export class ExportControls {
       const quotationData = this.getQuotationData();
       const template = this.getCurrentTemplate();
       const templateName = template?.name || '';
-      await this.exportService.exportAsPDF(contentId, quotationData, templateName);
+      await this.exportService.exportAsPDF(
+        contentId,
+        quotationData,
+        templateName
+      );
     } catch (error) {
       alert((error as Error).message);
     }
@@ -98,7 +102,12 @@ export class ExportControls {
       const quotationData = this.getQuotationData();
       const template = this.getCurrentTemplate();
       const templateName = template?.name || '';
-      await this.exportService.exportAsImage(contentId, customerName, quotationData, templateName);
+      await this.exportService.exportAsImage(
+        contentId,
+        customerName,
+        quotationData,
+        templateName
+      );
     } catch (error) {
       alert((error as Error).message);
     }

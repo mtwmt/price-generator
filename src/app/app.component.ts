@@ -1,7 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { CommentsComponent } from '@app/shared/components/comments/comments.component';
+import {
+  Router,
+  RouterOutlet,
+  RouterLink,
+  RouterLinkActive,
+} from '@angular/router';
+import { CommentsComponent } from '@app/features/comments/comments.component';
 import { DonateComponent } from '@app/shared/components/donate/donate.component';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import {
@@ -88,5 +93,12 @@ export class AppComponent {
       console.error('Logout error:', error);
       this.toastService.error('登出失敗');
     }
+  }
+
+  /**
+   * 取得當前路徑作為 discussionId
+   */
+  getCurrentPath(): string {
+    return this.router.url || '/';
   }
 }

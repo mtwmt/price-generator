@@ -35,6 +35,28 @@ export interface UserData {
   platforms: {
     [key in PlatformType]?: PlatformPermission;
   };
-  createdTime: Timestamp;
-  updatedTime: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/**
+ * 贊助申請狀態
+ */
+export type DonationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+/**
+ * 贊助申請資料
+ */
+export interface DonationRequest {
+  id?: string;
+  uid: string;
+  userDisplayName: string;
+  userEmail: string;
+  proof: string; // base64 image
+  note: string;
+  status: DonationStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  reviewedBy?: string; // admin uid
+  reviewedAt?: Timestamp;
 }

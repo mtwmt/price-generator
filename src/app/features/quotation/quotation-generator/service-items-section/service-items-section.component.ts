@@ -24,7 +24,7 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
     ServiceItemControlComponent,
     DragDropModule,
   ],
-  templateUrl: './service-items-section.html',
+  templateUrl: './service-items-section.component.html',
 })
 export class ServiceItemsSection {
   // Icons

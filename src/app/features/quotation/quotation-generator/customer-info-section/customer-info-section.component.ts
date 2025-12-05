@@ -21,7 +21,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
   selector: 'app-customer-info-section',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
-  templateUrl: './customer-info-section.html',
+  templateUrl: './customer-info-section.component.html',
 })
 export class CustomerInfoSection {
   // Icons

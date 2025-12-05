@@ -54,14 +54,17 @@ export class DonationFormComponent {
    * 提交贊助申請
    */
   onSubmit(): void {
-    if (!this.donationProof()) {
-      this.toastService.error('請先上傳贊助憑證');
+    const hasProof = !!this.donationProof();
+    const hasNote = !!this.donationNote().trim();
+
+    if (!hasProof && !hasNote) {
+      this.toastService.error('請上傳贊助憑證或填寫備註');
       return;
     }
 
     // 發送事件給父元件處理
     this.submitDonation.emit({
-      proof: this.donationProof()!,
+      proof: this.donationProof() || '',
       note: this.donationNote(),
     });
 

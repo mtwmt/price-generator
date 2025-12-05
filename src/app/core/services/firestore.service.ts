@@ -99,8 +99,8 @@ export class FirestoreService {
             lastAccessTime: now,
           },
         },
-        createdTime: now,
-        updatedTime: now,
+        createdAt: now,
+        updatedAt: now,
       };
 
       await setDoc(userDocRef, userData);
@@ -130,7 +130,7 @@ export class FirestoreService {
 
       const updateData: any = {
         [`platforms.${this.CURRENT_PLATFORM}.role`]: role,
-        updatedTime: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       if (premiumUntil !== undefined) {
@@ -199,14 +199,14 @@ export class FirestoreService {
             firstAccessTime: serverTimestamp(),
             lastAccessTime: serverTimestamp(),
           },
-          updatedTime: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       } else {
         // 已存在平台：更新最後存取時間
         await updateDoc(userDocRef, {
           [`platforms.${this.CURRENT_PLATFORM}.lastAccessTime`]:
             serverTimestamp(),
-          updatedTime: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       }
     } catch (error) {
@@ -253,7 +253,7 @@ export class FirestoreService {
       const usersRef = collection(this.db, this.USERS_COLLECTION);
       const q = query(
         usersRef,
-        orderBy('createdTime', 'desc'),
+        orderBy('createdAt', 'desc'),
         limit(maxResults)
       );
       const querySnapshot = await getDocs(q);
@@ -277,7 +277,7 @@ export class FirestoreService {
    */
   async updateUser(
     uid: string,
-    updates: Partial<Omit<UserData, 'uid' | 'createdTime' | 'updatedTime'>>
+    updates: Partial<Omit<UserData, 'uid' | 'createdAt' | 'updatedAt'>>
   ): Promise<void> {
     if (!this.db) {
       throw new Error('Firestore not initialized');
@@ -288,7 +288,7 @@ export class FirestoreService {
 
       const updateData: any = {
         ...updates,
-        updatedTime: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       await updateDoc(userDocRef, updateData);

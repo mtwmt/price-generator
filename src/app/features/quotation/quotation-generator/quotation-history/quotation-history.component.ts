@@ -17,7 +17,7 @@ import { QuotationData } from '@app/features/quotation/models/quotation.model';
   selector: 'app-quotation-history',
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
-  templateUrl: './quotation-history.html',
+  templateUrl: './quotation-history.component.html',
 })
 export class QuotationHistory {
   // Icons

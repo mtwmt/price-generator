@@ -76,19 +76,35 @@
                 <td>{{ user.email || '-' }}</td>
                 <td>
                   @if (user.platforms.quotation; as quotation) {
-                    <span
-                      class="badge gap-1"
-                      [class]="getRoleBadgeClass(quotation.role)"
-                    >
-                      @if (quotation.role === 'admin') {
-                        <lucide-icon [img]="Shield" [size]="12" />
-                      } @else if (quotation.role === 'premium') {
+                    @if (
+                      quotation.role === 'premium' &&
+                      quotation.premiumUntil &&
+                      getDaysUntilExpiry(quotation.premiumUntil) !== null &&
+                      getDaysUntilExpiry(quotation.premiumUntil)! <= 0
+                    ) {
+                      <!-- 贊助會員已過期 - 灰色 -->
+                      <span class="badge badge-soft gap-1">
                         <lucide-icon [img]="Crown" [size]="12" />
-                      }
-                      {{ getRoleDisplayName(quotation.role) }}
-                    </span>
+                        贊助會員
+                      </span>
+                    } @else {
+                      <!-- 正常狀態 -->
+                      <span
+                        class="badge badge-soft gap-1"
+                        [class]="getRoleBadgeClass(quotation.role)"
+                      >
+                        @if (quotation.role === 'admin') {
+                          <lucide-icon [img]="Shield" [size]="12" />
+                        } @else if (quotation.role === 'premium') {
+                          <lucide-icon [img]="Crown" [size]="12" />
+                        }
+                        {{ getRoleDisplayName(quotation.role) }}
+                      </span>
+                    }
                   } @else {
-                    <span class="badge">{{ getRoleDisplayName('free') }}</span>
+                    <span class="badge badge-soft">{{
+                      getRoleDisplayName('free')
+                    }}</span>
                   }
                 </td>
                 <td>
@@ -112,7 +128,7 @@
                     <span class="text-base-content/40">-</span>
                   }
                 </td>
-                <td>{{ formatDate(user.createdTime) }}</td>
+                <td>{{ formatDate(user.createdAt) }}</td>
                 <td>
                   <div class="flex gap-2">
                     <button
