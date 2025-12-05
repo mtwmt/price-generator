@@ -19,17 +19,10 @@ export class CommentsService {
       pagePath: pagePath,
     });
 
-    console.log(
-      'Fetching comments from:',
-      `${this.webAppUrl}?${params.toString()}`
-    );
-
     return this.http
       .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
-          console.log('Comments API response:', response);
-
           if (response.success && response.data) {
             return this.organizeComments(response.data);
           }
