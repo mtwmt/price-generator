@@ -146,6 +146,28 @@ export class FirestoreService {
   }
 
   /**
+   * 更新使用者顯示名稱
+   * @param uid 使用者 UID
+   * @param displayName 新的顯示名稱
+   */
+  async updateUserDisplayName(uid: string, displayName: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('Firestore not initialized');
+    }
+
+    try {
+      const userDocRef = doc(this.db, this.USERS_COLLECTION, uid);
+      await updateDoc(userDocRef, {
+        displayName,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Failed to update display name:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 檢查使用者是否為贊助會員
    * @param userData 使用者資料
    * @returns 是否為有效的贊助會員

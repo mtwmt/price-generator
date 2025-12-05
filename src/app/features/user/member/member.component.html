@@ -26,6 +26,7 @@
       [formattedPremiumUntil]="formattedPremiumUntil()"
       [daysUntilExpiry]="daysUntilExpiry()"
       [showExpiryWarning]="showExpiryWarning() ?? false"
+      (displayNameChange)="handleDisplayNameChange($event)"
     />
 
     <!-- 申請狀態顯示（非 Premium 使用者） -->

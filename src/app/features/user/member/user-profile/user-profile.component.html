@@ -9,24 +9,61 @@
       <!-- 使用者名稱 + 會員等級 -->
       <div class="flex items-center gap-3">
         <lucide-icon [img]="User" [size]="20" class="text-base-content/70" />
-        <div>
+        <div class="flex-1">
           <div class="text-sm text-base-content/70">使用者名稱</div>
-          <div class="font-medium">
-            {{ userDisplayName() }}
-            <span class="ml-1">
-              @if (isAdmin()) {
-                <span class="badge badge-soft badge-error badge-sm"
-                  >管理員</span
-                >
-              } @else if (isPremium()) {
-                <span class="badge badge-soft badge-warning badge-sm"
-                  >贊助會員</span
-                >
-              } @else {
-                <span class="badge badge-soft badge-sm">免費會員</span>
-              }
-            </span>
-          </div>
+          @if (isEditing()) {
+            <!-- 編輯模式 -->
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                class="input input-bordered input-sm flex-1 max-w-xs"
+                [(ngModel)]="editingName"
+                maxlength="50"
+                (keyup.enter)="saveEditing()"
+                (keyup.escape)="cancelEditing()"
+              />
+              <button
+                class="btn btn-success btn-sm btn-square"
+                (click)="saveEditing()"
+                title="保存"
+              >
+                <lucide-icon [img]="Check" [size]="16" />
+              </button>
+              <button
+                class="btn btn-ghost btn-sm btn-square"
+                (click)="cancelEditing()"
+                title="取消"
+              >
+                <lucide-icon [img]="X" [size]="16" />
+              </button>
+            </div>
+          } @else {
+            <!-- 顯示模式 -->
+            <div class="font-medium flex items-center gap-2">
+              {{ userDisplayName() }}
+              <!-- TODO: 顯示編輯按鈕 -->
+              <!-- <button
+                class="btn btn-ghost btn-xs btn-square opacity-50 hover:opacity-100"
+                (click)="startEditing()"
+                title="編輯名稱"
+              >
+                <lucide-icon [img]="Pencil" [size]="14" />
+              </button> -->
+              <span>
+                @if (isAdmin()) {
+                  <span class="badge badge-soft badge-error badge-sm"
+                    >管理員</span
+                  >
+                } @else if (isPremium()) {
+                  <span class="badge badge-soft badge-warning badge-sm"
+                    >贊助會員</span
+                  >
+                } @else {
+                  <span class="badge badge-soft badge-sm">免費會員</span>
+                }
+              </span>
+            </div>
+          }
         </div>
       </div>
 
