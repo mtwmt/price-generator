@@ -1,4 +1,12 @@
-import { Component, input, output, viewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  viewChild,
+  ElementRef,
+  AfterViewInit,
+  OnDestroy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
@@ -21,7 +29,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
   selector: 'app-quoter-info-section',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
-  templateUrl: './quoter-info-section.html',
+  templateUrl: './quoter-info-section.component.html',
 })
 export class QuoterInfoSection implements AfterViewInit, OnDestroy {
   // Icons
@@ -49,7 +57,8 @@ export class QuoterInfoSection implements AfterViewInit, OnDestroy {
   }>();
 
   // View Children
-  readonly startDateInput = viewChild<ElementRef<HTMLInputElement>>('startDate');
+  readonly startDateInput =
+    viewChild<ElementRef<HTMLInputElement>>('startDate');
   readonly endDateInput = viewChild<ElementRef<HTMLInputElement>>('endDate');
 
   ngAfterViewInit(): void {

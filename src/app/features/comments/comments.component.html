@@ -1,0 +1,358 @@
+<div class="comments-container max-w-4xl mx-auto p-4">
+  <!-- 標題與排序 -->
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold">💬 留言討論</h2>
+
+    <!-- 排序按鈕 (Giscus 風格) -->
+    <div class="flex items-center gap-2 text-sm">
+      <button
+        class="btn btn-ghost btn-sm"
+        [class.btn-active]="sortOrder() === 'oldest'"
+        (click)="store.setSortOrder('oldest'); loadComments()"
+        [disabled]="store.loading()"
+      >
+        最舊
+      </button>
+      <button
+        class="btn btn-ghost btn-sm"
+        [class.btn-active]="sortOrder() === 'newest'"
+        (click)="store.setSortOrder('newest'); loadComments()"
+        [disabled]="store.loading()"
+      >
+        最新
+      </button>
+    </div>
+  </div>
+
+  <!-- 錯誤訊息 -->
+  @if (store.error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ store.error() }}</span>
+    </div>
+  }
+
+  <!-- 新增留言區 -->
+  @if (isAuthenticated()) {
+    <div class="card bg-base-200 shadow-sm mb-6">
+      <div class="card-body">
+        <div class="flex items-start gap-3">
+          <!-- 使用者頭像 -->
+          @if (userPhotoURL()) {
+            <div class="avatar">
+              <div class="w-10 h-10 rounded-full">
+                <img [src]="userPhotoURL()!" [alt]="userDisplayName()" />
+              </div>
+            </div>
+          } @else {
+            <div class="avatar placeholder">
+              <div
+                class="bg-neutral text-neutral-content w-10 h-10 rounded-full"
+              >
+                <span class="text-lg">{{ userDisplayName().charAt(0) }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- 輸入框 -->
+          <div class="flex-1">
+            <textarea
+              class="textarea textarea-bordered w-full"
+              placeholder="分享你的想法..."
+              rows="3"
+              [(ngModel)]="newCommentBody"
+              [disabled]="store.loading()"
+            ></textarea>
+            <div class="flex justify-end mt-2">
+              <button
+                class="btn btn-primary btn-sm"
+                (click)="postComment()"
+                [disabled]="!newCommentBody().trim() || store.loading()"
+              >
+                @if (store.loading()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                }
+                發布留言
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="alert mb-6 flex justify-between items-center">
+      <span
+        >請先<button
+          class="btn mx-2 btn-primary gap-2"
+          (click)="loginWithGoogle()"
+        >
+          登入</button
+        >才能發表留言</span
+      >
+    </div>
+  }
+
+  <!-- 載入中 -->
+  @if (store.loading() && store.comments().length === 0) {
+    <div class="flex justify-center py-8">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+  }
+
+  <!-- 留言列表 -->
+  @if (store.comments().length > 0) {
+    <div class="space-y-4">
+      @for (comment of sortedComments; track comment.id) {
+        <div class="comment-item">
+          <!-- 主留言 -->
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <div class="flex items-start gap-3">
+                <!-- 頭像 -->
+                @if (comment.authorAvatarUrl) {
+                  <div class="avatar flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full">
+                      <img
+                        [src]="comment.authorAvatarUrl"
+                        [alt]="comment.authorLogin"
+                      />
+                    </div>
+                  </div>
+                } @else {
+                  <div class="avatar placeholder flex-shrink-0">
+                    <div
+                      class="bg-neutral text-neutral-content w-10 h-10 rounded-full"
+                    >
+                      <span class="text-lg">{{
+                        comment.authorLogin.charAt(0)
+                      }}</span>
+                    </div>
+                  </div>
+                }
+
+                <!-- 內容 -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-semibold">{{ comment.authorLogin }}</span>
+                    <span class="text-sm text-base-content/60">{{
+                      comment.createdAt | timeAgo
+                    }}</span>
+                    @if (comment.isPinned) {
+                      <span
+                        class="badge badge-sm badge-soft badge-info gap-1"
+                        title="置頂留言"
+                      >
+                        <lucide-icon [img]="Pin" [size]="10" />
+                        置頂
+                      </span>
+                    }
+                  </div>
+                  <div
+                    class="prose prose-sm max-w-none"
+                    [innerHTML]="comment.bodyHTML"
+                  ></div>
+
+                  <!-- 操作按鈕 -->
+                  <div class="flex items-center gap-2 mt-3 flex-wrap">
+                    <!-- 已有的反應 -->
+                    @for (
+                      reaction of getActiveReactions(comment);
+                      track reaction.type
+                    ) {
+                      <button
+                        class="btn btn-ghost btn-xs gap-1"
+                        (click)="toggleReaction(comment.id, reaction.type)"
+                        [disabled]="store.loading()"
+                      >
+                        {{ reaction.emoji }}
+                        {{ getReactionCount(comment, reaction.type) }}
+                      </button>
+                    }
+
+                    <!-- 新增反應按鈕 (dropdown) -->
+                    <ng-container
+                      *ngTemplateOutlet="
+                        reactionPicker;
+                        context: { commentId: comment.id }
+                      "
+                    ></ng-container>
+
+                    <div class="divider divider-horizontal mx-0"></div>
+
+                    @if (isAuthenticated()) {
+                      <button
+                        class="btn btn-ghost btn-xs"
+                        (click)="startReply(comment.id)"
+                        [disabled]="store.loading()"
+                      >
+                        💬 回覆
+                      </button>
+                    }
+
+                    @if (isAdmin()) {
+                      <button
+                        class="btn btn-ghost btn-xs"
+                        [class.text-warning]="comment.isPinned"
+                        (click)="togglePin(comment.id)"
+                        [disabled]="store.loading()"
+                        [title]="comment.isPinned ? '取消置頂' : '置頂留言'"
+                      >
+                        <lucide-icon
+                          [img]="comment.isPinned ? PinOff : Pin"
+                          [size]="14"
+                        />
+                      </button>
+                      <button
+                        class="btn btn-ghost btn-xs text-error"
+                        (click)="deleteComment(comment.id)"
+                        [disabled]="store.loading()"
+                      >
+                        🗑️ 刪除
+                      </button>
+                    }
+                  </div>
+
+                  <!-- 回覆列表 (Giscus 風格) -->
+                  @if (comment.replies && comment.replies.length > 0) {
+                    <div class="mt-4 space-y-4">
+                      @for (reply of comment.replies; track reply.id) {
+                        <div class="flex gap-3 pl-4 border-l-2 border-base-300">
+                          @if (reply.authorAvatarUrl) {
+                            <div class="avatar flex-shrink-0">
+                              <div class="w-8 h-8 rounded-full">
+                                <img
+                                  [src]="reply.authorAvatarUrl"
+                                  [alt]="reply.authorLogin"
+                                />
+                              </div>
+                            </div>
+                          } @else {
+                            <div class="avatar placeholder flex-shrink-0">
+                              <div
+                                class="bg-neutral text-neutral-content w-8 h-8 rounded-full"
+                              >
+                                <span class="text-sm">{{
+                                  reply.authorLogin.charAt(0)
+                                }}</span>
+                              </div>
+                            </div>
+                          }
+
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="font-semibold text-sm">{{
+                                reply.authorLogin
+                              }}</span>
+                              <span class="text-xs text-base-content/60">{{
+                                reply.createdAt | timeAgo
+                              }}</span>
+                            </div>
+                            <div
+                              class="prose prose-sm max-w-none text-sm mb-2"
+                              [innerHTML]="reply.bodyHTML"
+                            ></div>
+
+                            <div class="flex items-center gap-2">
+                              <!-- 已有的反應 -->
+                              @for (
+                                reaction of getActiveReactions(reply);
+                                track reaction.type
+                              ) {
+                                <button
+                                  class="btn btn-ghost btn-xs gap-1"
+                                  (click)="
+                                    toggleReaction(reply.id, reaction.type)
+                                  "
+                                  [disabled]="store.loading()"
+                                >
+                                  {{ reaction.emoji }}
+                                  {{ getReactionCount(reply, reaction.type) }}
+                                </button>
+                              }
+
+                              <!-- 新增反應按鈕 (dropdown) -->
+                              <ng-container
+                                *ngTemplateOutlet="
+                                  reactionPicker;
+                                  context: { commentId: reply.id }
+                                "
+                              ></ng-container>
+                              @if (isAdmin()) {
+                                <button
+                                  class="btn btn-ghost btn-xs text-error"
+                                  (click)="deleteComment(reply.id)"
+                                  [disabled]="store.loading()"
+                                >
+                                  🗑️ 刪除
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <!-- 回覆輸入框 (在所有回覆下方) -->
+                  @if (replyingTo() === comment.id) {
+                    <div class="mt-4 pl-4 border-l-2 border-primary">
+                      <textarea
+                        class="textarea textarea-bordered textarea-sm w-full"
+                        placeholder="輸入回覆..."
+                        rows="2"
+                        [(ngModel)]="replyBody"
+                        [disabled]="store.loading()"
+                      ></textarea>
+                      <div class="flex justify-end gap-2 mt-2">
+                        <button
+                          class="btn btn-ghost btn-sm"
+                          (click)="cancelReply()"
+                          [disabled]="store.loading()"
+                        >
+                          取消
+                        </button>
+                        <button
+                          class="btn btn-primary btn-sm"
+                          (click)="postReply(comment.id)"
+                          [disabled]="!replyBody().trim() || store.loading()"
+                        >
+                          送出回覆
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (!store.loading()) {
+    <div class="text-center py-8 text-base-content/60">
+      <p>目前還沒有留言,成為第一個留言的人吧!</p>
+    </div>
+  }
+</div>
+
+<!-- 反應選擇器 Template -->
+<ng-template #reactionPicker let-commentId="commentId">
+  <details class="dropdown" #reactionDropdown>
+    <summary class="btn btn-ghost btn-xs">
+      <lucide-icon [img]="Smile" [size]="16"></lucide-icon>
+    </summary>
+    <ul
+      class="dropdown-content menu flex-row p-2 shadow-sm bg-base-100 rounded-box w-40 z-[1]"
+    >
+      <li class="menu-title w-full">
+        <span>選擇您的反應</span>
+      </li>
+      @for (reaction of availableReactions; track reaction.type) {
+        <li class="w-1/3">
+          <a (click)="selectReaction(commentId, reaction.type)">
+            {{ reaction.emoji }}
+          </a>
+        </li>
+      }
+    </ul>
+  </details>
+</ng-template>

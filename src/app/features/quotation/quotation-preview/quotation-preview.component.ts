@@ -1,7 +1,7 @@
 import { Component, input, signal, computed } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ExportControls } from '@app/features/quotation/quotation-export-controls/export-controls';
+import { ExportControls } from '@app/features/quotation/quotation-export-controls/export-controls.component';
 import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
 
 /**
@@ -12,7 +12,7 @@ import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-t
 @Component({
   selector: 'app-quotation-preview',
   imports: [CommonModule, ExportControls],
-  templateUrl: './quotation-preview.html',
+  templateUrl: './quotation-preview.component.html',
   standalone: true,
 })
 export class QuotationPreview {

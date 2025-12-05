@@ -11,7 +11,7 @@ import { LucideAngularModule, FileCheck } from 'lucide-angular';
   selector: 'app-other-info-section',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
-  templateUrl: './other-info-section.html',
+  templateUrl: './other-info-section.component.html',
 })
 export class OtherInfoSection {
   // Icons

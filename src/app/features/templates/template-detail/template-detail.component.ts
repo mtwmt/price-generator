@@ -18,7 +18,7 @@ import {
 @Component({
   selector: 'app-template-detail',
   imports: [CommonModule, LucideAngularModule],
-  templateUrl: './template-detail.html',
+  templateUrl: './template-detail.component.html',
 })
 export class TemplateDetail {
   // Lucide Icons

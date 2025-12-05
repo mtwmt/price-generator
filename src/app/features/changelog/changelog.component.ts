@@ -6,13 +6,21 @@ import { LucideAngularModule, Clock } from 'lucide-angular';
   selector: 'app-changelog',
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
-  templateUrl: './changelog.html',
+  templateUrl: './changelog.component.html',
 })
 export class ChangelogComponent {
   // Lucide Icons
   readonly Clock = Clock;
 
   changelog = [
+    {
+      date: '2025-12-06',
+      features: [
+        '推出會員系統，未來將提供贊助會員專屬功能',
+        '統一改用 Google 帳號登入',
+        '留言系統重新整合至會員功能',
+      ],
+    },
     {
       date: '2025-11-10',
       features: ['新增電話分機欄位，支援市話分機號碼輸入'],

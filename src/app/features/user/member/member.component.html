@@ -1,7 +1,7 @@
 <div class="mx-auto px-4 py-8">
   @if (!authService.isAuthenticated()) {
     <!-- 未登入狀態 -->
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card bg-base-100 shadow-sm">
       <div class="card-body text-center">
         <lucide-icon
           [img]="User"
@@ -9,7 +9,7 @@
           class="mx-auto text-base-content/50"
         />
         <h2 class="card-title justify-center">請先登入</h2>
-        <p>登入後即可查看會員資訊和升級為贊助會員</p>
+        <p>登入後即可查看會員資訊</p>
       </div>
     </div>
   } @else {
@@ -22,23 +22,125 @@
       [userEmail]="authService.userEmail()"
       [isPremium]="authService.isPremium()"
       [isAdmin]="authService.isAdmin()"
-      [formattedCreatedTime]="formattedCreatedTime()"
+      [formattedCreatedAt]="formattedCreatedAt()"
       [formattedPremiumUntil]="formattedPremiumUntil()"
       [daysUntilExpiry]="daysUntilExpiry()"
+      [showExpiryWarning]="showExpiryWarning() ?? false"
     />
+
+    <!-- 申請狀態顯示（非 Premium 使用者） -->
+    @if (
+      !authService.isPremium() &&
+      !authService.isAdmin() &&
+      myDonationRequests().length > 0
+    ) {
+      @for (request of myDonationRequests(); track request.id) {
+        @if (request.status === 'pending') {
+          <ng-container
+            *ngTemplateOutlet="
+              requestStatusCard;
+              context: {
+                request: request,
+                requestId: request.id,
+                status: 'pending',
+                icon: Clock,
+                iconColor: 'text-info',
+                borderColor: 'border-info',
+                titleColor: 'text-info',
+                title: '您的贊助申請正在審核中',
+                timeLabel: '提交時間',
+                time: request.createdAt,
+                message: '請耐心等候，我們會儘快處理您的申請。',
+                sectionTitle: '您提交的資料',
+                modalId: 'pendingProofPreview',
+              }
+            "
+          />
+        } @else if (request.status === 'rejected') {
+          @if (request.reviewedBy === authService.currentUser()?.uid) {
+            <!-- 自己取消的申請 -->
+            <ng-container
+              *ngTemplateOutlet="
+                requestStatusCard;
+                context: {
+                  request: request,
+                  requestId: request.id,
+                  status: 'cancelled',
+                  icon: XCircle,
+                  iconColor: 'text-base-content/50',
+                  borderColor: 'border-base-content/20',
+                  titleColor: 'text-base-content/70',
+                  title: '您已取消申請',
+                  timeLabel: '取消時間',
+                  time: request.updatedAt,
+                  message: '您可以隨時重新提交申請。',
+                  sectionTitle: '您之前提交的資料',
+                  modalId: 'cancelledProofPreview',
+                }
+              "
+            />
+          } @else {
+            <!-- 被管理員拒絕的申請 -->
+            <ng-container
+              *ngTemplateOutlet="
+                requestStatusCard;
+                context: {
+                  request: request,
+                  requestId: request.id,
+                  status: 'rejected',
+                  icon: XCircle,
+                  iconColor: 'text-error',
+                  borderColor: 'border-error',
+                  titleColor: 'text-error',
+                  title: '您的贊助申請已被拒絕',
+                  timeLabel: '審核時間',
+                  time: request.updatedAt,
+                  message: '您可以修改憑證或備註後重新提交申請。',
+                  sectionTitle: '您之前提交的資料',
+                  modalId: 'rejectedProofPreview',
+                }
+              "
+            />
+          }
+        } @else if (request.status === 'expired') {
+          <ng-container
+            *ngTemplateOutlet="
+              requestStatusCard;
+              context: {
+                request: request,
+                requestId: request.id,
+                status: 'expired',
+                icon: Clock,
+                iconColor: 'text-warning',
+                borderColor: 'border-warning',
+                titleColor: 'text-warning',
+                title: '您的贊助已到期',
+                timeLabel: '到期時間',
+                time: request.updatedAt,
+                message: '感謝您過去的支持！您可以重新申請續約。',
+                sectionTitle: '您之前的贊助資料',
+                modalId: 'expiredProofPreview',
+              }
+            "
+          />
+        }
+      }
+    }
 
     <!-- 贊助申請表單 -->
     @if (!authService.isPremium() && !authService.isAdmin()) {
-      <app-donation-form (submitDonation)="handleDonationSubmit($event)" />
+      <div id="donation-form">
+        <app-donation-form (submitDonation)="handleDonationSubmit($event)" />
+      </div>
     }
 
     <!-- 已經是贊助會員的感謝訊息 -->
     @if (authService.isPremium()) {
-      <div class="alert alert-success">
-        <lucide-icon name="check" [size]="24" />
+      <div class="alert alert-success alert-soft">
+        <lucide-icon [img]="Check" [size]="24" />
         <div>
           <h3 class="font-bold">感謝您的贊助！</h3>
-          <div class="text-sm">您已經是贊助會員,享有所有進階功能。</div>
+          <div class="text-sm">您已經是贊助會員，享有所有進階功能。</div>
         </div>
       </div>
     }
@@ -53,3 +155,105 @@
     }
   }
 </div>
+
+<!-- 共用的申請狀態卡片模板 -->
+<ng-template
+  #requestStatusCard
+  let-request="request"
+  let-requestId="requestId"
+  let-status="status"
+  let-icon="icon"
+  let-iconColor="iconColor"
+  let-borderColor="borderColor"
+  let-titleColor="titleColor"
+  let-title="title"
+  let-timeLabel="timeLabel"
+  let-time="time"
+  let-message="message"
+  let-sectionTitle="sectionTitle"
+  let-modalId="modalId"
+>
+  <div class="card bg-base-100 shadow-sm border-2 mb-6" [ngClass]="borderColor">
+    <div class="card-body">
+      <div class="flex items-start gap-4">
+        <lucide-icon
+          [img]="icon"
+          [size]="32"
+          [ngClass]="iconColor"
+          class="flex-shrink-0"
+        />
+        <div class="flex-1">
+          <h3 class="card-title" [ngClass]="titleColor">{{ title }}</h3>
+          <p class="text-sm opacity-70 mt-1">
+            @if (time) {
+              {{ timeLabel }}：{{ time.toDate() | date: 'yyyy/MM/dd HH:mm' }}
+            }
+          </p>
+          <p class="text-sm mt-2">{{ message }}</p>
+
+          <!-- 撤回申請按鈕（僅 pending 狀態顯示） -->
+          @if (status === 'pending') {
+            <div class="mt-4">
+              <button
+                class="btn btn-outline btn-warning btn-sm"
+                (click)="handleWithdraw(requestId)"
+              >
+                撤回申請
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 提交的資料（已取消的不顯示） -->
+      @if (status !== 'cancelled') {
+        <div class="divider">{{ sectionTitle }}</div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- 憑證縮圖 -->
+          @if (request.proof) {
+            <div>
+              <label class="label">
+                <span class="label-text font-semibold">贊助憑證</span>
+              </label>
+              <img
+                [src]="request.proof"
+                alt="贊助憑證"
+                class="max-w-3xs w-full rounded-lg border border-base-300 cursor-pointer hover:opacity-80 transition"
+                (click)="openProofModal(modalId)"
+              />
+            </div>
+          }
+
+          <!-- 備註 -->
+          @if (request.note) {
+            <div>
+              <label class="label">
+                <span class="label-text font-semibold">備註</span>
+              </label>
+              <div class="p-4 bg-base-200 rounded-lg">
+                <p class="text-sm whitespace-pre-wrap">{{ request.note }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- 憑證預覽 Modal -->
+  <dialog [id]="modalId" class="modal">
+    <div class="modal-box max-w-4xl">
+      <h3 class="font-bold text-lg mb-4">贊助憑證</h3>
+      <img [src]="request.proof" class="w-full rounded-lg" alt="憑證" />
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn">關閉</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</ng-template>

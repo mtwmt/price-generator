@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-template-classic',
   imports: [CommonModule],
-  templateUrl: './template-classic.html',
+  templateUrl: './template-classic.component.html',
 })
 export class TemplateClassic {
   // 接收表單資料

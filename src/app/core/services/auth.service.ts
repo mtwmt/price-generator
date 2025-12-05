@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { FirestoreService } from '@app/core/services/firestore.service';
+import { ToastService } from '@app/shared/services/toast.service';
 import { UserData } from '@app/features/user/shared/models/user.model';
 
 /**
@@ -23,6 +24,7 @@ import { UserData } from '@app/features/user/shared/models/user.model';
 export class AuthService {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly firestoreService = inject(FirestoreService);
+  private readonly toastService = inject(ToastService);
 
   // Firebase Auth 實例（在 app.config 初始化後會被設定）
   private auth: Auth | null = null;
@@ -87,6 +89,27 @@ export class AuthService {
 
       // 記錄使用者存取當前平台
       await this.firestoreService.recordPlatformAccess(user.uid);
+
+      // 檢查 Premium 是否過期，自動降級為 Free
+      const quotationPlatform = data.platforms.quotation;
+      if (
+        quotationPlatform?.role === 'premium' &&
+        quotationPlatform.premiumUntil &&
+        quotationPlatform.premiumUntil.toDate() < new Date()
+      ) {
+        const expiryDate = quotationPlatform.premiumUntil.toDate();
+        console.log(
+          `User ${user.uid} premium expired on ${expiryDate}, downgrading to free`
+        );
+
+        // 自動降級為 free
+        await this.firestoreService.updateUserRole(user.uid, 'free');
+
+        // 更新本地資料
+        if (data.platforms.quotation) {
+          data.platforms.quotation.role = 'free';
+        }
+      }
 
       this.userData.set(data);
     } catch (error: any) {

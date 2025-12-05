@@ -1,30 +1,250 @@
-<div class="mt-8">
-  <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
-    <lucide-icon [img]="Shield" [size]="28" />
-    管理員功能
-  </h2>
-
-  <app-user-list
-    [users]="users()"
-    [loading]="loading()"
-    (refresh)="refreshUsers.emit()"
-    (editUser)="startEdit($event)"
-    (deleteUser)="confirmDelete($event)"
-  />
-
-  <!-- 編輯使用者彈窗 -->
-  @if (editingUser()) {
-    <dialog class="modal modal-open">
-      <div class="modal-box">
-        <app-user-edit-form
-          [user]="editingUser()!"
-          (save)="handleSave($event)"
-          (cancel)="cancelEdit()"
-        />
+<div class="card bg-base-100 shadow-xl">
+  <div class="card-body">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-2">
+        <lucide-icon [img]="Shield" [size]="24" class="text-primary" />
+        <h2 class="card-title">管理員面板</h2>
       </div>
-      <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
-        <button>close</button>
-      </form>
-    </dialog>
-  }
+
+      <!-- 主頁籤切換 -->
+      <div class="tabs tabs-boxed">
+        <a
+          class="tab"
+          [class.tab-active]="activeTab() === 'users'"
+          (click)="switchTab('users')"
+        >
+          使用者管理
+        </a>
+        <a
+          class="tab"
+          [class.tab-active]="activeTab() === 'donations'"
+          (click)="switchTab('donations')"
+        >
+          贊助審核
+          @if (pendingRequests().length > 0) {
+            <span class="badge badge-sm badge-error ml-1">{{
+              pendingRequests().length
+            }}</span>
+          }
+        </a>
+      </div>
+    </div>
+
+    @if (activeTab() === 'users') {
+      <!-- 使用者列表元件 -->
+      <app-user-list
+        [users]="users()"
+        [loading]="loading()"
+        (editUser)="startEdit($event)"
+        (deleteUser)="confirmDelete($event)"
+      />
+    } @else {
+      <!-- 贊助審核區塊 -->
+      <!-- 子分頁切換 -->
+      <div class="tabs tabs-boxed mb-4">
+        <a
+          class="tab"
+          [class.tab-active]="donationTab() === 'pending'"
+          (click)="switchDonationTab('pending')"
+        >
+          待審核
+          @if (pendingRequests().length > 0) {
+            <span class="badge badge-sm badge-error ml-1">{{
+              pendingRequests().length
+            }}</span>
+          }
+        </a>
+        <a
+          class="tab"
+          [class.tab-active]="donationTab() === 'history'"
+          (click)="switchDonationTab('history')"
+        >
+          已處理
+        </a>
+      </div>
+
+      @if (donationTab() === 'pending') {
+        <!-- 待審核列表 -->
+        @if (donationLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+          </div>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>申請時間</th>
+                  <th>使用者</th>
+                  <th>憑證</th>
+                  <th>備註</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (request of pendingRequests(); track request.id) {
+                  <tr>
+                    <td>
+                      {{
+                        request.createdAt.toDate() | date: 'yyyy/MM/dd HH:mm'
+                      }}
+                    </td>
+                    <td>
+                      <div class="font-bold">{{ request.userDisplayName }}</div>
+                      <div class="text-xs opacity-50">
+                        {{ request.userEmail }}
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        class="btn btn-ghost btn-xs"
+                        (click)="openProofModal(request.proof)"
+                      >
+                        查看憑證
+                      </button>
+                    </td>
+                    <td class="max-w-xs truncate">{{ request.note || '-' }}</td>
+                    <td>
+                      <div class="join">
+                        <button
+                          class="btn btn-success btn-xs join-item"
+                          (click)="approveRequest(request)"
+                        >
+                          核准
+                        </button>
+                        <button
+                          class="btn btn-error btn-xs join-item"
+                          (click)="rejectRequest(request)"
+                        >
+                          拒絕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @if (pendingRequests().length === 0) {
+                  <tr>
+                    <td
+                      colspan="5"
+                      class="text-center py-8 text-base-content/50"
+                    >
+                      目前沒有待審核的申請
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else {
+        <!-- 已處理列表 -->
+        @if (donationLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+          </div>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>審核時間</th>
+                  <th>使用者</th>
+                  <th>狀態</th>
+                  <th>憑證</th>
+                  <th>備註</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (request of processedRequests(); track request.id) {
+                  <tr>
+                    <td>
+                      {{
+                        request.updatedAt.toDate() | date: 'yyyy/MM/dd HH:mm'
+                      }}
+                    </td>
+                    <td>
+                      <div class="font-bold">{{ request.userDisplayName }}</div>
+                      <div class="text-xs opacity-50">
+                        {{ request.userEmail }}
+                      </div>
+                    </td>
+                    <td>
+                      @if (request.status === 'approved') {
+                        <span class="badge badge-success">已核准</span>
+                      } @else if (request.status === 'expired') {
+                        <span class="badge badge-warning">已過期</span>
+                      } @else if (request.reviewedBy === request.uid) {
+                        <span class="badge badge-ghost">已取消</span>
+                      } @else {
+                        <span class="badge badge-error">已拒絕</span>
+                      }
+                    </td>
+                    <td>
+                      <button
+                        class="btn btn-ghost btn-xs"
+                        (click)="openProofModal(request.proof)"
+                      >
+                        查看憑證
+                      </button>
+                    </td>
+                    <td class="max-w-xs truncate">{{ request.note || '-' }}</td>
+                    <td>
+                      @if (
+                        request.status === 'rejected' &&
+                        request.reviewedBy !== request.uid
+                      ) {
+                        <!-- 只有管理員拒絕的才顯示重新審核按鈕 -->
+                        <button
+                          class="btn btn-warning btn-xs"
+                          (click)="resetRequest(request)"
+                        >
+                          重新審核
+                        </button>
+                      } @else {
+                        <span class="text-xs opacity-50">-</span>
+                      }
+                    </td>
+                  </tr>
+                }
+                @if (processedRequests().length === 0) {
+                  <tr>
+                    <td
+                      colspan="6"
+                      class="text-center py-8 text-base-content/50"
+                    >
+                      目前沒有已處理的申請
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    }
+  </div>
 </div>
+
+<!-- 編輯使用者 Modal -->
+@if (editingUser()) {
+  <dialog class="modal modal-open">
+    <div class="modal-box">
+      <app-user-edit-form
+        [user]="editingUser()!"
+        (save)="handleSave($event)"
+        (cancel)="cancelEdit()"
+      />
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button (click)="cancelEdit()">close</button>
+    </form>
+  </dialog>
+}
+
+<!-- 憑證預覽 Modal -->
+<app-proof-modal
+  [isOpen]="isProofModalOpen()"
+  [proofUrl]="selectedProofUrl()"
+  (close)="closeProofModal()"
+/>

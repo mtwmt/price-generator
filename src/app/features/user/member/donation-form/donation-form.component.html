@@ -14,7 +14,6 @@
     <div class="form-control">
       <label class="label">
         <span class="label-text font-medium">贊助憑證</span>
-        <span class="label-text-alt text-error">* 必填</span>
       </label>
       <app-file-upload
         [label]="'上傳贊助憑證（轉帳截圖或收據）'"
@@ -28,7 +27,7 @@
     <!-- 備註欄位 -->
     <div class="form-control mt-4">
       <label class="label">
-        <span class="label-text font-medium">備註（選填）</span>
+        <span class="label-text font-medium">備註</span>
       </label>
       <textarea
         class="textarea textarea-bordered h-24 w-full"
@@ -48,7 +47,7 @@
         type="button"
         class="btn btn-warning gap-2"
         (click)="onSubmit()"
-        [disabled]="!donationProof()"
+        [disabled]="!donationProof() && !donationNote().trim()"
       >
         <lucide-icon [img]="Upload" [size]="18" />
         提交贊助申請

@@ -16,7 +16,7 @@ import { CommonModule } from '@angular/common';
 import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 
 import Litepicker from 'litepicker';
-import { QuotationPreview } from '@app/features/quotation/quotation-preview/quotation-preview';
+import { QuotationPreview } from '@app/features/quotation/quotation-preview/quotation-preview.component';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { ToastService } from '@app/shared/services/toast.service';
@@ -24,11 +24,11 @@ import { QuotationStorageService } from '@app/features/quotation/services/quotat
 import { ImageUploadService } from '@app/features/quotation/services/image-upload.service';
 import { DatePickerService } from '@app/features/quotation/services/date-picker.service';
 import { QuotationFormService } from '@app/features/quotation/services/quotation-form.service';
-import { QuotationHistory } from './quotation-history/quotation-history';
-import { CustomerInfoSection } from './customer-info-section/customer-info-section';
-import { QuoterInfoSection } from './quoter-info-section/quoter-info-section';
-import { ServiceItemsSection } from './service-items-section/service-items-section';
-import { OtherInfoSection } from './other-info-section/other-info-section';
+import { QuotationHistory } from './quotation-history/quotation-history.component';
+import { CustomerInfoSection } from './customer-info-section/customer-info-section.component';
+import { QuoterInfoSection } from './quoter-info-section/quoter-info-section.component';
+import { ServiceItemsSection } from './service-items-section/service-items-section.component';
+import { OtherInfoSection } from './other-info-section/other-info-section.component';
 import {
   LucideAngularModule,
   Eye,
