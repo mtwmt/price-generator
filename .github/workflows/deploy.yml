@@ -29,7 +29,9 @@ jobs:
           export const environment = {
             production: true,
             googleSheets: {
+              enabled: true,
               webAppUrl: '${{ secrets.GOOGLE_SHEETS_WEB_APP_URL }}',
+              commentsWebAppUrl: '${{ secrets.COMMENTS_WEB_APP_URL }}',
             },
             firebase: ${{ secrets.FIREBASE_CONFIG }},
           };
