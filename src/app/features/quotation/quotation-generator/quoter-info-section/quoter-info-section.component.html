@@ -11,7 +11,7 @@
   <div class="grid grid-cols-2 gap-x-3">
     <!-- Quoter Name -->
     <fieldset class="fieldset col-span-2 md:col-span-1">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend whitespace-nowrap">
         報價公司/人員
         <span class="text-error">*</span>
       </legend>
@@ -24,11 +24,7 @@
             : ''
         "
       >
-        <lucide-icon
-          [img]="UserRound"
-          [size]="16"
-          class="opacity-70"
-        />
+        <lucide-icon [img]="UserRound" [size]="16" class="opacity-70" />
         <input
           formControlName="quoterName"
           type="text"
@@ -45,7 +41,7 @@
 
     <!-- Tax ID -->
     <fieldset class="fieldset col-span-2 md:col-span-1">
-      <legend class="fieldset-legend">統一編號</legend>
+      <legend class="fieldset-legend whitespace-nowrap">統一編號</legend>
       <label
         class="input w-full"
         [ngClass]="
@@ -55,10 +51,7 @@
             : ''
         "
       >
-        <lucide-icon
-          [img]="ReceiptText"
-          [size]="16"
-          class="opacity-70" />
+        <lucide-icon [img]="ReceiptText" [size]="16" class="opacity-70" />
         <input
           formControlName="quoterTaxID"
           type="text"
@@ -67,8 +60,7 @@
           maxlength="8"
       /></label>
       @if (
-        form().get('quoterTaxID')?.touched &&
-        form().get('quoterTaxID')?.invalid
+        form().get('quoterTaxID')?.touched && form().get('quoterTaxID')?.invalid
       ) {
         <p class="text-error">
           {{ form().get('quoterTaxID')?.errors?.['taxId']?.message }}
@@ -78,7 +70,7 @@
 
     <!-- Email -->
     <fieldset class="fieldset col-span-2 md:col-span-1">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend whitespace-nowrap">
         E-mail<span class="text-error">*</span>
       </legend>
       <label
@@ -113,7 +105,7 @@
 
     <!-- Phone -->
     <fieldset class="fieldset col-span-2 md:col-span-1">
-      <legend class="fieldset-legend">聯絡電話</legend>
+      <legend class="fieldset-legend whitespace-nowrap">聯絡電話</legend>
       <div class="flex gap-2">
         <label
           class="input w-full flex-1"
@@ -162,7 +154,7 @@
       <div class="grid grid-cols-2 gap-x-3">
         <!-- Quoter Logo Upload -->
         <fieldset class="fieldset col-span-2 md:col-span-1">
-          <legend class="fieldset-legend">公司 LOGO</legend>
+          <legend class="fieldset-legend whitespace-nowrap">公司 LOGO</legend>
           <app-file-upload
             [label]="'上傳公司 LOGO'"
             [previewUrl]="quoterLogo()"
@@ -174,7 +166,7 @@
 
         <!-- Stamp Upload -->
         <fieldset class="fieldset col-span-2 md:col-span-1">
-          <legend class="fieldset-legend">公司發票章</legend>
+          <legend class="fieldset-legend whitespace-nowrap">公司發票章</legend>
           <app-file-upload
             [label]="'上傳公司發票章'"
             [previewUrl]="stamp()"
@@ -186,13 +178,9 @@
 
         <!-- Address -->
         <fieldset class="fieldset col-span-2">
-          <legend class="fieldset-legend">公司地址</legend>
+          <legend class="fieldset-legend whitespace-nowrap">公司地址</legend>
           <label class="input w-full">
-            <lucide-icon
-              [img]="MapPin"
-              [size]="16"
-              class="opacity-70"
-            />
+            <lucide-icon [img]="MapPin" [size]="16" class="opacity-70" />
             <input
               formControlName="quoterAddress"
               type="text"
@@ -206,13 +194,9 @@
 
   <div class="grid grid-cols-2 gap-x-3">
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">報價日期</legend>
+      <legend class="fieldset-legend whitespace-nowrap">報價日期</legend>
       <label class="input w-full">
-        <lucide-icon
-          [img]="Calendar1"
-          [size]="16"
-          class="opacity-70"
-        />
+        <lucide-icon [img]="Calendar1" [size]="16" class="opacity-70" />
         <input
           #startDate
           id="startDate"
@@ -225,13 +209,9 @@
     </fieldset>
 
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">有效日期</legend>
+      <legend class="fieldset-legend whitespace-nowrap">有效日期</legend>
       <label class="input w-full">
-        <lucide-icon
-          [img]="Calendar1"
-          [size]="16"
-          class="opacity-70"
-        />
+        <lucide-icon [img]="Calendar1" [size]="16" class="opacity-70" />
         <input
           #endDate
           id="endDate"
