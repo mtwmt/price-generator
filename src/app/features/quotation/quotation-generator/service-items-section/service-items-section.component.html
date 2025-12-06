@@ -14,24 +14,16 @@
         </div>
         <h2 class="text-lg font-semibold text-base-content">服務項目</h2>
       </div>
-      <button
-        type="button"
-        class="btn btn-info btn-sm"
-        (click)="onAddField()"
-      >
+      <button type="button" class="btn btn-info btn-sm" (click)="onAddField()">
         <lucide-icon [img]="ListPlus" [size]="16" />
         <span class="inline">新增項目</span>
       </button>
     </div>
 
     <!-- 服務項目列表 -->
-    <div cdkDropList (cdkDropListDropped)="onDrop($event)" >
+    <div cdkDropList (cdkDropListDropped)="onDrop($event)">
       <ng-container formArrayName="serviceItems">
-        @for (
-          item of serviceItems.controls;
-          track $index;
-          let idx = $index
-        ) {
+        @for (item of serviceItems.controls; track $index; let idx = $index) {
           <div
             cdkDrag
             [cdkDragDisabled]="serviceItems.length <= 1"
@@ -62,9 +54,10 @@
                   [index]="idx"
                   (removeField)="onRemoveField(idx)"
                 />
-                <hr class="my-4 border-secondary md:hidden"
-                [class.hidden]="$last"
-                 />
+                <hr
+                  class="my-4 border-secondary md:hidden"
+                  [class.hidden]="$last"
+                />
                 <!-- <div class="divider h-[1px] my-2"></div> -->
               </div>
             </div>
@@ -79,7 +72,9 @@
       <div class="md:w-1/2">
         <!-- 折扣設定 -->
         <fieldset class="fieldset">
-          <legend class="fieldset-legend text-sm">折扣設定</legend>
+          <legend class="fieldset-legend whitespace-nowrap text-sm">
+            折扣設定
+          </legend>
           <div class="flex gap-3">
             <select formControlName="discountType" class="select w-32">
               <option value="amount">固定金額</option>
@@ -117,7 +112,9 @@
           "
         >
           <fieldset class="fieldset">
-            <label class="fieldset-legend text-sm">稅別</label>
+            <label class="fieldset-legend whitespace-nowrap text-sm"
+              >稅別</label
+            >
             <select
               formControlName="taxName"
               class="select w-full"
@@ -133,7 +130,9 @@
 
           @if (form().get('taxName')?.value === '自訂') {
             <fieldset class="fieldset">
-              <label class="fieldset-legend text-sm">稅別</label>
+              <label class="fieldset-legend whitespace-nowrap text-sm"
+                >稅別</label
+              >
               <input
                 formControlName="customTaxName"
                 type="text"
@@ -142,7 +141,9 @@
               />
             </fieldset>
             <fieldset class="fieldset">
-              <label class="fieldset-legend text-sm">稅率 (%)</label>
+              <label class="fieldset-legend whitespace-nowrap text-sm"
+                >稅率 (%)</label
+              >
               <input
                 formControlName="percentage"
                 type="number"

@@ -1,16 +1,12 @@
 <!-- 客戶基本資料 -->
 <div class="mb-2 bg-base-200 p-4 rounded-sm" [formGroup]="form()">
   <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
-    <lucide-icon
-      [img]="Users"
-      [size]="18"
-      class="text-base-content/70"
-    />
+    <lucide-icon [img]="Users" [size]="18" class="text-base-content/70" />
     客戶資料
   </h3>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3">
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend whitespace-nowrap">
         客戶名稱
         <span class="text-error">*</span>
       </legend>
@@ -23,11 +19,7 @@
             : ''
         "
       >
-        <lucide-icon
-          [img]="Building2"
-          [size]="16"
-          class="opacity-70"
-        />
+        <lucide-icon [img]="Building2" [size]="16" class="opacity-70" />
         <input
           formControlName="customerCompany"
           type="text"
@@ -43,7 +35,7 @@
     </fieldset>
 
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">統一編號</legend>
+      <legend class="fieldset-legend whitespace-nowrap">統一編號</legend>
       <label
         class="input w-full"
         [ngClass]="
@@ -53,11 +45,7 @@
             : ''
         "
       >
-        <lucide-icon
-          [img]="ReceiptText"
-          [size]="16"
-          class="opacity-70"
-        />
+        <lucide-icon [img]="ReceiptText" [size]="16" class="opacity-70" />
         <input
           formControlName="customerTaxID"
           type="text"
@@ -89,7 +77,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3">
         <!-- LOGO Upload -->
         <fieldset class="fieldset md:col-span-2">
-          <legend class="fieldset-legend">客戶 LOGO</legend>
+          <legend class="fieldset-legend whitespace-nowrap">客戶 LOGO</legend>
           <app-file-upload
             [label]="'上傳客戶 LOGO'"
             [previewUrl]="customerLogo()"
@@ -99,13 +87,9 @@
         </fieldset>
 
         <fieldset class="fieldset">
-          <legend class="fieldset-legend">聯絡人</legend>
+          <legend class="fieldset-legend whitespace-nowrap">聯絡人</legend>
           <label class="input w-full">
-            <lucide-icon
-              [img]="UserRound"
-              [size]="16"
-              class="opacity-70"
-            />
+            <lucide-icon [img]="UserRound" [size]="16" class="opacity-70" />
             <input
               formControlName="customerContact"
               type="text"
@@ -115,7 +99,7 @@
         </fieldset>
 
         <fieldset class="fieldset">
-          <legend class="fieldset-legend">聯絡電話</legend>
+          <legend class="fieldset-legend whitespace-nowrap">聯絡電話</legend>
           <div class="flex gap-2">
             <label
               class="input w-full flex-1"
@@ -126,11 +110,7 @@
                   : ''
               "
             >
-              <lucide-icon
-                [img]="Phone"
-                [size]="16"
-                class="opacity-70"
-              />
+              <lucide-icon [img]="Phone" [size]="16" class="opacity-70" />
               <input
                 formControlName="customerPhone"
                 type="tel"
@@ -150,15 +130,13 @@
             form().get('customerPhone')?.errors?.['phone']
           ) {
             <p class="text-error text-xs mt-1">
-              {{
-                form().get('customerPhone')?.errors?.['phone']?.message
-              }}
+              {{ form().get('customerPhone')?.errors?.['phone']?.message }}
             </p>
           }
         </fieldset>
 
         <fieldset class="fieldset">
-          <legend class="fieldset-legend">E-mail</legend>
+          <legend class="fieldset-legend whitespace-nowrap">E-mail</legend>
           <label
             class="input w-full"
             [ngClass]="
@@ -168,11 +146,7 @@
                 : ''
             "
           >
-            <lucide-icon
-              [img]="Mail"
-              [size]="16"
-              class="opacity-70"
-            />
+            <lucide-icon [img]="Mail" [size]="16" class="opacity-70" />
             <input
               formControlName="customerEmail"
               type="email"
@@ -188,13 +162,9 @@
         </fieldset>
 
         <fieldset class="fieldset">
-          <legend class="fieldset-legend">地址</legend>
+          <legend class="fieldset-legend whitespace-nowrap">地址</legend>
           <label class="input w-full">
-            <lucide-icon
-              [img]="MapPin"
-              [size]="16"
-              class="opacity-70"
-            />
+            <lucide-icon [img]="MapPin" [size]="16" class="opacity-70" />
             <input
               formControlName="customerAddress"
               type="text"
