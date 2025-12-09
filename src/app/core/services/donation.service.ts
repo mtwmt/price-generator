@@ -9,6 +9,7 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
@@ -288,6 +289,29 @@ export class DonationService {
       }
     } catch (error) {
       console.error('Failed to mark request as expired:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 刪除使用者的所有贊助記錄（管理員用）
+   * @param uid 使用者 UID
+   */
+  async deleteUserDonations(uid: string): Promise<void> {
+    try {
+      const requestsRef = collection(this.db, this.COLLECTION_NAME);
+      const q = query(requestsRef, where('uid', '==', uid));
+
+      const snapshot = await getDocs(q);
+
+      // 批次刪除該使用者的所有贊助記錄
+      const deletePromises = snapshot.docs.map((doc) =>
+        deleteDoc(doc.ref)
+      );
+
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Failed to delete user donations:', error);
       throw error;
     }
   }
