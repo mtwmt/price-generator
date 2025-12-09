@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { DonationRequest } from '@app/features/user/shared/models/user.model';
+import { DonationRequest } from '@app/features/user/user.model';
 import { FirestoreService } from './firestore.service';
 
 @Injectable({

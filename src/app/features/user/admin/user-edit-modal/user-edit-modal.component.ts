@@ -5,7 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import {
   UserData,
   UserRole,
-} from '@app/features/user/shared/models/user.model';
+} from '@app/features/user/user.model';
 
 /**
  * 使用者編輯表單元件

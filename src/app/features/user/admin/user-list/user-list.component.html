@@ -1,4 +1,4 @@
-<div class="card bg-base-100 shadow-xl">
+<div class="card bg-base-100 shadow-sm">
   <div class="card-body">
     <div class="flex items-center justify-between mb-4">
       <h2 class="card-title flex items-center gap-2">
@@ -8,21 +8,21 @@
       <button
         type="button"
         class="btn btn-sm btn-primary"
-        (click)="refresh.emit()"
-        [disabled]="loading()"
+        (click)="onRefresh()"
+        [disabled]="usersStore.loading()"
       >
-        @if (loading()) {
+        @if (usersStore.loading()) {
           <span class="loading loading-spinner loading-sm"></span>
         }
         重新整理
       </button>
     </div>
 
-    @if (loading()) {
+    @if (usersStore.loading()) {
       <div class="flex justify-center py-8">
         <span class="loading loading-spinner loading-lg"></span>
       </div>
-    } @else if (users().length === 0) {
+    } @else if (!hasUsers()) {
       <div class="text-center py-8 text-base-content/60">
         <lucide-icon
           [img]="Users"
@@ -45,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (user of users(); track user.uid) {
+            @for (item of paginatedUsersDisplay(); track item.user.uid) {
               <tr>
                 <td>
                   <div class="flex items-center gap-3">
@@ -53,10 +53,10 @@
                       <div
                         class="w-10 h-10 rounded-full bg-primary text-primary-content"
                       >
-                        @if (user.photoURL) {
+                        @if (item.user.photoURL) {
                           <img
-                            [src]="user.photoURL"
-                            [alt]="user.displayName"
+                            [src]="item.user.photoURL"
+                            [alt]="item.displayName"
                             referrerpolicy="no-referrer"
                             class="object-cover"
                           />
@@ -65,62 +65,50 @@
                     </div>
                     <div>
                       <div class="font-medium">
-                        {{ user.displayName || '未命名' }}
+                        {{ item.displayName }}
                       </div>
                       <div class="text-xs text-base-content/60">
-                        {{ user.uid.substring(0, 8) }}...
+                        {{ item.uidShort }}...
                       </div>
                     </div>
                   </div>
                 </td>
-                <td>{{ user.email || '-' }}</td>
+                <td>{{ item.email }}</td>
                 <td>
-                  @if (user.platforms.quotation; as quotation) {
-                    @if (
-                      quotation.role === 'premium' &&
-                      quotation.premiumUntil &&
-                      getDaysUntilExpiry(quotation.premiumUntil) !== null &&
-                      getDaysUntilExpiry(quotation.premiumUntil)! <= 0
-                    ) {
-                      <!-- 贊助會員已過期 - 灰色 -->
-                      <span class="badge badge-soft gap-1">
-                        <lucide-icon [img]="Crown" [size]="12" />
-                        贊助會員
-                      </span>
-                    } @else {
-                      <!-- 正常狀態 -->
-                      <span
-                        class="badge badge-soft gap-1"
-                        [class]="getRoleBadgeClass(quotation.role)"
-                      >
-                        @if (quotation.role === 'admin') {
-                          <lucide-icon [img]="Shield" [size]="12" />
-                        } @else if (quotation.role === 'premium') {
-                          <lucide-icon [img]="Crown" [size]="12" />
-                        }
-                        {{ getRoleDisplayName(quotation.role) }}
-                      </span>
-                    }
+                  @if (item.isExpired) {
+                    <span class="badge badge-soft gap-1 whitespace-nowrap">
+                      <lucide-icon [img]="Crown" [size]="12" />
+                      贊助會員（已過期）
+                    </span>
                   } @else {
-                    <span class="badge badge-soft">{{
-                      getRoleDisplayName('free')
-                    }}</span>
+                    <span
+                      class="badge badge-soft gap-1 whitespace-nowrap"
+                      [class]="item.roleBadgeClass"
+                    >
+                      @if (item.role === 'admin') {
+                        <lucide-icon [img]="Shield" [size]="12" />
+                      } @else if (item.role === 'premium') {
+                        <lucide-icon [img]="Crown" [size]="12" />
+                      }
+                      {{ item.roleDisplayName }}
+                    </span>
                   }
                 </td>
                 <td>
-                  @if (
-                    user.platforms.quotation?.premiumUntil;
-                    as premiumUntil
-                  ) {
+                  @if (item.premiumUntilFormatted) {
                     <div>
-                      <div>{{ formatDate(premiumUntil) }}</div>
-                      @if (getDaysUntilExpiry(premiumUntil); as days) {
+                      <div>{{ item.premiumUntilFormatted }}</div>
+                      @if (
+                        item.daysUntilExpiry !== null && item.daysUntilExpiry > 0
+                      ) {
                         <div
                           class="text-xs"
-                          [class.text-error]="days < 7"
-                          [class.text-warning]="days >= 7 && days < 30"
+                          [class.text-error]="item.daysUntilExpiry < 7"
+                          [class.text-warning]="
+                            item.daysUntilExpiry >= 7 && item.daysUntilExpiry < 30
+                          "
                         >
-                          (剩餘 {{ days }} 天)
+                          (剩餘 {{ item.daysUntilExpiry }} 天)
                         </div>
                       }
                     </div>
@@ -128,20 +116,20 @@
                     <span class="text-base-content/40">-</span>
                   }
                 </td>
-                <td>{{ formatDate(user.createdAt) }}</td>
+                <td>{{ item.createdAtFormatted }}</td>
                 <td>
-                  <div class="flex gap-2">
+                  <div class="join">
                     <button
                       type="button"
-                      class="btn btn-sm btn-ghost"
-                      (click)="editUser.emit(user)"
+                      class="btn btn-sm btn-ghost join-item"
+                      (click)="startEdit(item.user)"
                     >
                       編輯
                     </button>
                     <button
                       type="button"
-                      class="btn btn-sm btn-error btn-outline"
-                      (click)="deleteUser.emit(user)"
+                      class="btn btn-sm btn-ghost text-error join-item"
+                      (click)="confirmDelete(item.user)"
                     >
                       刪除
                     </button>
@@ -152,6 +140,31 @@
           </tbody>
         </table>
       </div>
+
+      <!-- 分頁元件 -->
+      <app-pagination
+        [totalItems]="totalUsers()"
+        [pageSize]="pageSize()"
+        [currentPage]="currentPage()"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      />
     }
   </div>
 </div>
+
+<!-- 編輯使用者 Modal -->
+@if (editingUser()) {
+  <dialog class="modal modal-open">
+    <div class="modal-box">
+      <app-user-edit-form
+        [user]="editingUser()!"
+        (save)="handleSave($event)"
+        (cancel)="cancelEdit()"
+      />
+    </div>
+    <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
+      <button>close</button>
+    </form>
+  </dialog>
+}

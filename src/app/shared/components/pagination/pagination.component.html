@@ -1,0 +1,88 @@
+<!-- 分頁控制區 -->
+<div
+  class="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-base-200"
+>
+  <!-- 左側：每頁筆數選擇 -->
+  @if (showPageSizeSelector()) {
+    <div class="flex items-center gap-2 text-sm">
+      <span class="text-base-content/70">每頁顯示</span>
+      <select
+        class="select select-bordered select-sm w-20"
+        (change)="onPageSizeChange($event)"
+      >
+        @for (size of pageSizeOptions(); track size) {
+          <option [value]="size" [selected]="size === pageSize()">
+            {{ size }}
+          </option>
+        }
+      </select>
+      <span class="text-base-content/70">筆</span>
+    </div>
+  }
+
+  <!-- 中間：分頁按鈕 -->
+  <div class="join">
+    <!-- 第一頁 -->
+    <button
+      type="button"
+      [class]="btnClass()"
+      [disabled]="isFirstPage()"
+      (click)="goToFirstPage()"
+      title="第一頁"
+    >
+      «
+    </button>
+
+    <!-- 上一頁 -->
+    <button
+      type="button"
+      [class]="btnClass()"
+      [disabled]="isFirstPage()"
+      (click)="goToPreviousPage()"
+      title="上一頁"
+    >
+      ‹
+    </button>
+
+    <!-- 頁碼按鈕 -->
+    @for (page of visiblePages(); track page) {
+      <button
+        type="button"
+        [class]="btnClass()"
+        [class.btn-active]="page === currentPage()"
+        (click)="goToPage(page)"
+      >
+        {{ page }}
+      </button>
+    }
+
+    <!-- 下一頁 -->
+    <button
+      type="button"
+      [class]="btnClass()"
+      [disabled]="isLastPage()"
+      (click)="goToNextPage()"
+      title="下一頁"
+    >
+      ›
+    </button>
+
+    <!-- 最後一頁 -->
+    <button
+      type="button"
+      [class]="btnClass()"
+      [disabled]="isLastPage()"
+      (click)="goToLastPage()"
+      title="最後一頁"
+    >
+      »
+    </button>
+  </div>
+
+  <!-- 右側：統計資訊 -->
+  @if (showInfo()) {
+    <div class="text-sm text-base-content/70">
+      顯示第 {{ startIndex() }} - {{ endIndex() }} 筆，共 {{ totalItems() }} 筆
+    </div>
+  }
+</div>

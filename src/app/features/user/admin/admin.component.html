@@ -12,25 +12,8 @@
       <lucide-icon [img]="Shield" [size]="32" />
       管理員控制台
     </h1>
-    <app-user-list
-      [users]="users()"
-      [loading]="loading()"
-      (refresh)="loadUsers()"
-      (editUser)="startEdit($event)"
-    />
-    @if (editingUser()) {
-      <dialog class="modal modal-open">
-        <div class="modal-box">
-          <app-user-edit-form
-            [user]="editingUser()!"
-            (save)="handleSave($event)"
-            (cancel)="cancelEdit()"
-          />
-        </div>
-        <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
-          <button>close</button>
-        </form>
-      </dialog>
-    }
+
+    <!-- 使用者列表（含編輯功能） -->
+    <app-user-list />
   }
 </div>
