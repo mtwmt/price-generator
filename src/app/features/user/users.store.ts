@@ -1,0 +1,163 @@
+import { computed, inject } from '@angular/core';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withState,
+} from '@ngrx/signals';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { from, pipe, switchMap, tap } from 'rxjs';
+import { tapResponse } from '@ngrx/operators';
+import { UserData, UpdateUserRoleParams } from '@app/features/user/user.model';
+import { FirestoreService } from '@app/core/services/firestore.service';
+import { ToastService } from '@app/shared/services/toast.service';
+
+/**
+ * 使用者資料狀態
+ */
+interface UsersState {
+  users: UserData[];
+  loading: boolean;
+  updating: boolean;
+  error: string | null;
+}
+
+const initialState: UsersState = {
+  users: [],
+  loading: false,
+  updating: false,
+  error: null,
+};
+
+
+/**
+ * 使用者資料 Store（全局）
+ *
+ * 職責：管理使用者資料的載入、更新
+ */
+export const UsersStore = signalStore(
+  { providedIn: 'root' },
+
+  withState(initialState),
+
+  withComputed(({ users }) => ({
+    totalUsers: computed(() => users().length),
+    hasUsers: computed(() => users().length > 0),
+  })),
+
+  withMethods(
+    (
+      store,
+      firestoreService = inject(FirestoreService),
+      toastService = inject(ToastService)
+    ) => ({
+      /**
+       * 載入所有使用者
+       */
+      loadUsers: rxMethod<number | void>(
+        pipe(
+          tap(() =>
+            patchState(store, {
+              loading: true,
+              error: null,
+            })
+          ),
+          switchMap((maxResults) =>
+            from(firestoreService.getAllUsers(maxResults || 100)).pipe(
+              tapResponse({
+                next: (users) =>
+                  patchState(store, {
+                    users,
+                    loading: false,
+                  }),
+                error: (error: Error) => {
+                  patchState(store, {
+                    error: error.message || '載入使用者列表失敗',
+                    loading: false,
+                  });
+                  toastService.error('載入使用者列表失敗');
+                },
+              })
+            )
+          )
+        )
+      ),
+
+      /**
+       * 更新使用者角色
+       */
+      updateUserRole: rxMethod<UpdateUserRoleParams>(
+        pipe(
+          tap(() =>
+            patchState(store, {
+              updating: true,
+              error: null,
+            })
+          ),
+          switchMap(({ uid, role, premiumUntil }) =>
+            from(firestoreService.updateUserRole(uid, role, premiumUntil)).pipe(
+              tapResponse({
+                next: () => {
+                  patchState(store, { updating: false });
+                  toastService.success('使用者權限已更新');
+                  // 重新載入使用者列表
+                  from(firestoreService.getAllUsers(100)).subscribe({
+                    next: (users) => patchState(store, { users }),
+                  });
+                },
+                error: (error: Error) => {
+                  patchState(store, {
+                    error: error.message || '更新使用者權限失敗',
+                    updating: false,
+                  });
+                  toastService.error('更新使用者權限失敗');
+                },
+              })
+            )
+          )
+        )
+      ),
+
+      /**
+       * 刪除使用者
+       */
+      deleteUser: rxMethod<string>(
+        pipe(
+          tap(() =>
+            patchState(store, {
+              updating: true,
+              error: null,
+            })
+          ),
+          switchMap((uid) =>
+            from(firestoreService.deleteUser(uid)).pipe(
+              tapResponse({
+                next: () => {
+                  // 從本地列表移除
+                  const users = store.users().filter((u) => u.uid !== uid);
+                  patchState(store, { users, updating: false });
+                  toastService.success('使用者已刪除');
+                },
+                error: (error: Error) => {
+                  patchState(store, {
+                    error: error.message || '刪除使用者失敗',
+                    updating: false,
+                  });
+                  toastService.error('刪除使用者失敗');
+                },
+              })
+            )
+          )
+        )
+      ),
+
+      /**
+       * 清除錯誤
+       */
+      clearError(): void {
+        patchState(store, { error: null });
+      },
+    })
+  )
+);

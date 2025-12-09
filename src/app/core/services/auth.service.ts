@@ -13,7 +13,7 @@ import {
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { FirestoreService } from '@app/core/services/firestore.service';
 import { ToastService } from '@app/shared/services/toast.service';
-import { UserData } from '@app/features/user/shared/models/user.model';
+import { UserData } from '@app/features/user/user.model';
 
 /**
  * 認證服務

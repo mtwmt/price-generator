@@ -19,7 +19,7 @@ import {
   UserData,
   UserRole,
   PlatformType,
-} from '@app/features/user/shared/models/user.model';
+} from '@app/features/user/user.model';
 
 /**
  * Firestore 服務

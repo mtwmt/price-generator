@@ -18,24 +18,24 @@
 
     <!-- 會員資料卡片 -->
     <app-user-profile
-      [userDisplayName]="authService.userDisplayName()"
-      [userEmail]="authService.userEmail()"
-      [isPremium]="authService.isPremium()"
-      [isAdmin]="authService.isAdmin()"
-      [formattedCreatedAt]="formattedCreatedAt()"
-      [formattedPremiumUntil]="formattedPremiumUntil()"
-      [daysUntilExpiry]="daysUntilExpiry()"
-      [showExpiryWarning]="showExpiryWarning() ?? false"
+      [userDisplayName]="profileStore.userDisplayName()"
+      [userEmail]="profileStore.userEmail()"
+      [isPremium]="profileStore.isPremium()"
+      [isAdmin]="profileStore.isAdmin()"
+      [formattedCreatedAt]="profileStore.formattedCreatedAt()"
+      [formattedPremiumUntil]="profileStore.formattedPremiumUntil()"
+      [daysUntilExpiry]="profileStore.daysUntilExpiry()"
+      [showExpiryWarning]="profileStore.showExpiryWarning()"
       (displayNameChange)="handleDisplayNameChange($event)"
     />
 
     <!-- 申請狀態顯示（非 Premium 使用者） -->
     @if (
-      !authService.isPremium() &&
-      !authService.isAdmin() &&
-      myDonationRequests().length > 0
+      !profileStore.isPremium() &&
+      !profileStore.isAdmin() &&
+      donationsStore.myRequests().length > 0
     ) {
-      @for (request of myDonationRequests(); track request.id) {
+      @for (request of donationsStore.myRequests(); track request.id) {
         @if (request.status === 'pending') {
           <ng-container
             *ngTemplateOutlet="
@@ -67,7 +67,7 @@
                   request: request,
                   requestId: request.id,
                   status: 'cancelled',
-                  icon: XCircle,
+                  icon: CircleX,
                   iconColor: 'text-base-content/50',
                   borderColor: 'border-base-content/20',
                   titleColor: 'text-base-content/70',
@@ -89,7 +89,7 @@
                   request: request,
                   requestId: request.id,
                   status: 'rejected',
-                  icon: XCircle,
+                  icon: CircleX,
                   iconColor: 'text-error',
                   borderColor: 'border-error',
                   titleColor: 'text-error',
@@ -129,14 +129,14 @@
     }
 
     <!-- 贊助申請表單 -->
-    @if (!authService.isPremium() && !authService.isAdmin()) {
+    @if (!profileStore.isPremium() && !profileStore.isAdmin()) {
       <div id="donation-form">
         <app-donation-form (submitDonation)="handleDonationSubmit($event)" />
       </div>
     }
 
     <!-- 已經是贊助會員的感謝訊息 -->
-    @if (authService.isPremium()) {
+    @if (profileStore.isPremium()) {
       <div class="alert alert-success alert-soft">
         <lucide-icon [img]="Check" [size]="24" />
         <div>
@@ -147,12 +147,8 @@
     }
 
     <!-- 管理員面板 -->
-    @if (authService.isAdmin()) {
-      <app-admin-panel
-        [users]="users()"
-        [loading]="loading()"
-        (refreshUsers)="loadUsers()"
-      />
+    @if (profileStore.isAdmin()) {
+      <app-admin-panel />
     }
   }
 </div>

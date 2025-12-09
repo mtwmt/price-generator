@@ -1,4 +1,4 @@
-<div class="card bg-base-100 shadow-xl">
+<div class="card bg-base-100 shadow-sm">
   <div class="card-body">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-2">
@@ -31,13 +31,8 @@
     </div>
 
     @if (activeTab() === 'users') {
-      <!-- 使用者列表元件 -->
-      <app-user-list
-        [users]="users()"
-        [loading]="loading()"
-        (editUser)="startEdit($event)"
-        (deleteUser)="confirmDelete($event)"
-      />
+      <!-- 使用者列表元件（使用全局 UsersStore） -->
+      <app-user-list />
     } @else {
       <!-- 贊助審核區塊 -->
       <!-- 子分頁切換 -->
@@ -225,22 +220,6 @@
     }
   </div>
 </div>
-
-<!-- 編輯使用者 Modal -->
-@if (editingUser()) {
-  <dialog class="modal modal-open">
-    <div class="modal-box">
-      <app-user-edit-form
-        [user]="editingUser()!"
-        (save)="handleSave($event)"
-        (cancel)="cancelEdit()"
-      />
-    </div>
-    <form method="dialog" class="modal-backdrop">
-      <button (click)="cancelEdit()">close</button>
-    </form>
-  </dialog>
-}
 
 <!-- 憑證預覽 Modal -->
 <app-proof-modal
