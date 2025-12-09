@@ -14,6 +14,7 @@ import {
   getDocs,
   orderBy,
   limit,
+  where,
 } from 'firebase/firestore';
 import {
   UserData,
@@ -31,6 +32,7 @@ import {
 export class FirestoreService {
   private db: Firestore | null = null;
   private readonly USERS_COLLECTION = 'users';
+  private readonly DONATIONS_COLLECTION = 'donations';
   private readonly CURRENT_PLATFORM: PlatformType = 'quotation';
 
   /**
@@ -322,6 +324,7 @@ export class FirestoreService {
 
   /**
    * 刪除使用者（管理員專用）
+   * 同時刪除該使用者的所有贊助記錄
    * @param uid 使用者 UID
    */
   async deleteUser(uid: string): Promise<void> {
@@ -330,6 +333,18 @@ export class FirestoreService {
     }
 
     try {
+      // 1. 刪除使用者的所有贊助記錄
+      const donationsRef = collection(this.db, this.DONATIONS_COLLECTION);
+      const donationsQuery = query(donationsRef, where('uid', '==', uid));
+      const donationsSnapshot = await getDocs(donationsQuery);
+
+      const deleteDonationsPromises = donationsSnapshot.docs.map((doc) =>
+        deleteDoc(doc.ref)
+      );
+
+      await Promise.all(deleteDonationsPromises);
+
+      // 2. 刪除使用者資料
       const userDocRef = doc(this.db, this.USERS_COLLECTION, uid);
       await deleteDoc(userDocRef);
     } catch (error) {
