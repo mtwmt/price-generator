@@ -34,6 +34,7 @@ export class TemplateDetail {
   quoterLogo = input<string>('');
   customerLogo = input<string>('');
   stamp = input<string>('');
+  isPremium = input<boolean>(false);
 
   serviceItems = computed(() => {
     return this.form().get('serviceItems') as FormArray;

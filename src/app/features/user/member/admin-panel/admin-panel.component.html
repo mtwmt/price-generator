@@ -62,7 +62,9 @@
         <!-- 待審核列表 -->
         @if (donationLoading()) {
           <div class="flex justify-center items-center py-12">
-            <span class="loading loading-spinner loading-lg text-primary"></span>
+            <span
+              class="loading loading-spinner loading-lg text-primary"
+            ></span>
           </div>
         } @else {
           <div class="overflow-x-auto">
@@ -135,7 +137,9 @@
         <!-- 已處理列表 -->
         @if (donationLoading()) {
           <div class="flex justify-center items-center py-12">
-            <span class="loading loading-spinner loading-lg text-primary"></span>
+            <span
+              class="loading loading-spinner loading-lg text-primary"
+            ></span>
           </div>
         } @else {
           <div class="overflow-x-auto">
@@ -166,13 +170,21 @@
                     </td>
                     <td>
                       @if (request.status === 'approved') {
-                        <span class="badge badge-success">已核准</span>
+                        <span class="badge badge-success whitespace-nowrap"
+                          >已核准</span
+                        >
                       } @else if (request.status === 'expired') {
-                        <span class="badge badge-warning">已過期</span>
+                        <span class="badge badge-warning whitespace-nowrap"
+                          >已過期</span
+                        >
                       } @else if (request.reviewedBy === request.uid) {
-                        <span class="badge badge-ghost">已取消</span>
+                        <span class="badge badge-ghost whitespace-nowrap"
+                          >已取消</span
+                        >
                       } @else {
-                        <span class="badge badge-error">已拒絕</span>
+                        <span class="badge badge-error whitespace-nowrap"
+                          >已拒絕</span
+                        >
                       }
                     </td>
                     <td>

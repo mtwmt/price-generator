@@ -40,7 +40,7 @@ export class UserListComponent implements OnInit {
 
   // ==================== 分頁狀態 ====================
   currentPage = signal(1);
-  pageSize = signal(5);
+  pageSize = signal(10);
 
   // ==================== 編輯狀態 ====================
   editingUser = signal<UserData | null>(null);
