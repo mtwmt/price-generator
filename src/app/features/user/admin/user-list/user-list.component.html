@@ -38,10 +38,10 @@
             <tr>
               <th>使用者</th>
               <th>Email</th>
-              <th>角色</th>
-              <th>贊助到期日</th>
-              <th>註冊時間</th>
-              <th>操作</th>
+              <th class="w-28">角色</th>
+              <th class="w-32">贊助到期日</th>
+              <th class="w-32">註冊時間</th>
+              <th class="w-32">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -67,9 +67,9 @@
                       <div class="font-medium">
                         {{ item.displayName }}
                       </div>
-                      <div class="text-xs text-base-content/60">
+                      <!-- <div class="text-xs text-base-content/60">
                         {{ item.uidShort }}...
-                      </div>
+                      </div> -->
                     </div>
                   </div>
                 </td>
@@ -99,13 +99,15 @@
                     <div>
                       <div>{{ item.premiumUntilFormatted }}</div>
                       @if (
-                        item.daysUntilExpiry !== null && item.daysUntilExpiry > 0
+                        item.daysUntilExpiry !== null &&
+                        item.daysUntilExpiry > 0
                       ) {
                         <div
                           class="text-xs"
                           [class.text-error]="item.daysUntilExpiry < 7"
                           [class.text-warning]="
-                            item.daysUntilExpiry >= 7 && item.daysUntilExpiry < 30
+                            item.daysUntilExpiry >= 7 &&
+                            item.daysUntilExpiry < 30
                           "
                         >
                           (剩餘 {{ item.daysUntilExpiry }} 天)
@@ -126,13 +128,15 @@
                     >
                       編輯
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost text-error join-item"
-                      (click)="confirmDelete(item.user)"
-                    >
-                      刪除
-                    </button>
+                    @if (item.role === 'free') {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-ghost text-error join-item"
+                        (click)="confirmDelete(item.user)"
+                      >
+                        刪除
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>

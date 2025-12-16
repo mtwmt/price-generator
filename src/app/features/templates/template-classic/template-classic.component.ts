@@ -17,6 +17,7 @@ export class TemplateClassic {
   quoterLogo = input<string>('');
   customerLogo = input<string>('');
   stamp = input<string>('');
+  isPremium = input<boolean>(false);
 
   // 取得服務項目 FormArray
   serviceItems = computed(() => {

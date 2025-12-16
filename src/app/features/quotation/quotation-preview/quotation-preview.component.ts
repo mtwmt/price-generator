@@ -1,8 +1,9 @@
-import { Component, input, signal, computed } from '@angular/core';
+import { Component, input, signal, computed, inject } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ExportControls } from '@app/features/quotation/quotation-export-controls/export-controls.component';
 import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
+import { AuthService } from '@app/core/services/auth.service';
 
 /**
  * 報價單預覽容器元件
@@ -18,6 +19,9 @@ import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-t
 export class QuotationPreview {
   // Constants
   private readonly DEFAULT_TEMPLATE = 'classic';
+
+  // Services
+  private readonly authService = inject(AuthService);
 
   // Inputs
   form = input.required<FormGroup>();
@@ -46,6 +50,7 @@ export class QuotationPreview {
     customerLogo: this.customerLogo(),
     quoterLogo: this.quoterLogo(),
     stamp: this.stamp(),
+    isPremium: this.authService.isPremium(),
   }));
 
   /**
