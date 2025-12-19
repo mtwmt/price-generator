@@ -18,6 +18,7 @@ import { ToastService } from '@app/shared/services/toast.service';
  */
 interface UsersState {
   users: UserData[];
+  searchQuery: string;
   loading: boolean;
   updating: boolean;
   error: string | null;
@@ -25,11 +26,11 @@ interface UsersState {
 
 const initialState: UsersState = {
   users: [],
+  searchQuery: '',
   loading: false,
   updating: false,
   error: null,
 };
-
 
 /**
  * 使用者資料 Store（全局）
@@ -41,9 +42,19 @@ export const UsersStore = signalStore(
 
   withState(initialState),
 
-  withComputed(({ users }) => ({
+  withComputed(({ users, searchQuery }) => ({
     totalUsers: computed(() => users().length),
     hasUsers: computed(() => users().length > 0),
+    filteredUsers: computed(() => {
+      const query = searchQuery().toLowerCase().trim();
+      if (!query) return users();
+
+      return users().filter(
+        (user) =>
+          user.displayName?.toLowerCase().includes(query) ||
+          user.email?.toLowerCase().includes(query)
+      );
+    }),
   })),
 
   withMethods(
@@ -52,9 +63,6 @@ export const UsersStore = signalStore(
       firestoreService = inject(FirestoreService),
       toastService = inject(ToastService)
     ) => ({
-      /**
-       * 載入所有使用者
-       */
       loadUsers: rxMethod<number | void>(
         pipe(
           tap(() =>
@@ -64,7 +72,7 @@ export const UsersStore = signalStore(
             })
           ),
           switchMap((maxResults) =>
-            from(firestoreService.getAllUsers(maxResults || 100)).pipe(
+            from(firestoreService.getAllUsers(maxResults || undefined)).pipe(
               tapResponse({
                 next: (users) =>
                   patchState(store, {
@@ -83,10 +91,6 @@ export const UsersStore = signalStore(
           )
         )
       ),
-
-      /**
-       * 更新使用者角色
-       */
       updateUserRole: rxMethod<UpdateUserRoleParams>(
         pipe(
           tap(() =>
@@ -102,7 +106,7 @@ export const UsersStore = signalStore(
                   patchState(store, { updating: false });
                   toastService.success('使用者權限已更新');
                   // 重新載入使用者列表
-                  from(firestoreService.getAllUsers(100)).subscribe({
+                  from(firestoreService.getAllUsers()).subscribe({
                     next: (users) => patchState(store, { users }),
                   });
                 },
@@ -118,10 +122,6 @@ export const UsersStore = signalStore(
           )
         )
       ),
-
-      /**
-       * 刪除使用者
-       */
       deleteUser: rxMethod<string>(
         pipe(
           tap(() =>
@@ -157,6 +157,13 @@ export const UsersStore = signalStore(
        */
       clearError(): void {
         patchState(store, { error: null });
+      },
+
+      /**
+       * 設定搜尋關鍵字
+       */
+      setSearchQuery(query: string): void {
+        patchState(store, { searchQuery: query });
       },
     })
   )

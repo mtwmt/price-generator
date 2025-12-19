@@ -23,8 +23,8 @@ export class TimeAgoPipe implements PipeTransform {
 
     return date.toLocaleDateString('zh-TW', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     });
   }
 }

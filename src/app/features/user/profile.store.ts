@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { signalStore, withComputed } from '@ngrx/signals';
 import { AuthService } from '@app/core/services/auth.service';
-import { formatDateLong, getDaysDiff } from '@app/shared/utils/date.utils';
+import { formatDateTime, getDaysDiff } from '@app/shared/utils/date.utils';
 
 /**
  * 使用者 Profile Store
@@ -46,7 +46,7 @@ export const ProfileStore = signalStore(
       formattedCreatedAt: computed(() => {
         const createdAt = authService.userData()?.createdAt;
         if (!createdAt) return null;
-        return formatDateLong(createdAt);
+        return formatDateTime(createdAt);
       }),
 
       /**
@@ -56,7 +56,7 @@ export const ProfileStore = signalStore(
         const premiumUntil =
           authService.userData()?.platforms.quotation?.premiumUntil;
         if (!premiumUntil) return null;
-        return formatDateLong(premiumUntil);
+        return formatDateTime(premiumUntil);
       }),
 
       /**
