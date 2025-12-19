@@ -1,6 +1,6 @@
 import { UserData, UserRole } from '@app/features/user/user.model';
 import { getRoleDisplayName, getRoleBadgeClass } from './user-role.helpers';
-import { formatDate, getDaysDiff } from '@app/shared/utils/date.utils';
+import { formatDateTime, getDaysDiff } from '@app/shared/utils/date.utils';
 
 /**
  * 使用者顯示資料（用於模板綁定）
@@ -36,10 +36,10 @@ export function toUserDisplayData(user: UserData): UserDisplayData {
     role,
     roleDisplayName: getRoleDisplayName(role),
     roleBadgeClass: getRoleBadgeClass(role),
-    premiumUntilFormatted: premiumUntil ? formatDate(premiumUntil) : null,
+    premiumUntilFormatted: premiumUntil ? formatDateTime(premiumUntil) : null,
     daysUntilExpiry: daysUntil,
     isExpired: role === 'premium' && daysUntil !== null && daysUntil < 0,
-    createdAtFormatted: user.createdAt ? formatDate(user.createdAt) : '-',
+    createdAtFormatted: user.createdAt ? formatDateTime(user.createdAt) : '-',
   };
 }
 

@@ -1,21 +1,38 @@
 <div class="card bg-base-100 shadow-sm">
   <div class="card-body">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="card-title flex items-center gap-2">
-        <lucide-icon [img]="Users" [size]="24" />
-        使用者管理
-      </h2>
-      <button
-        type="button"
-        class="btn btn-sm btn-primary"
-        (click)="onRefresh()"
-        [disabled]="usersStore.loading()"
-      >
-        @if (usersStore.loading()) {
-          <span class="loading loading-spinner loading-sm"></span>
-        }
-        重新整理
-      </button>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <h2 class="card-title flex items-center gap-2">
+          <lucide-icon [img]="Users" [size]="24" />
+          使用者管理
+        </h2>
+        <!-- 重新整理按鈕 -->
+        <button
+          type="button"
+          class="btn btn-sm btn-ghost btn-square"
+          [class.btn-disabled]="usersStore.loading()"
+          (click)="onRefresh()"
+          [disabled]="usersStore.loading()"
+          title="重新整理"
+        >
+          @if (usersStore.loading()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          } @else {
+            <lucide-icon [img]="RefreshCw" [size]="16" />
+          }
+        </button>
+      </div>
+      <!-- 搜尋框 -->
+      <label class="input input-sm input-bordered flex items-center gap-2">
+        <lucide-icon [img]="Search" [size]="16" class="opacity-50" />
+        <input
+          type="search"
+          class="grow"
+          placeholder="搜尋名稱或 Email..."
+          [value]="usersStore.searchQuery()"
+          (input)="onSearchChange($any($event.target).value)"
+        />
+      </label>
     </div>
 
     @if (usersStore.loading()) {

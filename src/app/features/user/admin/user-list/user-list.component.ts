@@ -1,6 +1,13 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Users, Crown, Shield } from 'lucide-angular';
+import {
+  LucideAngularModule,
+  Users,
+  Crown,
+  Shield,
+  Search,
+  RefreshCw,
+} from 'lucide-angular';
 import { Timestamp } from 'firebase/firestore';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 import { UsersStore } from '@app/features/user/users.store';
@@ -37,6 +44,8 @@ export class UserListComponent implements OnInit {
   readonly Users = Users;
   readonly Crown = Crown;
   readonly Shield = Shield;
+  readonly Search = Search;
+  readonly RefreshCw = RefreshCw;
 
   // ==================== 分頁狀態 ====================
   currentPage = signal(1);
@@ -46,17 +55,17 @@ export class UserListComponent implements OnInit {
   editingUser = signal<UserData | null>(null);
 
   // ==================== Computed ====================
-  readonly totalUsers = computed(() => this.usersStore.users().length);
+  readonly totalUsers = computed(() => this.usersStore.filteredUsers().length);
   readonly hasUsers = computed(() => this.usersStore.users().length > 0);
 
   readonly paginatedUsersDisplay = computed<UserDisplayData[]>(() => {
-    const all = this.usersStore.users();
+    const filtered = this.usersStore.filteredUsers();
     const page = this.currentPage();
     const size = this.pageSize();
     const start = (page - 1) * size;
     const end = start + size;
 
-    return toUserDisplayDataList(all.slice(start, end));
+    return toUserDisplayDataList(filtered.slice(start, end));
   });
 
   // ==================== Lifecycle ====================
@@ -77,6 +86,11 @@ export class UserListComponent implements OnInit {
 
   onPageSizeChange(size: number): void {
     this.pageSize.set(size);
+    this.currentPage.set(1);
+  }
+
+  onSearchChange(query: string): void {
+    this.usersStore.setSearchQuery(query);
     this.currentPage.set(1);
   }
 

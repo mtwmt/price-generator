@@ -15,6 +15,7 @@ import {
   orderBy,
   limit,
   where,
+  QueryConstraint,
 } from 'firebase/firestore';
 import {
   UserData,
@@ -265,21 +266,25 @@ export class FirestoreService {
 
   /**
    * 取得所有使用者列表（管理員專用）
-   * @param maxResults 最多回傳幾筆資料（預設 100）
+   * @param maxResults 最多回傳幾筆資料
    * @returns 使用者列表
    */
-  async getAllUsers(maxResults: number = 100): Promise<UserData[]> {
+  async getAllUsers(maxResults?: number): Promise<UserData[]> {
     if (!this.db) {
       throw new Error('Firestore not initialized');
     }
 
     try {
       const usersRef = collection(this.db, this.USERS_COLLECTION);
-      const q = query(
-        usersRef,
+      const queryConstraints: QueryConstraint[] = [
         orderBy('createdAt', 'desc'),
-        limit(maxResults)
-      );
+      ];
+
+      if (maxResults) {
+        queryConstraints.push(limit(maxResults));
+      }
+
+      const q = query(usersRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
 
       const users: UserData[] = [];
