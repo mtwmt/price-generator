@@ -197,7 +197,15 @@
                     </td>
                     <td class="max-w-xs truncate">{{ request.note || '-' }}</td>
                     <td>
-                      @if (
+                      @if (request.status === 'approved') {
+                        <!-- 已核准：可編輯權限 -->
+                        <button
+                          class="btn btn-ghost btn-xs"
+                          (click)="startEditFromRequest(request)"
+                        >
+                          編輯
+                        </button>
+                      } @else if (
                         request.status === 'rejected' &&
                         request.reviewedBy !== request.uid
                       ) {
@@ -239,3 +247,19 @@
   [proofUrl]="selectedProofUrl()"
   (close)="closeProofModal()"
 />
+
+<!-- 編輯權限 Modal（共用 UserEditFormComponent） -->
+@if (editingUser()) {
+  <dialog class="modal modal-open">
+    <div class="modal-box">
+      <app-user-edit-form
+        [user]="editingUser()!"
+        (save)="handleSaveEdit($event)"
+        (cancel)="cancelEdit()"
+      />
+    </div>
+    <form method="dialog" class="modal-backdrop" (click)="cancelEdit()">
+      <button>close</button>
+    </form>
+  </dialog>
+}

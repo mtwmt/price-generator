@@ -11,7 +11,7 @@ import { Comment, CommentResponse, ReactionResponse } from './comments.model';
 export class CommentsService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly webAppUrl = environment.googleSheets.commentsWebAppUrl;
+  private readonly commentsUrl = environment.googleSheets.commentsUrl;
 
   fetchComments(pagePath: string): Observable<Comment[]> {
     const params = new URLSearchParams({
@@ -20,7 +20,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (response.success && response.data) {
@@ -58,7 +58,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (response.success && response.data) {
@@ -82,7 +82,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (!response.success) {
@@ -109,7 +109,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (response.success && response.data) {
@@ -140,7 +140,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (response.success && response.data) {
@@ -167,7 +167,7 @@ export class CommentsService {
     });
 
     return this.http
-      .get<CommentResponse>(`${this.webAppUrl}?${params.toString()}`)
+      .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
         map((response) => {
           if (response.success && response.data) {
