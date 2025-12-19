@@ -14,13 +14,15 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { DonationRequest } from '@app/features/user/user.model';
-import { FirestoreService } from './firestore.service';
+import { FirestoreService } from '@app/core/services/firestore.service';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DonationService {
   private readonly firestoreService = inject(FirestoreService);
+  private readonly notificationService = inject(NotificationService);
   private readonly db = getFirestore();
   private readonly COLLECTION_NAME = 'donations';
 
@@ -212,11 +214,18 @@ export class DonationService {
 
   /**
    * 核准申請
+   * @param requestId 申請 ID
+   * @param adminUid 管理員 UID
+   * @param userUid 使用者 UID
+   * @param userEmail 使用者 Email（用於發送通知）
+   * @param userDisplayName 使用者顯示名稱（用於發送通知）
    */
   async approveRequest(
     requestId: string,
     adminUid: string,
-    userUid: string
+    userUid: string,
+    userEmail: string,
+    userDisplayName: string
   ): Promise<void> {
     try {
       // 1. 更新申請狀態
@@ -239,6 +248,12 @@ export class DonationService {
         userUid,
         'premium',
         premiumUntil
+      );
+
+      // 4. 發送 Email 通知
+      await this.notificationService.sendSponsorApprovalEmail(
+        userEmail,
+        userDisplayName
       );
     } catch (error) {
       console.error('Failed to approve request:', error);
@@ -305,9 +320,7 @@ export class DonationService {
       const snapshot = await getDocs(q);
 
       // 批次刪除該使用者的所有贊助記錄
-      const deletePromises = snapshot.docs.map((doc) =>
-        deleteDoc(doc.ref)
-      );
+      const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
 
       await Promise.all(deletePromises);
     } catch (error) {

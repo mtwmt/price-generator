@@ -17,7 +17,7 @@ interface GoogleSheetsResponse {
 export class GoogleSheetsService {
   private readonly http = inject(HttpClient);
   private readonly analyticsService = inject(AnalyticsService);
-  private readonly webAppUrl = environment.googleSheets.webAppUrl;
+  private readonly quotationUrl = environment.googleSheets.quotationUrl;
   private readonly REQUEST_TIMEOUT_MS = 5000;
 
   async submitQuotationSilently(
@@ -41,7 +41,9 @@ export class GoogleSheetsService {
 
       const response = await firstValueFrom(
         this.http
-          .get<GoogleSheetsResponse>(`${this.webAppUrl}?${params.toString()}`)
+          .get<GoogleSheetsResponse>(
+            `${this.quotationUrl}?${params.toString()}`
+          )
           .pipe(timeout(this.REQUEST_TIMEOUT_MS))
       );
 

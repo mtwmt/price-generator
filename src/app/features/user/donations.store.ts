@@ -16,7 +16,7 @@ import {
   MarkExpiredParams,
   UserData,
 } from '@app/features/user/user.model';
-import { DonationService } from '@app/core/services/donation.service';
+import { DonationService } from '@app/features/user/services/donation.service';
 import { ToastService } from '@app/shared/services/toast.service';
 
 /**
@@ -35,7 +35,6 @@ const initialState: DonationsState = {
   submitting: false,
   error: null,
 };
-
 
 /**
  * 贊助申請 Store
@@ -142,7 +141,9 @@ export const DonationsStore = signalStore(
                     error: error.message || '申請送出失敗',
                     submitting: false,
                   });
-                  toastService.error(error.message || '申請送出失敗，請稍後再試');
+                  toastService.error(
+                    error.message || '申請送出失敗，請稍後再試'
+                  );
                 },
               })
             )

@@ -30,8 +30,9 @@ jobs:
             production: true,
             googleSheets: {
               enabled: true,
-              webAppUrl: '${{ secrets.GOOGLE_SHEETS_WEB_APP_URL }}',
-              commentsWebAppUrl: '${{ secrets.COMMENTS_WEB_APP_URL }}',
+              quotationUrl: '${{ secrets.QUOTATION_URL }}',
+              commentsUrl: '${{ secrets.COMMENTS_URL }}',
+              notificationUrl: '${{ secrets.NOTIFICATION_URL }}',
             },
             firebase: ${{ secrets.FIREBASE_CONFIG }},
           };

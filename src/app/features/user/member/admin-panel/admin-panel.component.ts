@@ -1,11 +1,17 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Shield } from 'lucide-angular';
-import { UserData, DonationRequest } from '@app/features/user/user.model';
+import { Timestamp } from 'firebase/firestore';
+import {
+  UserData,
+  UserRole,
+  DonationRequest,
+} from '@app/features/user/user.model';
 import { UserListComponent } from '@app/features/user/admin/user-list/user-list.component';
 import { ProofModalComponent } from '@app/features/user/admin/proof-modal/proof-modal.component';
+import { UserEditFormComponent } from '@app/features/user/admin/user-edit-modal/user-edit-modal.component';
 import { ToastService } from '@app/shared/services/toast.service';
-import { DonationService } from '@app/core/services/donation.service';
+import { DonationService } from '@app/features/user/services/donation.service';
 import { AuthService } from '@app/core/services/auth.service';
 import { UsersStore } from '@app/features/user/users.store';
 
@@ -21,6 +27,7 @@ import { UsersStore } from '@app/features/user/users.store';
     LucideAngularModule,
     UserListComponent,
     ProofModalComponent,
+    UserEditFormComponent,
   ],
   templateUrl: './admin-panel.component.html',
 })
@@ -38,6 +45,9 @@ export class AdminPanelComponent {
   donationLoading = signal<boolean>(false);
   isProofModalOpen = signal<boolean>(false);
   selectedProofUrl = signal<string>('');
+
+  // 編輯權限相關
+  editingUser = signal<UserData | null>(null);
 
   // Icons
   readonly Shield = Shield;
@@ -125,7 +135,9 @@ export class AdminPanelComponent {
       await this.donationService.approveRequest(
         request.id!,
         admin.uid,
-        request.uid
+        request.uid,
+        request.userEmail,
+        request.userDisplayName
       );
       this.toastService.success('已核准申請');
 
@@ -176,5 +188,51 @@ export class AdminPanelComponent {
       console.error('Failed to reset request:', error);
       this.toastService.error('重新審核失敗');
     }
+  }
+
+  // ==================== 編輯權限方法 ====================
+
+  /**
+   * 從贊助申請開啟編輯權限
+   */
+  startEditFromRequest(request: DonationRequest): void {
+    // 從 usersStore 取得完整的 UserData
+    const users = this.usersStore.users();
+    const user = users.find((u) => u.uid === request.uid);
+
+    if (user) {
+      this.editingUser.set(user);
+    } else {
+      // 如果使用者列表尚未載入，先載入
+      this.usersStore.loadUsers();
+      this.toastService.info('載入使用者資料中...');
+    }
+  }
+
+  /**
+   * 儲存編輯的權限
+   */
+  handleSaveEdit(updates: {
+    role: UserRole;
+    premiumUntil?: Timestamp | null;
+  }): void {
+    const user = this.editingUser();
+    if (!user) return;
+
+    this.usersStore.updateUserRole({
+      uid: user.uid,
+      role: updates.role,
+      premiumUntil: updates.premiumUntil?.toDate() ?? null,
+    });
+
+    this.cancelEdit();
+    this.loadProcessedRequests();
+  }
+
+  /**
+   * 取消編輯
+   */
+  cancelEdit(): void {
+    this.editingUser.set(null);
   }
 }
