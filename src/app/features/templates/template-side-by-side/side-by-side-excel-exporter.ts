@@ -12,6 +12,8 @@ import {
   addImageToWorksheet,
   getTaxLabel,
   styleSummaryRow,
+  createSignatureSection,
+  createFooterSection,
 } from '@app/features/quotation/utils/excel-helpers';
 
 export class SideBySideExcelExporter implements ExcelExporter {
@@ -31,8 +33,8 @@ export class SideBySideExcelExporter implements ExcelExporter {
     this.createServiceItemsTable(worksheet, data);
     this.createSummarySection(worksheet, data, workbook, stamp);
     this.createNotesSection(worksheet, data);
-    this.createSignatureSection(worksheet, data);
-    this.createFooterSection(worksheet, data);
+    createSignatureSection(worksheet, data.isSign);
+    createFooterSection(worksheet, data);
     this.applyBorders(worksheet);
   }
 
@@ -124,8 +126,6 @@ export class SideBySideExcelExporter implements ExcelExporter {
       row.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.SMALL };
       row.getCell(3).font = { size: EXCEL_STYLES.FONT_SIZES.SMALL };
     }
-
-    worksheet.addRow([]);
   }
 
   private createServiceItemsTable(
@@ -266,65 +266,7 @@ export class SideBySideExcelExporter implements ExcelExporter {
     }
   }
 
-  private createSignatureSection(
-    worksheet: ExcelJS.Worksheet,
-    data: QuotationData
-  ): void {
-    if (data.isSign) {
-      worksheet.addRow([]);
 
-      // 簽章區標題
-      const signTitleRow = worksheet.addRow(['報價人簽章', '', '客戶簽章確認']);
-      worksheet.mergeCells(`A${signTitleRow.number}:C${signTitleRow.number}`);
-      worksheet.mergeCells(`D${signTitleRow.number}:E${signTitleRow.number}`);
-      signTitleRow.getCell(1).font = {
-        size: EXCEL_STYLES.FONT_SIZES.NORMAL,
-        bold: true,
-      };
-      signTitleRow.getCell(3).font = {
-        size: EXCEL_STYLES.FONT_SIZES.NORMAL,
-        bold: true,
-      };
-
-      // 簽章欄位
-      const signRow1 = worksheet.addRow([
-        '簽章：______________',
-        '',
-        '簽章：______________',
-      ]);
-      worksheet.mergeCells(`A${signRow1.number}:B${signRow1.number}`);
-      worksheet.mergeCells(`C${signRow1.number}:E${signRow1.number}`);
-
-      const signRow2 = worksheet.addRow([
-        '日期：______________',
-        '',
-        '日期：______________',
-      ]);
-      worksheet.mergeCells(`A${signRow2.number}:B${signRow2.number}`);
-      worksheet.mergeCells(`C${signRow2.number}:E${signRow2.number}`);
-    }
-  }
-
-  private createFooterSection(
-    worksheet: ExcelJS.Worksheet,
-    data: QuotationData
-  ): void {
-    worksheet.addRow([]);
-    const footerText = `本報價單由 ${data.quoterName || '[公司名稱]'} 提供${
-      data.quoterAddress ? ' | 地址：' + data.quoterAddress : ''
-    }${
-      data.quoterPhone
-        ? ' | 電話：' +
-          data.quoterPhone +
-          (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : '')
-        : ''
-    }`;
-
-    const footerRow = worksheet.addRow([footerText]);
-    worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
-    footerRow.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.SMALL };
-    footerRow.getCell(1).alignment = { horizontal: 'center' };
-  }
 
   private applyBorders(worksheet: ExcelJS.Worksheet): void {
     const lastRow = worksheet.rowCount;

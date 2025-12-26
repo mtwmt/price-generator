@@ -163,3 +163,87 @@ export function getCustomerInfoRows(data: QuotationData): string[] {
   if (data.customerEmail) rows.push(`Email：${data.customerEmail}`);
   return rows;
 }
+
+/**
+ * 建立簽章區
+ * @param worksheet - ExcelJS 工作表
+ * @param isSign - 是否顯示簽章區
+ */
+export function createSignatureSection(
+  worksheet: ExcelJS.Worksheet,
+  isSign: boolean
+): void {
+  if (!isSign) return;
+
+  worksheet.addRow([]);
+
+  // 簽章區標題
+  const signTitleRow = worksheet.addRow([
+    '報價人簽章',
+    '',
+    '客戶簽章確認',
+  ]);
+  worksheet.mergeCells(`A${signTitleRow.number}:B${signTitleRow.number}`);
+  worksheet.mergeCells(`C${signTitleRow.number}:E${signTitleRow.number}`);
+  signTitleRow.getCell(1).font = {
+    size: EXCEL_STYLES.FONT_SIZES.NORMAL,
+    bold: true,
+  };
+  signTitleRow.getCell(3).font = {
+    size: EXCEL_STYLES.FONT_SIZES.NORMAL,
+    bold: true,
+  };
+
+  // 簽章欄位
+  const signRow1 = worksheet.addRow([
+    '簽章：______________',
+    '',
+    '簽章：______________',
+  ]);
+  worksheet.mergeCells(`A${signRow1.number}:B${signRow1.number}`);
+  worksheet.mergeCells(`C${signRow1.number}:E${signRow1.number}`);
+
+  const signRow2 = worksheet.addRow([
+    '日期：______________',
+    '',
+    '日期：______________',
+  ]);
+  worksheet.mergeCells(`A${signRow2.number}:B${signRow2.number}`);
+  worksheet.mergeCells(`C${signRow2.number}:E${signRow2.number}`);
+}
+
+/**
+ * Footer 資料結構
+ */
+export interface FooterData {
+  quoterName?: string;
+  quoterAddress?: string;
+  quoterPhone?: string;
+  quoterPhoneExt?: string;
+}
+
+/**
+ * 建立頁尾區
+ * @param worksheet - ExcelJS 工作表
+ * @param data - 頁尾資料
+ */
+export function createFooterSection(
+  worksheet: ExcelJS.Worksheet,
+  data: FooterData
+): void {
+  worksheet.addRow([]);
+  const footerText = `本報價單由 ${data.quoterName || '[公司名稱]'} 提供${
+    data.quoterAddress ? ' | 地址：' + data.quoterAddress : ''
+  }${
+    data.quoterPhone
+      ? ' | 電話：' +
+        data.quoterPhone +
+        (data.quoterPhoneExt ? ` #${data.quoterPhoneExt}` : '')
+      : ''
+  }`;
+
+  const footerRow = worksheet.addRow([footerText]);
+  worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
+  footerRow.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.SMALL };
+  footerRow.getCell(1).alignment = { horizontal: 'center' };
+}
