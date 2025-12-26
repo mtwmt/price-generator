@@ -83,10 +83,15 @@
         (addField)="onAddField()"
         (removeField)="onRemoveField($event)"
         (drop)="onDrop($event)"
-        (taxRateChange)="onTaxRateChange($event)"
-        (normalizePercentageValue)="normalizePercentage()"
-        (normalizeDiscountAmount)="normalizeDiscountValue()"
-      />
+      >
+        <!-- 計價設定（嵌入服務項目 card 內） -->
+        <app-pricing-section
+          [form]="form"
+          (taxRateChange)="onTaxRateChange($event)"
+          (normalizePercentageValue)="normalizePercentage()"
+          (normalizeDiscountAmount)="normalizeDiscountValue()"
+        />
+      </app-service-items-section>
 
       <!-- 其他資訊 -->
       <app-other-info-section [form]="form" />

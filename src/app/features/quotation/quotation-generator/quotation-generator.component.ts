@@ -18,6 +18,10 @@ import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 import Litepicker from 'litepicker';
 import { QuotationPreview } from '@app/features/quotation/quotation-preview/quotation-preview.component';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
+import {
+  CUSTOM_TAX_NAME,
+  getTaxPercentage,
+} from '@app/features/quotation/models/quotation.constants';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { QuotationStorageService } from '@app/features/quotation/services/quotation-storage.service';
@@ -28,6 +32,7 @@ import { QuotationHistory } from './quotation-history/quotation-history.componen
 import { CustomerInfoSection } from './customer-info-section/customer-info-section.component';
 import { QuoterInfoSection } from './quoter-info-section/quoter-info-section.component';
 import { ServiceItemsSection } from './service-items-section/service-items-section.component';
+import { PricingSection } from './pricing-section/pricing-section.component';
 import { OtherInfoSection } from './other-info-section/other-info-section.component';
 import {
   LucideAngularModule,
@@ -65,6 +70,7 @@ import { CdkDragDrop } from '@angular/cdk/drag-drop';
     CustomerInfoSection,
     QuoterInfoSection,
     ServiceItemsSection,
+    PricingSection,
     OtherInfoSection,
     LucideAngularModule,
   ],
@@ -173,25 +179,13 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     const target = event.target as HTMLSelectElement;
     const taxName = target.value;
 
-    let percentage = 0;
-    switch (taxName) {
-      case '免稅':
-        percentage = 0;
-        break;
-      case '營業稅':
-        percentage = 5;
-        break;
-      case '二代健保':
-        percentage = 2.11;
-        break;
-      case '自訂':
-        // 不自動設定稅率，讓使用者手動輸入
-        break;
-      default:
-        this.form.get('customTaxName')?.patchValue('');
-        percentage = 0;
+    // 自訂稅率：不自動設定，讓使用者手動輸入
+    if (taxName === CUSTOM_TAX_NAME) {
+      return;
     }
 
+    // 根據稅率名稱取得對應百分比
+    const percentage = getTaxPercentage(taxName);
     this.form.patchValue({ percentage });
   }
 
