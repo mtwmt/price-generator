@@ -12,7 +12,7 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
 
 /**
  * 服務項目區塊元件
- * 包含服務項目列表（支援拖曳排序）、折扣設定、稅別設定、金額統計
+ * 包含服務項目列表（支援拖曳排序）
  */
 @Component({
   selector: 'app-service-items-section',
@@ -39,9 +39,6 @@ export class ServiceItemsSection {
   readonly addField = output<void>();
   readonly removeField = output<number>();
   readonly drop = output<CdkDragDrop<string[]>>();
-  readonly taxRateChange = output<Event>();
-  readonly normalizePercentageValue = output<void>();
-  readonly normalizeDiscountAmount = output<void>();
 
   /**
    * 取得服務項目 FormArray
@@ -69,26 +66,5 @@ export class ServiceItemsSection {
    */
   onDrop(event: CdkDragDrop<string[]>): void {
     this.drop.emit(event);
-  }
-
-  /**
-   * 稅率變更
-   */
-  onTaxRateChange(event: Event): void {
-    this.taxRateChange.emit(event);
-  }
-
-  /**
-   * 標準化稅率百分比
-   */
-  normalizePercentage(): void {
-    this.normalizePercentageValue.emit();
-  }
-
-  /**
-   * 標準化折扣值
-   */
-  normalizeDiscountValue(): void {
-    this.normalizeDiscountAmount.emit();
   }
 }
