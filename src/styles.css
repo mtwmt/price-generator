@@ -1,15 +1,21 @@
 /* You can add global styles to this file, and also import other style files */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* DaisyUI plugin configuration for Tailwind v4 */
 @plugin "daisyui" {
   themes: wireframe --default;
 }
 
-/* 全域背景色 */
+/* 全域背景色和字體大小 */
 body {
   background: #f9fafb;
   min-height: 100vh;
+  font-size: 16px; /* text-base - 標準字體大小 */
+}
+
+/* 表單欄位標題字體大小 */
+.fieldset-legend {
+  font-size: 14px !important;
 }
 
 /* Angular CDK 拖曳樣式 - 使用 Tailwind 類別 */

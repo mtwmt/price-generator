@@ -15,7 +15,10 @@ export class ChangelogComponent {
   changelog = [
     {
       date: '2025-12-30',
-      features: ['修復 PDF 匯出無法顯示全部內容的問題'],
+      features: [
+        '調整預設字體大小，提升閱讀體驗',
+        '修復 PDF 匯出無法顯示全部內容的問題',
+      ],
     },
     {
       date: '2025-12-17',
