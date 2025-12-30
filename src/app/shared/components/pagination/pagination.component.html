@@ -4,7 +4,7 @@
 >
   <!-- 左側：每頁筆數選擇 -->
   @if (showPageSizeSelector()) {
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-2">
       <span class="text-base-content/70">每頁顯示</span>
       <select
         class="select select-bordered select-sm w-20"
@@ -81,7 +81,7 @@
 
   <!-- 右側：統計資訊 -->
   @if (showInfo()) {
-    <div class="text-sm text-base-content/70">
+    <div>
       顯示第 {{ startIndex() }} - {{ endIndex() }} 筆，共 {{ totalItems() }} 筆
     </div>
   }
