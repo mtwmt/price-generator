@@ -187,7 +187,7 @@
             track item.value;
             let idx = $index
           ) {
-            <tr class="border-t border-base-300">
+            <tr class="border-t border-base-300" data-pdf-keep-together>
               <td class="p-2 border-r border-base-300 flex items-center">
                 @if (item.value.category) {
                   <div class="text-base-content/60">
@@ -315,7 +315,7 @@
 
   <!-- 簽章區 -->
   @if (form().get('isSign')?.value) {
-    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-base-300 mt-3">
+    <div class="grid grid-cols-2 gap-3 pt-3 border-t border-base-300 mt-3" data-pdf-keep-together>
       <!-- 報價人簽章 -->
       <div class="border border-base-300 rounded p-2">
         <div class="font-semibold text-base-content mb-2">報價人簽章：</div>
@@ -347,6 +347,7 @@
   <!-- 頁尾資訊 -->
   <div
     class="mt-6 pt-4 border-t border-base-300 text-center text-xs text-base-content/50"
+    data-pdf-keep-together
   >
     <p>
       本報價單由 {{ form().get('quoterName')?.value || '[公司名稱]' }} 提供
