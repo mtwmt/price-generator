@@ -101,7 +101,7 @@
       <!-- 表身 -->
       <tbody>
         @for (item of serviceItems().controls; track $index) {
-          <tr class="text-sm">
+          <tr class="text-sm" data-pdf-keep-together>
             <td class="border border-base-300 text-center">
               {{ item.value.category }}
             </td>
@@ -179,7 +179,7 @@
     }
   </div>
   @if (form().get('isSign')?.value) {
-    <div class="card card-sm mt-4 h-32">
+    <div class="card card-sm mt-4 h-32" data-pdf-keep-together>
       <div class="card-body">
         <h3 class="card-title">客戶簽章</h3>
       </div>
@@ -223,6 +223,7 @@
   @if (!isPremium()) {
     <div
       class="mt-6 pt-4 border-t border-base-300 text-center text-xs text-base-content/50"
+      data-pdf-keep-together
     >
       <p>
         使用<a
