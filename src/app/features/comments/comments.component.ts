@@ -6,6 +6,7 @@ import {
   SimpleChanges,
   inject,
   signal,
+  computed,
   ViewChildren,
   QueryList,
   ElementRef,
@@ -19,10 +20,11 @@ import { Comment } from './comments.model';
 import { LucideAngularModule, Smile, Pin, PinOff, LogIn } from 'lucide-angular';
 
 import { TimeAgoPipe } from '@app/shared/pipes/time-ago.pipe';
+import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-comments',
-  imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe],
+  imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe, PaginationComponent],
   templateUrl: './comments.component.html',
 })
 export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
@@ -43,12 +45,33 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
   replyingTo = signal<string | null>(null);
   replyBody = signal('');
 
+  // 分頁相關
+  currentPage = signal(1);
+  readonly pageSize = 10;
+
   isAuthenticated = this.authService.isAuthenticated;
   userDisplayName = this.authService.userDisplayName;
   userPhotoURL = this.authService.userPhotoURL;
   isAdmin = this.authService.isAdmin;
 
   sortOrder = this.store.sortOrder;
+
+  // 計算總頁數
+  totalPages = computed(() => {
+    const total = this.store.sortedComments().length;
+    return Math.ceil(total / this.pageSize) || 1;
+  });
+
+  // 計算當前頁的留言
+  paginatedComments = computed(() => {
+    const all = this.store.sortedComments();
+    const start = (this.currentPage() - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    return all.slice(start, end);
+  });
+
+  // 計算總留言數（供 pagination 使用）
+  totalComments = computed(() => this.store.sortedComments().length);
 
   readonly availableReactions = [
     { type: 'thumbsUp', emoji: '👍' },
@@ -60,7 +83,12 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
   ] as const;
 
   get sortedComments(): Comment[] {
-    return this.store.sortedComments();
+    return this.paginatedComments();
+  }
+
+  // 分頁方法
+  onPageChange(page: number) {
+    this.currentPage.set(page);
   }
 
   async ngOnInit() {

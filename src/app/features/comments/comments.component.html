@@ -297,6 +297,17 @@
                           </div>
                         </div>
                       }
+
+                      <!-- 加入回覆按鈕 -->
+                      @if (isAuthenticated() && replyingTo() !== comment.id) {
+                        <button
+                          class="btn btn-ghost btn-sm"
+                          (click)="startReply(comment.id)"
+                          [disabled]="store.loading()"
+                        >
+                          ➕ 加入回覆...
+                        </button>
+                      }
                     </div>
                   }
 
@@ -335,6 +346,21 @@
         </div>
       }
     </div>
+
+    <!-- 分頁 -->
+    @if (totalComments() > pageSize) {
+      <div class="flex justify-center mt-6">
+        <app-pagination
+          [totalItems]="totalComments()"
+          [pageSize]="pageSize"
+          [currentPage]="currentPage()"
+          [showPageSizeSelector]="false"
+          [showInfo]="false"
+          size="sm"
+          (pageChange)="onPageChange($event)"
+        />
+      </div>
+    }
   } @else if (!store.loading()) {
     <div class="text-center py-8 text-base-content/60">
       <p>目前還沒有留言,成為第一個留言的人吧!</p>
