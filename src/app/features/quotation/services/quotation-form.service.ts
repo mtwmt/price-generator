@@ -135,6 +135,9 @@ export class QuotationFormService {
     const { customerLogo, quoterLogo, quoterStamp, serviceItems, ...formData } =
       data;
 
+    // 載入前先重置為預設狀態，防止舊資料內容殘留 (例如：備註欄位)
+    form.reset(DEFAULT_FORM_VALUES);
+
     // 載入基本欄位
     form.patchValue(formData);
 
