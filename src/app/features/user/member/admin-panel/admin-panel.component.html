@@ -82,9 +82,7 @@
                 @for (request of pendingRequests(); track request.id) {
                   <tr>
                     <td>
-                      {{
-                        request.createdAt.toDate() | date: 'yyyy/MM/dd HH:mm'
-                      }}
+                      {{ request.createdAt | date: 'yyyy/MM/dd HH:mm' }}
                     </td>
                     <td>
                       <div class="font-bold">{{ request.userDisplayName }}</div>
@@ -100,7 +98,9 @@
                         查看憑證
                       </button>
                     </td>
-                    <td class="max-w-xs truncate">{{ request.note || '-' }}</td>
+                    <td class="max-w-xs whitespace-pre-wrap text-xs">
+                      {{ request.note || '-' }}
+                    </td>
                     <td>
                       <div class="join">
                         <button
@@ -158,9 +158,7 @@
                 @for (request of processedRequests(); track request.id) {
                   <tr>
                     <td>
-                      {{
-                        request.updatedAt.toDate() | date: 'yyyy/MM/dd HH:mm'
-                      }}
+                      {{ request.updatedAt | date: 'yyyy/MM/dd HH:mm' }}
                     </td>
                     <td>
                       <div class="font-bold">{{ request.userDisplayName }}</div>
@@ -195,7 +193,9 @@
                         查看憑證
                       </button>
                     </td>
-                    <td class="max-w-xs truncate">{{ request.note || '-' }}</td>
+                    <td class="max-w-xs whitespace-pre-wrap text-xs">
+                      {{ request.note || '-' }}
+                    </td>
                     <td>
                       @if (request.status === 'approved') {
                         <!-- 已核准：可編輯權限 -->

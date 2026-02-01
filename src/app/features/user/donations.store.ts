@@ -18,6 +18,7 @@ import {
 } from '@app/features/user/user.model';
 import { DonationService } from '@app/features/user/services/donation.service';
 import { ToastService } from '@app/shared/services/toast.service';
+import { autoToDate } from '@app/shared/utils/date.utils';
 
 /**
  * 贊助申請狀態
@@ -193,7 +194,12 @@ export const DonationsStore = signalStore(
         pipe(
           switchMap(({ uid, premiumUntil, role }) => {
             // 如果 premiumUntil 已過期且 role 是 free，標記為過期
-            if (premiumUntil < new Date() && role === 'free') {
+            const premiumUntilDate = autoToDate(premiumUntil);
+            if (
+              premiumUntilDate &&
+              premiumUntilDate < new Date() &&
+              role === 'free'
+            ) {
               return from(donationService.markAsExpired(uid)).pipe(
                 tapResponse({
                   next: () => {
@@ -225,11 +231,14 @@ export const DonationsStore = signalStore(
         // 檢查是否有過期的申請需要標記
         const quotation = userData.platforms?.quotation;
         if (quotation?.premiumUntil) {
-          this.markAsExpired({
-            uid: userData.uid,
-            premiumUntil: quotation.premiumUntil.toDate(),
-            role: quotation.role || 'free',
-          });
+          const premiumUntilDate = autoToDate(quotation.premiumUntil);
+          if (premiumUntilDate) {
+            this.markAsExpired({
+              uid: userData.uid,
+              premiumUntil: premiumUntilDate as any, // 這裡的型別僅用於判斷
+              role: quotation.role || 'free',
+            });
+          }
         }
       },
 

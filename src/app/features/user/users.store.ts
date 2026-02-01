@@ -7,10 +7,11 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { from, pipe, switchMap, tap } from 'rxjs';
+import { pipe, switchMap, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { UserData, UpdateUserRoleParams } from '@app/features/user/user.model';
-import { FirestoreService } from '@app/core/services/firestore.service';
+import { AdminApiService } from '@app/core/services/admin-api.service';
+import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
 import { ToastService } from '@app/shared/services/toast.service';
 
 /**
@@ -60,7 +61,7 @@ export const UsersStore = signalStore(
   withMethods(
     (
       store,
-      firestoreService = inject(FirestoreService),
+      adminApiService = inject(AdminApiService),
       toastService = inject(ToastService)
     ) => ({
       loadUsers: rxMethod<number | void>(
@@ -72,22 +73,32 @@ export const UsersStore = signalStore(
             })
           ),
           switchMap((maxResults) =>
-            from(firestoreService.getAllUsers(maxResults || undefined)).pipe(
-              tapResponse({
-                next: (users) =>
-                  patchState(store, {
-                    users,
-                    loading: false,
-                  }),
-                error: (error: Error) => {
-                  patchState(store, {
-                    error: error.message || '載入使用者列表失敗',
-                    loading: false,
-                  });
-                  toastService.error('載入使用者列表失敗');
-                },
-              })
-            )
+            adminApiService
+              .getAllUsers(
+                maxResults !== undefined &&
+                  maxResults !== null &&
+                  typeof maxResults === 'number'
+                  ? maxResults
+                  : undefined
+              )
+              .pipe(
+                tapResponse({
+                  next: (response: any) => {
+                    const users = UserApiMapper.mapMany(response.data);
+                    patchState(store, {
+                      users,
+                      loading: false,
+                    });
+                  },
+                  error: (error: Error) => {
+                    patchState(store, {
+                      error: error.message || '載入使用者列表失敗',
+                      loading: false,
+                    });
+                    toastService.error('載入使用者列表失敗');
+                  },
+                })
+              )
           )
         )
       ),
@@ -100,25 +111,34 @@ export const UsersStore = signalStore(
             })
           ),
           switchMap(({ uid, role, premiumUntil }) =>
-            from(firestoreService.updateUserRole(uid, role, premiumUntil)).pipe(
-              tapResponse({
-                next: () => {
-                  patchState(store, { updating: false });
-                  toastService.success('使用者權限已更新');
-                  // 重新載入使用者列表
-                  from(firestoreService.getAllUsers()).subscribe({
-                    next: (users) => patchState(store, { users }),
-                  });
-                },
-                error: (error: Error) => {
-                  patchState(store, {
-                    error: error.message || '更新使用者權限失敗',
-                    updating: false,
-                  });
-                  toastService.error('更新使用者權限失敗');
-                },
-              })
-            )
+            adminApiService
+              .updateUserRole(
+                uid,
+                role,
+                premiumUntil ? premiumUntil.toISOString() : null
+              )
+              .pipe(
+                tapResponse({
+                  next: () => {
+                    patchState(store, { updating: false });
+                    toastService.success('使用者權限已更新');
+                    // 重新載入列表 (全部)
+                    adminApiService.getAllUsers().subscribe({
+                      next: (res) => {
+                        const users = UserApiMapper.mapMany(res.data);
+                        patchState(store, { users });
+                      },
+                    });
+                  },
+                  error: (error: Error) => {
+                    patchState(store, {
+                      error: error.message || '更新使用者權限失敗',
+                      updating: false,
+                    });
+                    toastService.error('更新使用者權限失敗');
+                  },
+                })
+              )
           )
         )
       ),
@@ -131,7 +151,7 @@ export const UsersStore = signalStore(
             })
           ),
           switchMap((uid) =>
-            from(firestoreService.deleteUser(uid)).pipe(
+            adminApiService.deleteUser(uid).pipe(
               tapResponse({
                 next: () => {
                   // 從本地列表移除

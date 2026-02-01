@@ -183,7 +183,7 @@
           <h3 class="card-title" [ngClass]="titleColor">{{ title }}</h3>
           <p class="text-sm opacity-70 mt-1">
             @if (time) {
-              {{ timeLabel }}：{{ time.toDate() | date: 'yyyy/MM/dd HH:mm' }}
+              {{ timeLabel }}：{{ time | date: 'yyyy/MM/dd HH:mm' }}
             }
           </p>
           <p class="text-sm mt-2">{{ message }}</p>

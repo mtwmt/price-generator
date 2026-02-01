@@ -14,6 +14,7 @@ import { ToastService } from '@app/shared/services/toast.service';
 import { DonationService } from '@app/features/user/services/donation.service';
 import { AuthService } from '@app/core/services/auth.service';
 import { UsersStore } from '@app/features/user/users.store';
+import { autoToDate } from '@app/shared/utils/date.utils';
 
 /**
  * 管理員面板元件
@@ -222,7 +223,7 @@ export class AdminPanelComponent {
     this.usersStore.updateUserRole({
       uid: user.uid,
       role: updates.role,
-      premiumUntil: updates.premiumUntil?.toDate() ?? null,
+      premiumUntil: autoToDate(updates.premiumUntil),
     });
 
     this.cancelEdit();
