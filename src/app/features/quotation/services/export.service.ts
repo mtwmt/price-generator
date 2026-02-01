@@ -7,6 +7,8 @@ import { ExcelExporter } from '@app/features/templates/models/quotation-template
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { GoogleSheetsService } from '@app/core/services/google-sheets.service';
 
+
+
 @Injectable({
   providedIn: 'root',
 })
@@ -17,6 +19,12 @@ export class ExportService {
   private readonly URL_REVOKE_DELAY_MS = 100;
   private readonly MIN_ELEMENT_SIZE = 0;
   private readonly A4_WIDTH_PX = 794; // A4 寬度（以 96 DPI 計算：210mm ≈ 794px）
+
+  // PDF 尺寸常數 (mm)
+  private readonly PDF_PAGE_WIDTH = 210;
+  private readonly PDF_PAGE_HEIGHT = 297;
+  private readonly PDF_CONTENT_WIDTH = 208; // 左右各留 1mm 邊距
+  private readonly PDF_MARGIN = 1;
 
   private analytics = inject(AnalyticsService);
   private googleSheets = inject(GoogleSheetsService);
@@ -226,6 +234,7 @@ export class ExportService {
    * 匯出為 PDF
    * @param elementId - 要匯出的元素 ID
    * @param quotationData - 報價單資料（用於靜默提交到 Google Sheets）
+   * @param templateStyle - 模板樣式
    */
   async exportAsPDF(
     elementId: string,
@@ -233,6 +242,23 @@ export class ExportService {
     templateStyle?: string
   ): Promise<void> {
     try {
+      // 取得目標元素
+      const elements = document.querySelectorAll(`#${elementId}`);
+      let element: HTMLElement | null = null;
+      for (const el of Array.from(elements)) {
+        const rect = (el as HTMLElement).getBoundingClientRect();
+        if (rect.width > this.MIN_ELEMENT_SIZE && rect.height > this.MIN_ELEMENT_SIZE) {
+          element = el as HTMLElement;
+          break;
+        }
+      }
+      if (!element) {
+        throw new Error(`無法找到元素: ${elementId}`);
+      }
+
+      // 在擷取 canvas 前，先計算不可切割區塊的位置
+      const keepTogetherBlocks = this.getKeepTogetherBlocks(element);
+
       // PDF 匯出強制使用 A4 寬度
       const canvas = await this.captureElement(elementId, true);
       const dataUrl = canvas.toDataURL('image/png');
@@ -247,19 +273,136 @@ export class ExportService {
         );
       }
 
-      // PDF 設定選項
-      const imgWidth = 208;
+      // 計算圖片在 PDF 中的尺寸
+      const imgWidth = this.PDF_CONTENT_WIDTH;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(fileName);
+      // 計算縮放比例：從 DOM 座標轉換到 PDF 座標
+      const containerRect = element.getBoundingClientRect();
+      const scaleRatio = imgHeight / containerRect.height;
+
+      // 智慧分頁
+      this.exportPdfSmartPage(dataUrl, imgWidth, imgHeight, fileName, keepTogetherBlocks, scaleRatio);
+
       this.analytics.trackExport('pdf');
     } catch (error) {
       console.error('匯出 PDF 失敗:', error);
       this.analytics.trackError(error as Error, 'export_pdf');
       throw new Error('匯出 PDF 失敗，請重試');
     }
+  }
+
+  /**
+   * 取得標記為不可切割的區塊位置
+   * @param container - 容器元素
+   * @returns 區塊的 top 和 bottom 位置（相對於容器）
+   */
+  private getKeepTogetherBlocks(container: HTMLElement): Array<{ top: number; bottom: number }> {
+    const keepTogetherElements = container.querySelectorAll('[data-pdf-keep-together]');
+    const containerRect = container.getBoundingClientRect();
+
+    return Array.from(keepTogetherElements).map(el => {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      return {
+        top: rect.top - containerRect.top,
+        bottom: rect.bottom - containerRect.top
+      };
+    });
+  }
+
+  /**
+   * 智慧分頁 PDF
+   * 避免在標記區塊中間切割，如有需要則提前換頁
+   */
+  private exportPdfSmartPage(
+    dataUrl: string,
+    imgWidth: number,
+    imgHeight: number,
+    fileName: string,
+    keepTogetherBlocks: Array<{ top: number; bottom: number }>,
+    scaleRatio: number
+  ): void {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageHeight = this.PDF_PAGE_HEIGHT;
+    const pageWidth = this.PDF_PAGE_WIDTH;
+    const contentHeight = pageHeight - this.PDF_MARGIN * 2;
+
+    // 轉換區塊座標到 PDF 座標
+    const pdfBlocks = keepTogetherBlocks.map(block => ({
+      top: block.top * scaleRatio,
+      bottom: block.bottom * scaleRatio
+    }));
+
+    // 計算智慧分頁點
+    const pageBreaks: number[] = [];
+    let currentPageEnd = contentHeight;
+
+    while (currentPageEnd < imgHeight) {
+      let breakPoint = currentPageEnd;
+      const pageStart = pageBreaks.length > 0 ? pageBreaks[pageBreaks.length - 1] : 0;
+
+      // 檢查是否會切到任何不可切割區塊
+      for (const block of pdfBlocks) {
+        // 如果分頁點落在區塊中間（區塊開始在頁面內，但結束在頁面外）
+        if (block.top < currentPageEnd && block.bottom > currentPageEnd) {
+          // 將分頁點提前到區塊開始前
+          breakPoint = Math.min(breakPoint, block.top - 1);
+        }
+      }
+
+      // 確保分頁點至少有一些進展（避免無限迴圈）
+      if (breakPoint < pageStart + 10) {
+        breakPoint = currentPageEnd; // 如果區塊太大無法避免切割，就直接切
+      }
+
+      pageBreaks.push(breakPoint);
+      currentPageEnd = breakPoint + contentHeight;
+    }
+
+    // 渲染每一頁
+    let pageStartY = 0;
+
+    for (let pageIndex = 0; pageIndex <= pageBreaks.length; pageIndex++) {
+      if (pageIndex > 0) {
+        pdf.addPage();
+      }
+
+      // 計算此頁的顯示範圍
+      const pageEndY = pageIndex < pageBreaks.length ? pageBreaks[pageIndex] : imgHeight;
+
+      // 將圖片偏移，使 pageStartY 對齊頁面頂部
+      const yOffset = -pageStartY + this.PDF_MARGIN;
+
+      // 先畫白色背景覆蓋整頁
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      // 畫圖片
+      pdf.addImage(
+        dataUrl,
+        'PNG',
+        this.PDF_MARGIN,
+        yOffset,
+        imgWidth,
+        imgHeight
+      );
+
+      // 用白色遮罩覆蓋頁面上方和下方的超出內容
+      // 上方遮罩
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, this.PDF_MARGIN, 'F');
+
+      // 下方遮罩：從有效內容結束位置到頁面底部
+      const contentEndOnPage = (pageEndY - pageStartY) + this.PDF_MARGIN;
+      if (contentEndOnPage < pageHeight) {
+        pdf.rect(0, contentEndOnPage, pageWidth, pageHeight - contentEndOnPage, 'F');
+      }
+
+      // 更新下一頁的起始位置
+      pageStartY = pageEndY;
+    }
+
+    pdf.save(fileName);
   }
 
   /**

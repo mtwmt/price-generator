@@ -1,5 +1,5 @@
 <div
-  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm text-sm print:p-4"
+  class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm print:p-4"
   style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 標題區 -->
@@ -10,14 +10,14 @@
       </h1>
     </div>
     @if (form().get('customerTaxID')?.value) {
-      <div class="text-sm text-base-content/70 mt-1">
+      <div class="text-base-content/70 mt-1">
         統一編號：{{ form().get('customerTaxID')?.value }}
       </div>
     }
   </div>
 
   <!-- 報價人員資訊區 -->
-  <div class="grid grid-cols-2 gap-x-8 gap-y-2 mb-6 text-sm leading-normal">
+  <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-6 leading-relaxed">
     <div>
       <div class="flex">
         <span class="text-base-content font-semibold w-24">報價人員：</span>
@@ -86,8 +86,8 @@
   </div>
 
   <!-- 服務項目表格 -->
-  <div class="mb-4">
-    <table class="table table-sm w-full border border-base-300">
+  <div class="mb-3">
+    <table class="table w-full border border-base-300">
       <!-- 表頭 -->
       <thead class="bg-base-200">
         <tr>
@@ -100,28 +100,44 @@
       </thead>
       <!-- 表身 -->
       <tbody>
-        @for (item of serviceItems().controls; track $index) {
-          <tr class="text-sm">
-            <td class="border border-base-300 text-center">
-              {{ item.value.category }}
-            </td>
-            <td class="border border-base-300 px-3">
-              {{ item.value.item || '-' }}
-            </td>
-            <td class="border border-base-300 text-right px-3">
-              ${{ item.value.price || 0 | number }}
-            </td>
-            <td class="border border-base-300 text-center">
-              {{ item.value.count || 0 }}
-              {{ !!item.value.unit ? '/' : '' }}
-              {{ item.value.unit }}
-            </td>
-            <td class="border border-base-300 text-right px-3">
-              ${{ item.value.amount || 0 | number }}
+        @if (serviceItems().controls.length === 0) {
+          <tr>
+            <td
+              colspan="6"
+              class="p-6 text-center text-base-content/50 border-t border-base-300"
+            >
+              尚無服務項目
             </td>
           </tr>
+        } @else {
+          @for (
+            item of serviceItems().controls;
+            track item.value;
+            let idx = $index
+          ) {
+            <tr data-pdf-keep-together>
+              <td class="border border-base-300 p-2 text-center">
+                {{ item.value.category }}
+              </td>
+              <td class="border border-base-300 p-2">
+                {{ item.value.item || '-' }}
+              </td>
+              <td class="border border-base-300 text-right p-2">
+                ${{ item.value.price || 0 | number }}
+              </td>
+              <td class="border border-base-300 text-center p-2">
+                {{ item.value.count || 0 }}
+                {{ !!item.value.unit ? '/' : '' }}
+                {{ item.value.unit }}
+              </td>
+              <td class="border border-base-300 text-right p-2">
+                ${{ item.value.amount || 0 | number }}
+              </td>
+            </tr>
+          }
         }
-        <tr class="text-sm">
+
+        <tr>
           <td colspan="5" class="text-right">
             未稅：NT$
             <span class="text-lg font-bold text-error">
@@ -179,7 +195,7 @@
     }
   </div>
   @if (form().get('isSign')?.value) {
-    <div class="card card-sm mt-4 h-32">
+    <div class="card card-sm mt-4 h-32" data-pdf-keep-together>
       <div class="card-body">
         <h3 class="card-title">客戶簽章</h3>
       </div>
@@ -210,7 +226,7 @@
   <!-- 備註區 -->
   <!-- @if (form().get('desc')?.value) {
     <div class="border-t border-base-300 pt-4">
-      <div class="text-sm">
+      <div>
         <div class="font-semibold mb-2 text-base-content/70">備註</div>
         <div class="whitespace-pre-wrap text-base-content">
           {{ form().get('desc')?.value }}
@@ -223,6 +239,7 @@
   @if (!isPremium()) {
     <div
       class="mt-6 pt-4 border-t border-base-300 text-center text-xs text-base-content/50"
+      data-pdf-keep-together
     >
       <p>
         使用<a

@@ -24,7 +24,7 @@
     <div>
       <a
         role="tab"
-        class="tab"
+        class="tab text-base"
         routerLink="/"
         routerLinkActive="tab-active font-bold"
         [routerLinkActiveOptions]="{ exact: true }"
@@ -33,7 +33,7 @@
       </a>
       <a
         role="tab"
-        class="tab"
+        class="tab text-base"
         routerLink="/changelog"
         routerLinkActive="tab-active font-bold"
         [routerLinkActiveOptions]="{ exact: true }"
@@ -43,7 +43,7 @@
       @if (authService.isAuthenticated()) {
         <a
           role="tab"
-          class="tab"
+          class="tab text-base"
           routerLink="/member"
           routerLinkActive="tab-active font-bold"
           [routerLinkActiveOptions]="{ exact: true }"
@@ -81,7 +81,7 @@
               </div>
             </div>
             <div class="hidden sm:flex items-center gap-1">
-              <span class="text-sm font-medium">{{
+              <span class="font-medium">{{
                 authService.userDisplayName()
               }}</span>
               @if (authService.isPremium()) {
@@ -97,7 +97,7 @@
           </button>
           <button
             type="button"
-            class="btn btn-sm btn-ghost gap-1"
+            class="btn btn-ghost gap-1"
             (click)="logout()"
             title="登出"
           >
@@ -108,7 +108,7 @@
       } @else {
         <button
           type="button"
-          class="btn btn-sm btn-primary gap-1"
+          class="btn btn-primary gap-1"
           (click)="loginWithGoogle()"
           title="使用 Google 帳號登入"
         >
@@ -133,7 +133,7 @@
       <p class="text-xs text-base-content/60">
         本系統會記錄報價資訊以改善服務品質，資料僅供內部保存，不會外洩或用於商業行為。
       </p>
-      <p class="text-sm">
+      <p>
         © 2022-{{ currentYear }}
         <a href="https://mtwmt.com/" target="_blank" class="link link-hover">
           Mandy

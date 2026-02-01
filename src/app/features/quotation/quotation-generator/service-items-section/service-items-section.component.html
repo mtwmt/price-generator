@@ -27,7 +27,7 @@
           <div
             cdkDrag
             [cdkDragDisabled]="serviceItems.length <= 1"
-            class="group relative md:mb-3"
+            class="group relative"
             [ngClass]=""
           >
             <!-- 服務項目 -->
@@ -55,7 +55,7 @@
                   (removeField)="onRemoveField(idx)"
                 />
                 <hr
-                  class="my-4 border-secondary md:hidden"
+                  class="my-2 border-secondary md:hidden"
                   [class.hidden]="$last"
                 />
                 <!-- <div class="divider h-[1px] my-2"></div> -->

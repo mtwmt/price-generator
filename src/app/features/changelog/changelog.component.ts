@@ -14,6 +14,13 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2025-12-30',
+      features: [
+        '調整預設字體大小，提升閱讀體驗',
+        '修復 PDF 匯出無法顯示全部內容的問題',
+      ],
+    },
+    {
       date: '2025-12-17',
       features: ['新增報價單底部來源標示，贊助會員可享有無標示版本'],
     },

@@ -4,9 +4,7 @@
   <div class="md:w-1/2">
     <!-- 折扣設定 -->
     <fieldset class="fieldset">
-      <legend class="fieldset-legend whitespace-nowrap text-sm">
-        折扣設定
-      </legend>
+      <legend class="fieldset-legend whitespace-nowrap">折扣設定</legend>
       <div class="flex gap-3">
         <select formControlName="discountType" class="select w-32">
           <option value="amount">固定金額</option>
@@ -44,7 +42,7 @@
       "
     >
       <fieldset class="fieldset">
-        <label class="fieldset-legend whitespace-nowrap text-sm">稅別</label>
+        <label class="fieldset-legend whitespace-nowrap">稅別</label>
         <select
           formControlName="taxName"
           class="select w-full"
@@ -60,7 +58,7 @@
 
       @if (form().get('taxName')?.value === customTaxName) {
         <fieldset class="fieldset">
-          <label class="fieldset-legend whitespace-nowrap text-sm">稅別</label>
+          <label class="fieldset-legend whitespace-nowrap">稅別</label>
           <input
             formControlName="customTaxName"
             type="text"
@@ -69,9 +67,7 @@
           />
         </fieldset>
         <fieldset class="fieldset">
-          <label class="fieldset-legend whitespace-nowrap text-sm"
-            >稅率 (%)</label
-          >
+          <label class="fieldset-legend whitespace-nowrap">稅率 (%)</label>
           <input
             formControlName="percentage"
             type="number"
@@ -89,16 +85,16 @@
 
   <div class="md:w-1/4 space-y-2 mt-6">
     <div class="flex justify-between items-center">
-      <span class="text-base font-medium">小計</span>
-      <span class="text-base font-semibold">
+      <span class="font-medium">小計</span>
+      <span class="font-semibold">
         ${{ form().get('excludingTax')?.value || 0 }}
       </span>
     </div>
 
     <!-- 折扣區 -->
     @if (form().get('discountValue')?.value > 0) {
-      <div class="flex justify-between items-center text-sm">
-        <span class="text-sm">
+      <div class="flex justify-between items-center">
+        <span>
           折扣
           @if (form().get('discountType')?.value === 'percentage') {
             <span class="text-xs">
@@ -111,15 +107,15 @@
         </span>
       </div>
       <div class="flex justify-between items-center">
-        <span class="text-base font-medium">折扣後</span>
-        <span class="text-base font-semibold">
+        <span class="font-medium">折扣後</span>
+        <span class="font-semibold">
           ${{ form().get('afterDiscount')?.value || 0 }}
         </span>
       </div>
     }
 
     <div class="flex justify-between items-center">
-      <span class="text-sm font-medium">
+      <span class="font-medium">
         @if (
           form().get('taxName')?.value === customTaxName &&
           form().get('customTaxName')?.value
@@ -128,17 +124,14 @@
         } @else {
           {{ form().get('taxName')?.value }}
         }
-        @if (
-          form().get('taxName')?.value && form().get('percentage')?.value
-        ) {
-          <span class="text-sm opacity-70">
+        @if (form().get('taxName')?.value && form().get('percentage')?.value) {
+          <span class="opacity-70">
             ({{ form().get('percentage')?.value }}%)
           </span>
         }
       </span>
       @if (
-        !!form().get('taxName')?.value ||
-        !!form().get('customTaxName')?.value
+        !!form().get('taxName')?.value || !!form().get('customTaxName')?.value
       ) {
         <span class="text-base text-red-500">
           ${{ form().get('tax')?.value || 0 }}
