@@ -24,17 +24,62 @@ export type DonationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 export type PlatformType = 'quotation';
 
 /**
- * 單一平台的權限資料
+ * 單一平台的權限資料 (對齊 D1 與 Firebase)
  */
 export interface PlatformPermission {
   role: UserRole;
-  premiumUntil?: Timestamp | null;
-  firstAccessTime: Timestamp;
-  lastAccessTime: Timestamp;
+  premiumUntil?: Timestamp | string | null;
+  firstAccessTime?: Timestamp | string | null;
+  lastAccessTime?: Timestamp | string | null;
 }
 
 /**
- * 使用者資料
+ * D1 API 傳出的原始數據結構 (Data Transfer Object)
+ */
+export interface D1QuotationDTO {
+  uid: string;
+  role: UserRole;
+  premiumUntil: string | null;
+  firstAccessTime: string | null;
+  lastAccessTime: string | null;
+  updatedAt: string;
+}
+
+export interface DonationRequestDTO {
+  id: string;
+  uid: string;
+  status: DonationStatus;
+  note: string | null;
+  proof: string | null;
+  userDisplayName: string | null;
+  userEmail: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface D1UserDTO {
+  id: string;
+  email: string;
+  displayName: string | null;
+  photoURL: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface D1UserResponseDTO {
+  user: D1UserDTO;
+  profiles: {
+    quotation?: D1QuotationDTO;
+    bookshelf?: any;
+  };
+  timestamp: number;
+}
+
+/**
+ * 使用者資料 (前端 Domain Model)
+ * 職責：在應用程式內部流轉，解耦外部 API 結構。
  */
 export interface UserData {
   uid: string;
@@ -44,12 +89,15 @@ export interface UserData {
   platforms: {
     [K in PlatformType]?: PlatformPermission;
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 /**
  * 贊助申請資料
+ */
+/**
+ * 贊助申請資料 (前端 Domain Model)
  */
 export interface DonationRequest {
   id?: string;
@@ -59,10 +107,10 @@ export interface DonationRequest {
   proof: string;
   note: string;
   status: DonationStatus;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date | string | any;
+  updatedAt: Date | string | any;
   reviewedBy?: string;
-  reviewedAt?: Timestamp;
+  reviewedAt?: Date | string | any;
 }
 
 // ==================== Store 參數類型 ====================

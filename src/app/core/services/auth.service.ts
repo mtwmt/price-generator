@@ -11,21 +11,23 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { AnalyticsService } from '@app/core/services/analytics.service';
-import { FirestoreService } from '@app/core/services/firestore.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { UserData } from '@app/features/user/user.model';
+import { AuthApiService } from '@app/core/services/auth-api.service';
+import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * 認證服務
- * 處理 Google 登入/登出功能，整合 Firestore 使用者權限管理
+ * 處理 Google 登入/登出功能，整合 D1 使用者權限管理
  */
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private readonly analyticsService = inject(AnalyticsService);
-  private readonly firestoreService = inject(FirestoreService);
   private readonly toastService = inject(ToastService);
+  private readonly authApi = inject(AuthApiService);
 
   // Firebase Auth 實例（在 app.config 初始化後會被設定）
   private auth: Auth | null = null;
@@ -39,14 +41,10 @@ export class AuthService {
   readonly userPhotoURL = computed(() => this.currentUser()?.photoURL || null);
   readonly userEmail = computed(() => this.currentUser()?.email || null);
   readonly userId = computed(() => this.currentUser()?.uid || null);
-  readonly isPremium = computed(() =>
-    this.firestoreService.isPremiumUser(this.userData())
-  );
-  readonly isAdmin = computed(
-    () => this.userData()?.platforms.quotation?.role === 'admin'
-  );
+  readonly isPremium = computed(() => this.userRole() === 'premium');
+  readonly isAdmin = computed(() => this.userRole() === 'admin');
   readonly userRole = computed(
-    () => this.userData()?.platforms.quotation?.role || 'free'
+    () => this.userData()?.platforms?.quotation?.role || 'free'
   );
 
   /**
@@ -61,7 +59,7 @@ export class AuthService {
       this.currentUser.set(user);
 
       if (user) {
-        // 載入使用者的 Firestore 資料
+        // 載入使用者的 D1 資料
         await this.loadUserData(user);
 
         this.analyticsService.trackEvent('user_signed_in', {
@@ -76,46 +74,24 @@ export class AuthService {
   }
 
   /**
-   * 載入使用者的 Firestore 資料
+   * 載入使用者的 D1 資料
    * @param user Firebase Auth 使用者
    */
   private async loadUserData(user: User): Promise<void> {
     try {
-      const data = await this.firestoreService.getOrCreateUserData(
-        user.uid,
-        user.email,
-        user.displayName,
-        user.photoURL
-      );
+      // 1. 獲取 Google ID Token
+      const idToken = await user.getIdToken();
 
-      // 記錄使用者存取當前平台
-      await this.firestoreService.recordPlatformAccess(user.uid);
-
-      // 檢查 Premium 是否過期，自動降級為 Free
-      const quotationPlatform = data.platforms.quotation;
-      if (
-        quotationPlatform?.role === 'premium' &&
-        quotationPlatform.premiumUntil &&
-        quotationPlatform.premiumUntil.toDate() < new Date()
-      ) {
-        const expiryDate = quotationPlatform.premiumUntil.toDate();
-        console.log(
-          `User ${user.uid} premium expired on ${expiryDate}, downgrading to free`
-        );
-
-        // 自動降級為 free
-        await this.firestoreService.updateUserRole(user.uid, 'free');
-
-        // 更新本地資料
-        if (data.platforms.quotation) {
-          data.platforms.quotation.role = 'free';
-        }
-      }
+      // 2. 從 D1 後端獲取整合後的 UserProfile (DTO -> Domain Model)
+      const d1Response = await firstValueFrom(this.authApi.getUserMe(idToken));
+      const data = UserApiMapper.mapD1ToUserData(d1Response);
 
       this.userData.set(data);
     } catch (error: any) {
-      console.error('Failed to load user data:', error);
-      this.analyticsService.trackError(error, 'load_user_data');
+      console.error('無法從 D1 載入使用者資料:', error);
+      this.analyticsService.trackError(error, 'load_user_data_d1');
+      // D1 為唯一資料來源，若失敗則設為 null
+      this.userData.set(null);
     }
   }
 
@@ -226,13 +202,10 @@ export class AuthService {
     }
 
     try {
-      // 1. 更新 Firebase Auth Profile
+      // 1. 更新 Firebase Auth Profile（D1 會在下次登入時自動同步）
       await updateProfile(user, { displayName: trimmedName });
 
-      // 2. 更新 Firestore 中的 displayName
-      await this.firestoreService.updateUserDisplayName(user.uid, trimmedName);
-
-      // 3. 更新本地 userData
+      // 2. 更新本地 userData
       const currentData = this.userData();
       if (currentData) {
         this.userData.set({

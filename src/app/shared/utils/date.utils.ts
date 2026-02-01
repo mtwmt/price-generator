@@ -5,34 +5,51 @@ import { Timestamp } from 'firebase/firestore';
  */
 
 /**
+ * 將各種日期格式統一轉換為 Date 物件
+ * @param date 支援 Timestamp、Date、ISO String
+ */
+export function autoToDate(
+  date: Timestamp | Date | string | null | undefined
+): Date | null {
+  if (!date) return null;
+  if (date instanceof Date) return date;
+  if (typeof date === 'string') return new Date(date);
+  // 處理 Firebase Timestamp (具備 toDate 方法)
+  if (typeof (date as any).toDate === 'function') {
+    return (date as any).toDate();
+  }
+  return new Date(date as any);
+}
+
+/**
  * 格式化日期為本地化字串
- * @param date 日期（支援 Timestamp、Date 或 null）
- * @param options 格式化選項
+ * @param date 日期（支援 Timestamp、Date、ISO String 或 null）
  * @returns 格式化後的日期字串，若無日期則回傳 '-'
  */
 export function formatDate(
-  date: Timestamp | Date | null | undefined,
+  date: Timestamp | Date | string | null | undefined,
   options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }
 ): string {
-  if (!date) return '-';
-  const dateObj = date instanceof Date ? date : date.toDate();
+  const dateObj = autoToDate(date);
+  if (!dateObj) return '-';
   return dateObj.toLocaleDateString('zh-TW', options);
 }
 
 /**
  * 格式化日期時間為本地化字串（含時間）
- * @param date 日期（支援 Timestamp、Date 或 null）
+ * @param date 日期（支援 Timestamp、Date、ISO String 或 null）
  * @returns 格式化後的日期時間字串，格式：2024/12/19 14:30
  */
 export function formatDateTime(
-  date: Timestamp | Date | null | undefined
+  date: Timestamp | Date | string | null | undefined
 ): string {
-  if (!date) return '-';
-  const dateObj = date instanceof Date ? date : date.toDate();
+  const dateObj = autoToDate(date);
+  if (!dateObj) return '-';
+
   return (
     dateObj.toLocaleDateString('zh-TW', {
       year: 'numeric',
@@ -55,11 +72,12 @@ export function formatDateTime(
  * @returns 天數差（正數表示未來，負數表示過去），若無日期則回傳 null
  */
 export function getDaysDiff(
-  targetDate: Timestamp | Date | null | undefined,
+  targetDate: Timestamp | Date | string | null | undefined,
   fromDate: Date = new Date()
 ): number | null {
-  if (!targetDate) return null;
-  const dateObj = targetDate instanceof Date ? targetDate : targetDate.toDate();
+  const dateObj = autoToDate(targetDate);
+  if (!dateObj) return null;
+
   const diff = dateObj.getTime() - fromDate.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }

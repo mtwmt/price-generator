@@ -2,10 +2,8 @@ import { Component, input, output, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Timestamp } from 'firebase/firestore';
-import {
-  UserData,
-  UserRole,
-} from '@app/features/user/user.model';
+import { UserData, UserRole } from '@app/features/user/user.model';
+import { autoToDate } from '@app/shared/utils/date.utils';
 
 /**
  * 使用者編輯表單元件
@@ -39,8 +37,12 @@ export class UserEditFormComponent {
       this.selectedRole.set(quotationData?.role || 'free');
 
       if (quotationData?.premiumUntil) {
-        const date = quotationData.premiumUntil.toDate();
-        this.premiumUntilDate.set(date.toISOString().split('T')[0]);
+        const date = autoToDate(quotationData.premiumUntil);
+        if (date) {
+          this.premiumUntilDate.set(date.toISOString().split('T')[0]);
+        } else {
+          this.premiumUntilDate.set('');
+        }
       } else {
         this.premiumUntilDate.set('');
       }
