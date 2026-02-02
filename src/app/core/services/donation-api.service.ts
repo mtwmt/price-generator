@@ -17,7 +17,7 @@ import { from, switchMap, throwError } from 'rxjs';
 export class DonationApiService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly apiUrl = `${environment.portalApiUrl}/api/user/donations`;
+  private readonly apiUrl = `${environment.portalApiUrl}/api/portal/user/donations`;
 
   /**
    * 提交新的贊助申請
