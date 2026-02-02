@@ -14,7 +14,7 @@ import { D1UserResponseDTO } from '@app/features/user/user.model';
 })
 export class AuthApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = environment.portalApiUrl;
+  private readonly apiUrl = environment.portalApiUrl + '/api/portal';
 
   /**
    * 獲取當前登入使用者在 D1 中的完整資料
@@ -26,7 +26,7 @@ export class AuthApiService {
       'x-platform-key': 'quotation',
     });
 
-    return this.http.get<D1UserResponseDTO>(`${this.apiUrl}/api/user/me`, {
+    return this.http.get<D1UserResponseDTO>(`${this.apiUrl}/user/me`, {
       headers,
     });
   }

@@ -19,7 +19,7 @@ import { AuthService } from './auth.service';
 export class AdminApiService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly apiUrl = `${environment.portalApiUrl}/api/admin`;
+  private readonly apiUrl = `${environment.portalApiUrl}/api/portal/admin`;
 
   /**
    * 建立帶有 Authorization header 的請求
