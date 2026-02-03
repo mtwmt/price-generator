@@ -169,9 +169,4 @@ export class DonationService {
       throw error;
     }
   }
-
-  /**
-   * 刪除使用者時清理相關贊助數據 (後端 deleteUser 已內建連動刪除)
-   */
-  async deleteUserDonations(uid: string): Promise<void> {}
 }

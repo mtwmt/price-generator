@@ -226,7 +226,12 @@ export class AdminPanelComponent {
     });
 
     this.cancelEdit();
-    this.loadProcessedRequests();
+
+    // 身分變更後刷新列表以反映最新狀態
+    setTimeout(() => {
+      this.loadPendingRequests();
+      this.loadProcessedRequests();
+    }, 500);
   }
 
   /**
