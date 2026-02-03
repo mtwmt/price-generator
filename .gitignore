@@ -44,5 +44,6 @@ Thumbs.db
 # Environment files
 src/environments/environment.ts
 
-/google-apps-script
-/docs
+/gas
+.agent
+# /docs

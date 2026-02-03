@@ -1,3 +1,4 @@
+import { environment } from 'src/environments/environment';
 import {
   DonationRequestDTO,
   DonationRequest,
@@ -19,12 +20,19 @@ export class DonationApiMapper {
    * 將單一 DTO 轉換為領域模型
    */
   static mapOne(dto: DonationRequestDTO): DonationRequest {
+    let proofUrl = dto.proof || '';
+
+    // 將 R2 檔名轉換為代理 Proxy URL
+    if (proofUrl && !proofUrl.startsWith('data:image')) {
+      proofUrl = `${environment.portalApiUrl}/api/portal/user/donations/proof/${proofUrl}`;
+    }
+
     return {
       id: dto.id,
       uid: dto.uid,
       userDisplayName: dto.userDisplayName || '未知使用者',
       userEmail: dto.userEmail || '-',
-      proof: dto.proof || '',
+      proof: proofUrl,
       note: (dto.note || '').replace(/\\n/g, '\n'),
       status: dto.status,
       createdAt: dto.createdAt,
