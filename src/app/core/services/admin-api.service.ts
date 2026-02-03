@@ -122,7 +122,7 @@ export class AdminApiService {
   updateUserRole(
     uid: string,
     role: string,
-    premiumUntil: string | null
+    premiumUntil: number | null
   ): Observable<{ success: boolean }> {
     return this.withAuth((headers) =>
       this.http.patch<{ success: boolean }>(

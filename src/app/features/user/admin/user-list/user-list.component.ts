@@ -8,7 +8,6 @@ import {
   Search,
   RefreshCw,
 } from 'lucide-angular';
-import { Timestamp } from 'firebase/firestore';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 import { UsersStore } from '@app/features/user/users.store';
 import { UserData, UserRole } from '@app/features/user/user.model';
@@ -103,17 +102,14 @@ export class UserListComponent implements OnInit {
     this.editingUser.set(null);
   }
 
-  handleSave(updates: {
-    role: UserRole;
-    premiumUntil?: Timestamp | null;
-  }): void {
+  handleSave(updates: { role: UserRole; premiumUntil?: number | null }): void {
     const user = this.editingUser();
     if (!user) return;
 
     this.usersStore.updateUserRole({
       uid: user.uid,
       role: updates.role,
-      premiumUntil: updates.premiumUntil?.toDate() ?? null,
+      premiumUntil: updates.premiumUntil ?? null,
     });
 
     this.cancelEdit();

@@ -24,25 +24,26 @@ export type DonationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 export type PlatformType = 'quotation';
 
 /**
- * 單一平台的權限資料 (對齊 D1 與 Firebase)
+ * 單一平台的權限資料 (對齊 D1 與 Portal API)
  */
 export interface PlatformPermission {
   role: UserRole;
-  premiumUntil?: Timestamp | string | null;
-  firstAccessTime?: Timestamp | string | null;
-  lastAccessTime?: Timestamp | string | null;
+  premiumUntil?: number | null;
+  firstAccessTime?: number | null;
+  lastAccessTime?: number | null;
 }
 
 /**
  * D1 API 傳出的原始數據結構 (Data Transfer Object)
+ * 所有時間統一使用 Unix Timestamp (ms)
  */
 export interface D1QuotationDTO {
   uid: string;
   role: UserRole;
-  premiumUntil: string | null;
-  firstAccessTime: string | null;
-  lastAccessTime: string | null;
-  updatedAt: string;
+  premiumUntil: number | null;
+  firstAccessTime: number | null;
+  lastAccessTime: number | null;
+  updatedAt: number;
 }
 
 export interface DonationRequestDTO {
@@ -54,9 +55,9 @@ export interface DonationRequestDTO {
   userDisplayName: string | null;
   userEmail: string | null;
   reviewedBy: string | null;
-  reviewedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  reviewedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface D1UserDTO {
@@ -64,8 +65,8 @@ export interface D1UserDTO {
   email: string;
   displayName: string | null;
   photoURL: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface D1UserResponseDTO {
@@ -89,13 +90,10 @@ export interface UserData {
   platforms: {
     [K in PlatformType]?: PlatformPermission;
   };
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
-/**
- * 贊助申請資料
- */
 /**
  * 贊助申請資料 (前端 Domain Model)
  */
@@ -107,10 +105,10 @@ export interface DonationRequest {
   proof: string;
   note: string;
   status: DonationStatus;
-  createdAt: Date | string | any;
-  updatedAt: Date | string | any;
+  createdAt: number;
+  updatedAt: number;
   reviewedBy?: string;
-  reviewedAt?: Date | string | any;
+  reviewedAt?: number | null;
 }
 
 // ==================== Store 參數類型 ====================
@@ -128,7 +126,7 @@ export interface UserRoleBaseParams {
  * - premiumUntil 可為 null，表示清除到期日
  */
 export interface UpdateUserRoleParams extends UserRoleBaseParams {
-  premiumUntil: Date | null;
+  premiumUntil: number | null;
 }
 
 /**
@@ -136,7 +134,7 @@ export interface UpdateUserRoleParams extends UserRoleBaseParams {
  * - premiumUntil 必須有值，用於判斷是否過期
  */
 export interface MarkExpiredParams extends UserRoleBaseParams {
-  premiumUntil: Date;
+  premiumUntil: number;
 }
 
 /**

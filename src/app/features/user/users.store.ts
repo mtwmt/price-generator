@@ -111,34 +111,28 @@ export const UsersStore = signalStore(
             })
           ),
           switchMap(({ uid, role, premiumUntil }) =>
-            adminApiService
-              .updateUserRole(
-                uid,
-                role,
-                premiumUntil ? premiumUntil.toISOString() : null
-              )
-              .pipe(
-                tapResponse({
-                  next: () => {
-                    patchState(store, { updating: false });
-                    toastService.success('使用者權限已更新');
-                    // 重新載入列表 (全部)
-                    adminApiService.getAllUsers().subscribe({
-                      next: (res) => {
-                        const users = UserApiMapper.mapMany(res.data);
-                        patchState(store, { users });
-                      },
-                    });
-                  },
-                  error: (error: Error) => {
-                    patchState(store, {
-                      error: error.message || '更新使用者權限失敗',
-                      updating: false,
-                    });
-                    toastService.error('更新使用者權限失敗');
-                  },
-                })
-              )
+            adminApiService.updateUserRole(uid, role, premiumUntil).pipe(
+              tapResponse({
+                next: () => {
+                  patchState(store, { updating: false });
+                  toastService.success('使用者權限已更新');
+                  // 重新載入列表 (全部)
+                  adminApiService.getAllUsers().subscribe({
+                    next: (res) => {
+                      const users = UserApiMapper.mapMany(res.data);
+                      patchState(store, { users });
+                    },
+                  });
+                },
+                error: (error: Error) => {
+                  patchState(store, {
+                    error: error.message || '更新使用者權限失敗',
+                    updating: false,
+                  });
+                  toastService.error('更新使用者權限失敗');
+                },
+              })
+            )
           )
         )
       ),
