@@ -85,10 +85,18 @@ export class DonationService {
     userDisplayName: string
   ): Promise<void> {
     try {
-      // 1. 後端同時更新狀態與使用者權限
+      // 1. 核准申請狀態
       await firstValueFrom(this.adminApi.approveDonation(requestId));
 
-      // 2. 發送 Email 通知
+      // 2. 自動更新使用者權限（預設給予 30 天）
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const premiumUntil = Date.now() + THIRTY_DAYS_MS;
+
+      await firstValueFrom(
+        this.adminApi.updateUserRole(userUid, 'premium', premiumUntil)
+      );
+
+      // 3. 發送 Email 通知
       await this.notificationService.sendSponsorApprovalEmail(
         userEmail,
         userDisplayName

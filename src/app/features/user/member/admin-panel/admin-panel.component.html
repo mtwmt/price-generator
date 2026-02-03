@@ -197,28 +197,33 @@
                       {{ request.note || '-' }}
                     </td>
                     <td>
-                      @if (request.status === 'approved') {
-                        <!-- 已核准：可編輯權限 -->
-                        <button
-                          class="btn btn-ghost btn-xs"
-                          (click)="startEditFromRequest(request)"
-                        >
-                          編輯
-                        </button>
-                      } @else if (
-                        request.status === 'rejected' &&
-                        request.reviewedBy !== request.uid
-                      ) {
-                        <!-- 只有管理員拒絕的才顯示重新審核按鈕 -->
-                        <button
-                          class="btn btn-warning btn-xs"
-                          (click)="resetRequest(request)"
-                        >
-                          重新審核
-                        </button>
-                      } @else {
-                        <span class="text-xs opacity-50">-</span>
-                      }
+                      <div class="flex gap-1">
+                        @if (request.status === 'approved') {
+                          <!-- 已核准：可編輯權限 -->
+                          <button
+                            class="btn btn-ghost btn-xs"
+                            (click)="startEditFromRequest(request)"
+                          >
+                            編輯
+                          </button>
+                        }
+
+                        @if (
+                          (request.status === 'approved' ||
+                            request.status === 'rejected') &&
+                          request.reviewedBy !== request.uid
+                        ) {
+                          <!-- 非使用者取消的申請，管理員皆可退回重新審核 -->
+                          <button
+                            class="btn btn-warning btn-outline btn-xs"
+                            (click)="resetRequest(request)"
+                          >
+                            重新審核
+                          </button>
+                        } @else {
+                          <span class="text-xs opacity-50">-</span>
+                        }
+                      </div>
                     </td>
                   </tr>
                 }

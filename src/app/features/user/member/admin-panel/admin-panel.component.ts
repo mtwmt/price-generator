@@ -1,7 +1,6 @@
 import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Shield } from 'lucide-angular';
-import { Timestamp } from 'firebase/firestore';
 import {
   UserData,
   UserRole,
@@ -14,7 +13,6 @@ import { ToastService } from '@app/shared/services/toast.service';
 import { DonationService } from '@app/features/user/services/donation.service';
 import { AuthService } from '@app/core/services/auth.service';
 import { UsersStore } from '@app/features/user/users.store';
-import { autoToDate } from '@app/shared/utils/date.utils';
 
 /**
  * 管理員面板元件
@@ -185,6 +183,7 @@ export class AdminPanelComponent {
 
       // 重新整理列表
       await this.loadProcessedRequests();
+      await this.loadPendingRequests();
     } catch (error) {
       console.error('Failed to reset request:', error);
       this.toastService.error('重新審核失敗');
@@ -215,7 +214,7 @@ export class AdminPanelComponent {
    */
   handleSaveEdit(updates: {
     role: UserRole;
-    premiumUntil?: Timestamp | null;
+    premiumUntil?: number | null;
   }): void {
     const user = this.editingUser();
     if (!user) return;
@@ -223,7 +222,7 @@ export class AdminPanelComponent {
     this.usersStore.updateUserRole({
       uid: user.uid,
       role: updates.role,
-      premiumUntil: autoToDate(updates.premiumUntil),
+      premiumUntil: updates.premiumUntil ?? null,
     });
 
     this.cancelEdit();

@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 /**
  * 使用者角色類型
  * - free: 免費會員
@@ -19,9 +17,9 @@ export type PlatformType = 'quotation';
  */
 export interface PlatformPermission {
   role: UserRole;
-  premiumUntil?: Timestamp | null;
-  firstAccessTime: Timestamp;
-  lastAccessTime: Timestamp;
+  premiumUntil?: number | null;
+  firstAccessTime: number;
+  lastAccessTime: number;
 }
 
 /**
@@ -35,8 +33,8 @@ export interface UserData {
   platforms: {
     [key in PlatformType]?: PlatformPermission;
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /**
@@ -55,8 +53,8 @@ export interface DonationRequest {
   proof: string; // base64 image
   note: string;
   status: DonationStatus;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: number;
+  updatedAt: number;
   reviewedBy?: string; // admin uid
-  reviewedAt?: Timestamp;
+  reviewedAt?: number;
 }
