@@ -2,12 +2,20 @@
   <dialog class="modal modal-open">
     <div class="modal-box">
       <h3 class="font-bold text-lg mb-4">{{ title() }}</h3>
-      <img
-        [src]="proofUrl()"
-        class="w-full rounded-lg"
-        alt="憑證"
-        loading="lazy"
-      />
+      @if (loading()) {
+        <div class="flex justify-center py-8">
+          <span class="loading loading-spinner loading-lg"></span>
+        </div>
+      } @else if (resolvedUrl()) {
+        <img
+          [src]="resolvedUrl()"
+          class="w-full rounded-lg"
+          alt="憑證"
+          loading="lazy"
+        />
+      } @else {
+        <p class="text-center text-base-content/50 py-8">無法載入憑證圖片</p>
+      }
       <div class="modal-action">
         <button class="btn" (click)="onClose()">關閉</button>
       </div>

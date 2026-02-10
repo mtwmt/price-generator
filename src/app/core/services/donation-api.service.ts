@@ -67,6 +67,18 @@ export class DonationApiService {
   }
 
   /**
+   * 取得贊助證明的簽章 URL
+   */
+  getProofSignedUrl(key: string): Observable<{ url: string }> {
+    return this.withAuth((headers) =>
+      this.http.get<{ url: string }>(
+        `${this.apiUrl}/proof-url/${encodeURIComponent(key)}`,
+        { headers },
+      ),
+    );
+  }
+
+  /**
    * 帶有驗證 Token 的請求輔助函數
    */
   private withAuth<T>(
