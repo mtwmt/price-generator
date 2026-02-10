@@ -7,7 +7,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap } from 'rxjs';
+import { EMPTY, firstValueFrom, pipe, switchMap, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { Comment, CommentsState } from './comments.model';
 import { CommentsService } from './comments.service';
@@ -94,22 +94,16 @@ export const CommentsStore = signalStore(
           tap(() => patchState(store, { loading: true, error: null })),
           switchMap(({ body, discussionId, replyToId }) =>
             commentsService.createComment(body, discussionId, replyToId).pipe(
+              switchMap(() => {
+                const currentPath = store.currentPagePath();
+                if (currentPath) {
+                  return commentsService.fetchComments(currentPath);
+                }
+                return EMPTY;
+              }),
               tapResponse({
-                next: () => {
-                  const currentPath = store.currentPagePath();
-                  if (currentPath) {
-                    patchState(store, { loading: true });
-                    commentsService.fetchComments(currentPath).subscribe({
-                      next: (comments) =>
-                        patchState(store, { comments, loading: false }),
-                      error: (error: Error) =>
-                        patchState(store, {
-                          error: error.message,
-                          loading: false,
-                        }),
-                    });
-                  }
-                },
+                next: (comments) =>
+                  patchState(store, { comments, loading: false }),
                 error: (error: Error) =>
                   patchState(store, {
                     error: error.message || '發布留言失敗',
@@ -126,21 +120,16 @@ export const CommentsStore = signalStore(
           tap(() => patchState(store, { loading: true, error: null })),
           switchMap((commentId) =>
             commentsService.deleteComment(commentId).pipe(
+              switchMap(() => {
+                const currentPath = store.currentPagePath();
+                if (currentPath) {
+                  return commentsService.fetchComments(currentPath);
+                }
+                return EMPTY;
+              }),
               tapResponse({
-                next: () => {
-                  const currentPath = store.currentPagePath();
-                  if (currentPath) {
-                    commentsService.fetchComments(currentPath).subscribe({
-                      next: (comments) =>
-                        patchState(store, { comments, loading: false }),
-                      error: (error: Error) =>
-                        patchState(store, {
-                          error: error.message,
-                          loading: false,
-                        }),
-                    });
-                  }
-                },
+                next: (comments) =>
+                  patchState(store, { comments, loading: false }),
                 error: (error: Error) =>
                   patchState(store, {
                     error: error.message || '刪除留言失敗',
@@ -174,12 +163,9 @@ export const CommentsStore = signalStore(
           ? commentsService.removeReaction(commentId, reactionType)
           : commentsService.createReaction(commentId, reactionType);
 
-        request$.subscribe({
-          next: () => {},
-          error: (error) => {
-            patchState(store, { comments: currentComments });
-            console.error('Failed to toggle reaction:', error);
-          },
+        firstValueFrom(request$).catch((error) => {
+          patchState(store, { comments: currentComments });
+          console.error('Failed to toggle reaction:', error);
         });
       },
 
@@ -191,12 +177,9 @@ export const CommentsStore = signalStore(
         );
         patchState(store, { comments: optimisticComments });
 
-        commentsService.togglePin(commentId).subscribe({
-          next: () => {},
-          error: (error) => {
-            patchState(store, { comments: currentComments });
-            console.error('Failed to toggle pin:', error);
-          },
+        firstValueFrom(commentsService.togglePin(commentId)).catch((error) => {
+          patchState(store, { comments: currentComments });
+          console.error('Failed to toggle pin:', error);
         });
       },
 

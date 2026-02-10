@@ -7,7 +7,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, pipe, switchMap, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { UserData, UpdateUserRoleParams } from '@app/features/user/user.model';
 import { AdminApiService } from '@app/core/services/admin-api.service';
@@ -112,17 +112,17 @@ export const UsersStore = signalStore(
           ),
           switchMap(({ uid, role, premiumUntil }) =>
             adminApiService.updateUserRole(uid, role, premiumUntil).pipe(
+              switchMap(() => {
+                patchState(store, { updating: false });
+                toastService.success('使用者權限已更新');
+                return adminApiService.getAllUsers().pipe(
+                  catchError(() => EMPTY)
+                );
+              }),
               tapResponse({
-                next: () => {
-                  patchState(store, { updating: false });
-                  toastService.success('使用者權限已更新');
-                  // 重新載入列表 (全部)
-                  adminApiService.getAllUsers().subscribe({
-                    next: (res) => {
-                      const users = UserApiMapper.mapMany(res.data);
-                      patchState(store, { users });
-                    },
-                  });
+                next: (res: any) => {
+                  const users = UserApiMapper.mapMany(res.data);
+                  patchState(store, { users });
                 },
                 error: (error: Error) => {
                   patchState(store, {

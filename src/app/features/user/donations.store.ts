@@ -7,7 +7,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { from, pipe, switchMap, tap } from 'rxjs';
+import { EMPTY, from, pipe, switchMap, tap, catchError } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import {
   DonationRequest,
@@ -128,15 +128,16 @@ export const DonationsStore = signalStore(
                 isPremium
               )
             ).pipe(
+              switchMap(() => {
+                patchState(store, { submitting: false });
+                toastService.success('贊助申請已送出，我們會儘快審核！');
+                return from(donationService.getMyRequests(uid)).pipe(
+                  catchError(() => EMPTY)
+                );
+              }),
               tapResponse({
-                next: () => {
-                  patchState(store, { submitting: false });
-                  toastService.success('贊助申請已送出，我們會儘快審核！');
-                  // 重新載入申請列表
-                  from(donationService.getMyRequests(uid)).subscribe({
-                    next: (myRequests) => patchState(store, { myRequests }),
-                  });
-                },
+                next: (myRequests) =>
+                  patchState(store, { myRequests }),
                 error: (error: Error) => {
                   patchState(store, {
                     error: error.message || '申請送出失敗',
@@ -165,15 +166,16 @@ export const DonationsStore = signalStore(
           ),
           switchMap(({ requestId, uid }) =>
             from(donationService.withdrawRequest(requestId, uid)).pipe(
+              switchMap(() => {
+                patchState(store, { submitting: false });
+                toastService.success('已撤回申請');
+                return from(donationService.getMyRequests(uid)).pipe(
+                  catchError(() => EMPTY)
+                );
+              }),
               tapResponse({
-                next: () => {
-                  patchState(store, { submitting: false });
-                  toastService.success('已撤回申請');
-                  // 重新載入申請列表
-                  from(donationService.getMyRequests(uid)).subscribe({
-                    next: (myRequests) => patchState(store, { myRequests }),
-                  });
-                },
+                next: (myRequests) =>
+                  patchState(store, { myRequests }),
                 error: (error: Error) => {
                   patchState(store, {
                     error: error.message || '撤回失敗',
