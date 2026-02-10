@@ -32,8 +32,8 @@ export class UserApiMapper {
             }
           : undefined,
       },
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      createdAt: quotation?.createdAt ?? user.createdAt,
+      updatedAt: quotation?.updatedAt ?? user.updatedAt,
     };
   }
 

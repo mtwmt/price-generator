@@ -43,6 +43,7 @@ export interface D1QuotationDTO {
   premiumUntil: number | null;
   firstAccessTime: number | null;
   lastAccessTime: number | null;
+  createdAt: number;
   updatedAt: number;
 }
 
