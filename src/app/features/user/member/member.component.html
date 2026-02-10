@@ -208,17 +208,23 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- 憑證縮圖 -->
-          @if (request.proof) {
+          @if (request.proof || request.proofKey) {
             <div>
               <label class="label">
                 <span class="label-text font-semibold">贊助憑證</span>
               </label>
-              <img
-                [src]="request.proof"
-                alt="贊助憑證"
-                class="max-w-3xs w-full rounded-lg border border-base-300 cursor-pointer hover:opacity-80 transition"
-                (click)="openProofModal(modalId)"
-              />
+              @if (getResolvedProofUrl(request)) {
+                <img
+                  [src]="getResolvedProofUrl(request)"
+                  alt="贊助憑證"
+                  class="max-w-3xs w-full rounded-lg border border-base-300 cursor-pointer hover:opacity-80 transition"
+                  (click)="openProofModal(request.proofKey || request.proof)"
+                />
+              } @else {
+                <div class="flex items-center justify-center h-32 bg-base-200 rounded-lg">
+                  <span class="loading loading-spinner"></span>
+                </div>
+              }
             </div>
           }
 
@@ -237,20 +243,11 @@
       }
     </div>
   </div>
-
-  <!-- 憑證預覽 Modal -->
-  <dialog [id]="modalId" class="modal">
-    <div class="modal-box max-w-4xl">
-      <h3 class="font-bold text-lg mb-4">贊助憑證</h3>
-      <img [src]="request.proof" class="w-full rounded-lg" alt="憑證" />
-      <div class="modal-action">
-        <form method="dialog">
-          <button class="btn">關閉</button>
-        </form>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
 </ng-template>
+
+<!-- 共用憑證預覽 Modal -->
+<app-proof-modal
+  [isOpen]="isProofModalOpen()"
+  [proofKey]="selectedProofKey()"
+  (close)="closeProofModal()"
+/>

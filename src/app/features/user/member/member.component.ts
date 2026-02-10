@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   LucideAngularModule,
@@ -8,11 +8,15 @@ import {
   CircleX,
 } from 'lucide-angular';
 import { AuthService } from '@app/core/services/auth.service';
+import { DonationApiService } from '@app/core/services/donation-api.service';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { DonationFormComponent } from './donation-form/donation-form.component';
 import { AdminPanelComponent } from './admin-panel/admin-panel.component';
+import { ProofModalComponent } from '@app/features/user/admin/proof-modal/proof-modal.component';
 import { DonationsStore } from '@app/features/user/donations.store';
 import { ProfileStore } from '@app/features/user/profile.store';
+import { environment } from 'src/environments/environment';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * 會員中心主元件
@@ -28,6 +32,7 @@ import { ProfileStore } from '@app/features/user/profile.store';
     UserProfileComponent,
     DonationFormComponent,
     AdminPanelComponent,
+    ProofModalComponent,
   ],
   templateUrl: './member.component.html',
 })
@@ -36,6 +41,12 @@ export class MemberComponent {
   readonly authService = inject(AuthService);
   readonly donationsStore = inject(DonationsStore);
   readonly profileStore = inject(ProfileStore);
+  private readonly donationApi = inject(DonationApiService);
+
+  // ==================== Proof URL Resolution ====================
+  resolvedProofUrls = signal<Record<string, string>>({});
+  isProofModalOpen = signal(false);
+  selectedProofKey = signal('');
 
   // ==================== Icons ====================
   readonly User = User;
@@ -53,6 +64,16 @@ export class MemberComponent {
 
       if (userData && !isAdmin) {
         this.donationsStore.initForUser(userData, isPremium);
+      }
+    });
+
+    // 監聽 myRequests 變化，解析 R2 key 為簽章 URL
+    effect(() => {
+      const requests = this.donationsStore.myRequests();
+      for (const req of requests) {
+        if (req.proofKey && !this.resolvedProofUrls()[req.proofKey]) {
+          this.resolveProofUrl(req.proofKey);
+        }
       }
     });
   }
@@ -106,10 +127,43 @@ export class MemberComponent {
   /**
    * 開啟憑證預覽 Modal
    */
-  openProofModal(modalId: string): void {
-    const modal = document.getElementById(modalId) as HTMLDialogElement;
-    if (modal) {
-      modal.showModal();
+  openProofModal(proofKey: string): void {
+    this.selectedProofKey.set(proofKey);
+    this.isProofModalOpen.set(true);
+  }
+
+  /**
+   * 關閉憑證預覽 Modal
+   */
+  closeProofModal(): void {
+    this.isProofModalOpen.set(false);
+    this.selectedProofKey.set('');
+  }
+
+  /**
+   * 取得已解析的 proof URL
+   */
+  getResolvedProofUrl(request: { proof: string; proofKey?: string }): string {
+    if (request.proof) return request.proof;
+    if (request.proofKey) return this.resolvedProofUrls()[request.proofKey] || '';
+    return '';
+  }
+
+  /**
+   * 解析 R2 key 為簽章 URL
+   */
+  private async resolveProofUrl(key: string): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.donationApi.getProofSignedUrl(key),
+      );
+      const baseUrl = `${environment.portalApiUrl}/api/portal/user`;
+      this.resolvedProofUrls.update((urls) => ({
+        ...urls,
+        [key]: `${baseUrl}${response.url}`,
+      }));
+    } catch {
+      console.error('[Member] Failed to resolve proof URL');
     }
   }
 }

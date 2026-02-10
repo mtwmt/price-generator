@@ -93,7 +93,7 @@
                     <td>
                       <button
                         class="btn btn-ghost btn-xs whitespace-nowrap"
-                        (click)="openProofModal(request.proof)"
+                        (click)="openProofModal(request.proofKey || request.proof)"
                       >
                         查看憑證
                       </button>
@@ -188,7 +188,7 @@
                     <td>
                       <button
                         class="btn btn-ghost btn-xs whitespace-nowrap"
-                        (click)="openProofModal(request.proof)"
+                        (click)="openProofModal(request.proofKey || request.proof)"
                       >
                         查看憑證
                       </button>
@@ -249,7 +249,7 @@
 <!-- 憑證預覽 Modal -->
 <app-proof-modal
   [isOpen]="isProofModalOpen()"
-  [proofUrl]="selectedProofUrl()"
+  [proofKey]="selectedProofKey()"
   (close)="closeProofModal()"
 />
 

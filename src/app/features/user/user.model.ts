@@ -103,6 +103,7 @@ export interface DonationRequest {
   userDisplayName: string;
   userEmail: string;
   proof: string;
+  proofKey?: string;
   note: string;
   status: DonationStatus;
   createdAt: number;

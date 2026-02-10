@@ -43,7 +43,7 @@ export class AdminPanelComponent {
   donationTab = signal<'pending' | 'history'>('pending');
   donationLoading = signal<boolean>(false);
   isProofModalOpen = signal<boolean>(false);
-  selectedProofUrl = signal<string>('');
+  selectedProofKey = signal<string>('');
 
   // 編輯權限相關
   editingUser = signal<UserData | null>(null);
@@ -108,8 +108,8 @@ export class AdminPanelComponent {
   /**
    * 開啟憑證預覽 Modal
    */
-  openProofModal(proofUrl: string): void {
-    this.selectedProofUrl.set(proofUrl);
+  openProofModal(proofKey: string): void {
+    this.selectedProofKey.set(proofKey);
     this.isProofModalOpen.set(true);
   }
 
@@ -118,7 +118,7 @@ export class AdminPanelComponent {
    */
   closeProofModal(): void {
     this.isProofModalOpen.set(false);
-    this.selectedProofUrl.set('');
+    this.selectedProofKey.set('');
   }
 
   /**

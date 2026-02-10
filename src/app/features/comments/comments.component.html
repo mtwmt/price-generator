@@ -148,7 +148,7 @@
                   </div>
                   <div
                     class="prose prose-sm max-w-none"
-                    [innerHTML]="comment.bodyHTML"
+                    [innerHTML]="comment.bodyHTML | safeHtml"
                   ></div>
 
                   <!-- 操作按鈕 -->
@@ -251,7 +251,7 @@
                             </div>
                             <div
                               class="prose prose-sm max-w-none text-sm mb-2"
-                              [innerHTML]="reply.bodyHTML"
+                              [innerHTML]="reply.bodyHTML | safeHtml"
                             ></div>
 
                             <div class="flex items-center gap-2">

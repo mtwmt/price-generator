@@ -20,11 +20,12 @@ import { Comment } from './comments.model';
 import { LucideAngularModule, Smile, Pin, PinOff, LogIn } from 'lucide-angular';
 
 import { TimeAgoPipe } from '@app/shared/pipes/time-ago.pipe';
+import { SafeHtmlPipe } from '@app/shared/pipes/safe-html.pipe';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-comments',
-  imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe, PaginationComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe, SafeHtmlPipe, PaginationComponent],
   templateUrl: './comments.component.html',
 })
 export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
