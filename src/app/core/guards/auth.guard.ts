@@ -1,17 +1,14 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { getAuth } from 'firebase/auth';
+import { AuthService } from '@app/core/services/auth.service';
 
 /**
  * 路由守衛：檢查使用者是否已登入
  * 未登入時導向首頁
  */
-export const authGuard: CanActivateFn = async () => {
-  const auth = getAuth();
+export const authGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
   const router = inject(Router);
 
-  // 等待 Firebase Auth 狀態初始化完成
-  await auth.authStateReady();
-
-  return auth.currentUser ? true : router.createUrlTree(['/']);
+  return authService.isAuthenticated() ? true : router.createUrlTree(['/']);
 };

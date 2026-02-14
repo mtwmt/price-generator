@@ -54,32 +54,18 @@ export class AppComponent {
   readonly Crown = Crown;
 
   /**
+   * 登入
+   */
+  loginWithGoogle(): void {
+    this.authService.loginWithGoogle();
+  }
+
+  /**
    * 導航至指定分頁
    */
   navigateToTab(tab: 'quotation' | 'changelog' | 'member') {
     this.router.navigate([`/${tab}`]);
     this.analytics.trackTabChange(tab);
-  }
-
-  /**
-   * 使用 Google 登入
-   */
-  async loginWithGoogle(): Promise<void> {
-    try {
-      await this.authService.loginWithGoogle();
-      this.toastService.success('登入成功');
-    } catch (error: any) {
-      console.error('Login error:', error);
-
-      // 處理常見錯誤
-      if (error.code === 'auth/popup-closed-by-user') {
-        this.toastService.info('登入已取消');
-      } else if (error.code === 'auth/popup-blocked') {
-        this.toastService.warning('彈出視窗被封鎖，請允許彈出視窗後重試');
-      } else {
-        this.toastService.error('登入失敗，請稍後再試');
-      }
-    }
   }
 
   /**

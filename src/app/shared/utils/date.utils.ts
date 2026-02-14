@@ -1,17 +1,21 @@
-import { Timestamp } from 'firebase/firestore';
-
 /**
  * 日期相關的通用工具函數
- * 支援 Unix Timestamp (number), Date, ISO String 與 Firebase Timestamp
+ * 支援 Unix Timestamp (number), Date, ISO String 與具有 toDate() 方法的物件
  */
+
+/** 支援任何具有 toDate() 方法的物件 */
+interface TimestampLike {
+  toDate(): Date;
+}
+
+/** 支援的日期輸入類型 */
+type DateInput = number | TimestampLike | Date | string | null | undefined;
 
 /**
  * 將各種日期格式統一轉換為 Date 物件
- * @param date 支援 number (Unix Timestamp ms), Timestamp, Date, ISO String
+ * @param date 支援 number (Unix Timestamp ms), TimestampLike, Date, ISO String
  */
-export function autoToDate(
-  date: number | Timestamp | Date | string | null | undefined
-): Date | null {
+export function autoToDate(date: DateInput): Date | null {
   // 1. 基本空值檢查 (包含空字串)
   if (date === null || date === undefined || date === '') return null;
 
@@ -34,7 +38,7 @@ export function autoToDate(
       result = new Date(date);
     }
   }
-  // 5. 處理 Firebase Timestamp (具備 toDate 方法)
+  // 5. 處理具備 toDate 方法的物件
   else if (typeof (date as any).toDate === 'function') {
     result = (date as any).toDate();
   }
@@ -53,11 +57,11 @@ export function autoToDate(
 
 /**
  * 格式化日期為本地化字串
- * @param date 日期（支援 number, Timestamp, Date, ISO String 或 null）
+ * @param date 日期（支援 number, TimestampLike, Date, ISO String 或 null）
  * @returns 格式化後的日期字串，若無日期則回傳 '-'
  */
 export function formatDate(
-  date: number | Timestamp | Date | string | null | undefined,
+  date: DateInput,
   options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: '2-digit',
@@ -71,12 +75,10 @@ export function formatDate(
 
 /**
  * 格式化日期時間為本地化字串（含時間）
- * @param date 日期（支援 number, Timestamp, Date, ISO String 或 null）
+ * @param date 日期（支援 number, TimestampLike, Date, ISO String 或 null）
  * @returns 格式化後的日期時間字串，格式：2024/12/19 14:30
  */
-export function formatDateTime(
-  date: number | Timestamp | Date | string | null | undefined
-): string {
+export function formatDateTime(date: DateInput): string {
   const dateObj = autoToDate(date);
   if (!dateObj) return '-';
 
@@ -102,7 +104,7 @@ export function formatDateTime(
  * @returns 天數差（正數表示未來，負數表示過去），若無日期則回傳 null
  */
 export function getDaysDiff(
-  targetDate: number | Timestamp | Date | string | null | undefined,
+  targetDate: DateInput,
   fromDate: Date = new Date()
 ): number | null {
   const dateObj = autoToDate(targetDate);

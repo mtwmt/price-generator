@@ -105,12 +105,14 @@
                       <div class="join">
                         <button
                           class="btn btn-success btn-xs join-item"
+                          [disabled]="processing()"
                           (click)="approveRequest(request)"
                         >
                           核准
                         </button>
                         <button
                           class="btn btn-error btn-xs join-item"
+                          [disabled]="processing()"
                           (click)="rejectRequest(request)"
                         >
                           拒絕
@@ -216,6 +218,7 @@
                           <!-- 非使用者取消的申請，管理員皆可退回重新審核 -->
                           <button
                             class="btn btn-warning btn-outline btn-xs"
+                            [disabled]="processing()"
                             (click)="resetRequest(request)"
                           >
                             重新審核

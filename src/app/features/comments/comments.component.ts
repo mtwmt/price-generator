@@ -11,13 +11,16 @@ import {
   QueryList,
   ElementRef,
   AfterViewInit,
+  DestroyRef,
+  effect,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@app/core/services/auth.service';
 import { CommentsStore } from './comments.store';
 import { Comment } from './comments.model';
-import { LucideAngularModule, Smile, Pin, PinOff, LogIn } from 'lucide-angular';
+import { LucideAngularModule, Smile, Pin, PinOff } from 'lucide-angular';
 
 import { TimeAgoPipe } from '@app/shared/pipes/time-ago.pipe';
 import { SafeHtmlPipe } from '@app/shared/pipes/safe-html.pipe';
@@ -36,11 +39,11 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
 
   readonly store = inject(CommentsStore);
   private readonly authService = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly Smile = Smile;
   readonly Pin = Pin;
   readonly PinOff = PinOff;
-  readonly LogIn = LogIn;
 
   newCommentBody = signal('');
   replyingTo = signal<string | null>(null);
@@ -50,12 +53,19 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
   currentPage = signal(1);
   readonly pageSize = 10;
 
+  loginWithGoogle = () => this.authService.loginWithGoogle();
   isAuthenticated = this.authService.isAuthenticated;
   userDisplayName = this.authService.userDisplayName;
   userPhotoURL = this.authService.userPhotoURL;
   isAdmin = this.authService.isAdmin;
 
   sortOrder = this.store.sortOrder;
+
+  // 排序變更時自動重置分頁至第 1 頁
+  private sortResetEffect = effect(() => {
+    this.store.sortOrder();
+    this.currentPage.set(1);
+  });
 
   // 計算總頁數
   totalPages = computed(() => {
@@ -103,9 +113,11 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.dropdowns.changes.subscribe(() => {
-      setTimeout(() => this.setupDropdownListeners(), 100);
-    });
+    this.dropdowns.changes
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        setTimeout(() => this.setupDropdownListeners(), 100);
+      });
     setTimeout(() => this.setupDropdownListeners(), 200);
   }
 
@@ -172,9 +184,6 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
     this.store.togglePin(commentId);
   }
 
-  loginWithGoogle() {
-    this.authService.loginWithGoogle();
-  }
 
   selectReaction(commentId: string, reactionType: string) {
     this.toggleReaction(commentId, reactionType);

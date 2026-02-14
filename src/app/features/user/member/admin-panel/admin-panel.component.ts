@@ -45,6 +45,9 @@ export class AdminPanelComponent {
   isProofModalOpen = signal<boolean>(false);
   selectedProofKey = signal<string>('');
 
+  // 操作中狀態（防連點）
+  processing = signal<boolean>(false);
+
   // 編輯權限相關
   editingUser = signal<UserData | null>(null);
 
@@ -125,8 +128,10 @@ export class AdminPanelComponent {
    * 核准申請
    */
   async approveRequest(request: DonationRequest): Promise<void> {
+    if (this.processing()) return;
     if (!confirm(`確定要核准 ${request.userDisplayName} 的申請嗎？`)) return;
 
+    this.processing.set(true);
     try {
       const admin = this.authService.currentUser();
       if (!admin) return;
@@ -146,6 +151,8 @@ export class AdminPanelComponent {
     } catch (error) {
       console.error('Failed to approve request:', error);
       this.toastService.error('核准失敗');
+    } finally {
+      this.processing.set(false);
     }
   }
 
@@ -153,20 +160,25 @@ export class AdminPanelComponent {
    * 拒絕申請
    */
   async rejectRequest(request: DonationRequest): Promise<void> {
+    if (this.processing()) return;
     if (!confirm(`確定要拒絕 ${request.userDisplayName} 的申請嗎？`)) return;
 
+    this.processing.set(true);
     try {
       const admin = this.authService.currentUser();
       if (!admin) return;
 
-      await this.donationService.rejectRequest(request.id!, admin.uid);
+      await this.donationService.rejectRequest(request.id!, admin.uid, request.uid);
       this.toastService.success('已拒絕申請');
 
       // 重新整理列表
       await this.loadPendingRequests();
+      this.usersStore.loadUsers();
     } catch (error) {
       console.error('Failed to reject request:', error);
       this.toastService.error('拒絕失敗');
+    } finally {
+      this.processing.set(false);
     }
   }
 
@@ -174,9 +186,11 @@ export class AdminPanelComponent {
    * 重新審核（將 rejected 改回 pending）
    */
   async resetRequest(request: DonationRequest): Promise<void> {
+    if (this.processing()) return;
     if (!confirm(`確定要重新審核 ${request.userDisplayName} 的申請嗎？`))
       return;
 
+    this.processing.set(true);
     try {
       await this.donationService.resetRequestStatus(request.id!);
       this.toastService.success('已重新開放審核');
@@ -187,6 +201,8 @@ export class AdminPanelComponent {
     } catch (error) {
       console.error('Failed to reset request:', error);
       this.toastService.error('重新審核失敗');
+    } finally {
+      this.processing.set(false);
     }
   }
 

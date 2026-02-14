@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 /**
  * 使用者角色類型
  * - free: 免費會員

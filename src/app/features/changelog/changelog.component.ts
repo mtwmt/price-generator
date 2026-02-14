@@ -14,6 +14,14 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2026-02-14',
+      features: [
+        '認證系統升級為 Google OAuth 2.0，提升安全性與穩定性',
+        '留言系統重新整合，改善載入速度與穩定度',
+        '修復留言排序變更後分頁未重置的問題',
+      ],
+    },
+    {
       date: '2025-12-30',
       features: [
         '調整預設字體大小，提升閱讀體驗',

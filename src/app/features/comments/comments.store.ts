@@ -115,31 +115,36 @@ export const CommentsStore = signalStore(
         )
       ),
 
-      deleteComment: rxMethod<string>(
-        pipe(
-          tap(() => patchState(store, { loading: true, error: null })),
-          switchMap((commentId) =>
-            commentsService.deleteComment(commentId).pipe(
-              switchMap(() => {
-                const currentPath = store.currentPagePath();
-                if (currentPath) {
-                  return commentsService.fetchComments(currentPath);
-                }
-                return EMPTY;
-              }),
-              tapResponse({
-                next: (comments) =>
-                  patchState(store, { comments, loading: false }),
-                error: (error: Error) =>
-                  patchState(store, {
-                    error: error.message || '刪除留言失敗',
-                    loading: false,
-                  }),
-              })
-            )
+      deleteComment(commentId: string) {
+        const currentComments = store.comments();
+        const optimisticComments = removeCommentFromTree(
+          currentComments,
+          commentId
+        );
+        patchState(store, { comments: optimisticComments, error: null });
+
+        firstValueFrom(
+          commentsService.deleteComment(commentId).pipe(
+            switchMap(() => {
+              const currentPath = store.currentPagePath();
+              return currentPath
+                ? commentsService.fetchComments(currentPath)
+                : EMPTY;
+            })
           )
         )
-      ),
+          .then((comments) => {
+            if (comments) {
+              patchState(store, { comments });
+            }
+          })
+          .catch((error) => {
+            patchState(store, {
+              comments: currentComments,
+              error: error.message || '刪除留言失敗',
+            });
+          });
+      },
 
       toggleReaction(
         commentId: string,
@@ -189,6 +194,24 @@ export const CommentsStore = signalStore(
     })
   )
 );
+
+/** 從留言樹中移除指定留言（支援主留言與回覆） */
+function removeCommentFromTree(
+  comments: Comment[],
+  commentId: string
+): Comment[] {
+  return comments
+    .filter((c) => c.id !== commentId)
+    .map((c) => {
+      if (c.replies?.length) {
+        return {
+          ...c,
+          replies: c.replies.filter((r) => r.id !== commentId),
+        };
+      }
+      return c;
+    });
+}
 
 function updateReactionInComments(
   comments: Comment[],

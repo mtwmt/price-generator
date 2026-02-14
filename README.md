@@ -1,8 +1,8 @@
-# 報價單生器
+# 報價單產生器 (Price Generator)
 
 ## 主要功能
 
-- **零後端依賴**：純前端應用，資料存於瀏覽器本地，隱私安全
+- **混合雲架構**：結合本地瀏覽器 LocalStorage 與 Cloudflare D1/R2 後端，兼顧私隱與數據同步。
 - ✨ 建立專業報價單，包含公司與客戶完整資訊
 - 🎯 **拖曳排序**：服務項目支援桌面與行動裝置拖曳排序
 - 🧮 **自動計算**：即時計算未稅金額、稅額、含稅總金額
@@ -68,7 +68,7 @@
 ```
 本專案部分程式碼參考自：
 報價單生器 by Mandy (MTWMT)
-https://github.com/mtwmt/price-generator
+https://mtwmt.com/price-generator
 ```
 
 #### 💡 貢獻與回饋
