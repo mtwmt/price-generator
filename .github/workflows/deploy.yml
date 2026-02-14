@@ -28,14 +28,14 @@ jobs:
           cat > src/environments/environment.ts << 'EOF'
           export const environment = {
             production: true,
+            portalApiUrl: '${{ secrets.PORTAL_API_URL }}',
+            googleClientId: '${{ secrets.GOOGLE_CLIENT_ID }}',
             googleSheets: {
               enabled: true,
               quotationUrl: '${{ secrets.QUOTATION_URL }}',
               commentsUrl: '${{ secrets.COMMENTS_URL }}',
               notificationUrl: '${{ secrets.NOTIFICATION_URL }}',
             },
-            portalApiUrl: '${{ secrets.PORTAL_API_URL }}',
-            firebase: ${{ secrets.FIREBASE_CONFIG }},
           };
           EOF
 

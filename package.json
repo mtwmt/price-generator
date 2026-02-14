@@ -27,7 +27,6 @@
     "@tailwindcss/postcss": "^4.1.14",
     "dompurify": "^3.3.1",
     "exceljs": "^4.4.0",
-    "firebase": "^12.6.0",
     "html2canvas-pro": "^1.5.11",
     "jspdf": "^3.0.3",
     "litepicker": "^2.0.12",

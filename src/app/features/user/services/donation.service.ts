@@ -109,10 +109,21 @@ export class DonationService {
 
   /**
    * 拒絕申請
+   * 同時將使用者角色降級為 free，撤銷贊助權限
    */
-  async rejectRequest(requestId: string, adminUid: string): Promise<void> {
+  async rejectRequest(
+    requestId: string,
+    adminUid: string,
+    userUid: string
+  ): Promise<void> {
     try {
+      // 1. 拒絕申請狀態
       await firstValueFrom(this.adminApi.rejectDonation(requestId));
+
+      // 2. 將使用者角色降級為 free，撤銷 premiumUntil
+      await firstValueFrom(
+        this.adminApi.updateUserRole(userUid, 'free', null)
+      );
     } catch (error) {
       console.error('Failed to reject request:', error);
       throw error;
