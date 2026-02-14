@@ -113,7 +113,7 @@ export class AuthService {
 
     const params = new URLSearchParams({
       client_id: environment.googleClientId,
-      redirect_uri: window.location.origin,
+      redirect_uri: document.baseURI.replace(/\/+$/, ''),
       response_type: 'id_token',
       scope: 'openid email profile',
       nonce,
