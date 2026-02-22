@@ -1,4 +1,4 @@
-import { Component, inject, effect, signal } from '@angular/core';
+import { Component, inject, effect, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   LucideAngularModule,
@@ -8,6 +8,7 @@ import {
   CircleX,
 } from 'lucide-angular';
 import { AuthService } from '@app/core/services/auth.service';
+import { LoggerService } from '@app/shared/services/logger.service';
 import { DonationApiService } from '@app/core/services/donation-api.service';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { DonationFormComponent } from './donation-form/donation-form.component';
@@ -35,6 +36,7 @@ import { firstValueFrom } from 'rxjs';
     ProofModalComponent,
   ],
   templateUrl: './member.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MemberComponent {
   // ==================== Services & Stores ====================
@@ -42,6 +44,7 @@ export class MemberComponent {
   readonly donationsStore = inject(DonationsStore);
   readonly profileStore = inject(ProfileStore);
   private readonly donationApi = inject(DonationApiService);
+  private readonly logger = inject(LoggerService);
 
   // ==================== Proof URL Resolution ====================
   resolvedProofUrls = signal<Record<string, string>>({});
@@ -105,7 +108,7 @@ export class MemberComponent {
     try {
       await this.authService.updateDisplayName(newName);
     } catch (error: any) {
-      console.error('Failed to update display name:', error);
+      this.logger.error('Failed to update display name:', error);
     }
   }
 
@@ -163,7 +166,7 @@ export class MemberComponent {
         [key]: `${baseUrl}${response.url}`,
       }));
     } catch {
-      console.error('[Member] Failed to resolve proof URL');
+      this.logger.error('[Member] Failed to resolve proof URL');
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   ElementRef,
   AfterViewInit,
   OnDestroy,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -30,6 +31,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
   templateUrl: './quoter-info-section.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuoterInfoSection implements AfterViewInit, OnDestroy {
   // Icons

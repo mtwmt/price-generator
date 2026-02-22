@@ -24,7 +24,7 @@ export class CommentsService {
       .pipe(
         map((response) => {
           if (response.success && response.data) {
-            return this.organizeComments(response.data);
+            return this.organizeComments(response.data as Comment[]);
           }
 
           if (response.success) {
@@ -65,7 +65,7 @@ export class CommentsService {
             return response.data as Comment;
           }
           throw new Error(response.message);
-        })
+        }),
       );
   }
 
@@ -113,13 +113,14 @@ export class CommentsService {
       .pipe(
         map((response) => {
           if (response.success && response.data) {
+            const data = response.data as ReactionResponse;
             return {
-              count: response.data.count,
-              total: response.data.total,
+              count: data.count,
+              total: data.total,
             };
           }
           throw new Error(response.message);
-        })
+        }),
       );
   }
 
@@ -144,13 +145,14 @@ export class CommentsService {
       .pipe(
         map((response) => {
           if (response.success && response.data) {
+            const data = response.data as ReactionResponse;
             return {
-              count: response.data.count,
-              total: response.data.total,
+              count: data.count,
+              total: data.total,
             };
           }
           throw new Error(response.message);
-        })
+        }),
       );
   }
 
@@ -171,12 +173,13 @@ export class CommentsService {
       .pipe(
         map((response) => {
           if (response.success && response.data) {
+            const data = response.data as { isPinned: boolean };
             return {
-              isPinned: response.data.isPinned,
+              isPinned: data.isPinned,
             };
           }
           throw new Error(response.message);
-        })
+        }),
       );
   }
 
@@ -217,7 +220,7 @@ export class CommentsService {
     return rootComments;
   }
 
-  private parseReactionField(field: any): string[] {
+  private parseReactionField(field: string[] | string | unknown): string[] {
     if (Array.isArray(field)) {
       return field;
     }

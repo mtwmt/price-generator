@@ -5,7 +5,12 @@ import { Pipe, PipeTransform } from '@angular/core';
   standalone: true,
 })
 export class TimeAgoPipe implements PipeTransform {
-  transform(timestamp: number | string | Date): string {
+  /**
+   * 將時間戳轉換為「幾分鐘前」格式
+   * @param timestamp 時間戳
+   * @param _tick 可選的遞增值，用於觸發 pure pipe 重新計算（不使用此值）
+   */
+  transform(timestamp: number | string | Date, _tick?: number): string {
     if (!timestamp) return '';
 
     const date = new Date(timestamp);

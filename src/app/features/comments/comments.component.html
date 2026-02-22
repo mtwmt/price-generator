@@ -134,7 +134,7 @@
                   <div class="flex items-center gap-2 mb-1">
                     <span class="font-semibold">{{ comment.authorLogin }}</span>
                     <span class="text-sm text-base-content/60">{{
-                      comment.createdAt | timeAgo
+                      comment.createdAt | timeAgo: refreshTick()
                     }}</span>
                     @if (comment.isPinned) {
                       <span
@@ -246,7 +246,7 @@
                                 reply.authorLogin
                               }}</span>
                               <span class="text-xs text-base-content/60">{{
-                                reply.createdAt | timeAgo
+                                reply.createdAt | timeAgo: refreshTick()
                               }}</span>
                             </div>
                             <div

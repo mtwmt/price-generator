@@ -54,10 +54,7 @@ export class DonationFormComponent {
    * 提交贊助申請
    */
   onSubmit(): void {
-    const hasProof = !!this.donationProof();
-    const hasNote = !!this.donationNote().trim();
-
-    if (!hasProof && !hasNote) {
+    if (!this.donationProof() && !this.donationNote().trim()) {
       this.toastService.error('請上傳贊助憑證或填寫備註');
       return;
     }

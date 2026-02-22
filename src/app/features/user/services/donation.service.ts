@@ -4,6 +4,7 @@ import { DonationRequest } from '@app/features/user/user.model';
 import { DonationApiService } from '@app/core/services/donation-api.service';
 import { AdminApiService } from '@app/core/services/admin-api.service';
 import { DonationApiMapper } from '@app/core/mappers/donation-api.mapper';
+import { LoggerService } from '@app/shared/services/logger.service';
 import { NotificationService } from './notification.service';
 import { ProfileStore } from '@app/features/user/profile.store';
 
@@ -20,6 +21,7 @@ export class DonationService {
   private readonly adminApi = inject(AdminApiService);
   private readonly notificationService = inject(NotificationService);
   private readonly profileStore = inject(ProfileStore);
+  private readonly logger = inject(LoggerService);
 
   /**
    * 建立或更新贊助申請
@@ -41,7 +43,7 @@ export class DonationService {
       // 1. 提交申請 (主要判斷邏輯已移至後端 D1 Service 以維護資料一致性)
       await firstValueFrom(this.donationApi.submitDonation({ note, proof }));
     } catch (error) {
-      console.error('Failed to create or update donation request:', error);
+      this.logger.error('Failed to create or update donation request:', error);
       throw error;
     }
   }
@@ -56,7 +58,7 @@ export class DonationService {
       );
       return DonationApiMapper.mapMany(response.data);
     } catch (error) {
-      console.error('Failed to get pending requests:', error);
+      this.logger.error('Failed to get pending requests:', error);
       throw error;
     }
   }
@@ -69,7 +71,7 @@ export class DonationService {
       const response = await firstValueFrom(this.donationApi.getMyDonations());
       return DonationApiMapper.mapMany(response.data);
     } catch (error) {
-      console.error('Failed to get my requests:', error);
+      this.logger.error('Failed to get my requests:', error);
       throw error;
     }
   }
@@ -102,7 +104,7 @@ export class DonationService {
         userDisplayName
       );
     } catch (error) {
-      console.error('Failed to approve request:', error);
+      this.logger.error('Failed to approve request:', error);
       throw error;
     }
   }
@@ -125,7 +127,7 @@ export class DonationService {
         this.adminApi.updateUserRole(userUid, 'free', null)
       );
     } catch (error) {
-      console.error('Failed to reject request:', error);
+      this.logger.error('Failed to reject request:', error);
       throw error;
     }
   }
@@ -137,7 +139,7 @@ export class DonationService {
     try {
       await firstValueFrom(this.donationApi.withdrawDonation(requestId));
     } catch (error) {
-      console.error('Failed to withdraw request:', error);
+      this.logger.error('Failed to withdraw request:', error);
       throw error;
     }
   }
@@ -152,7 +154,7 @@ export class DonationService {
       );
       return DonationApiMapper.mapMany(response.data);
     } catch (error) {
-      console.error('Failed to get processed requests:', error);
+      this.logger.error('Failed to get processed requests:', error);
       throw error;
     }
   }
@@ -164,7 +166,7 @@ export class DonationService {
     try {
       await firstValueFrom(this.adminApi.resetDonationStatus(requestId));
     } catch (error) {
-      console.error('Failed to reset request status:', error);
+      this.logger.error('Failed to reset request status:', error);
       throw error;
     }
   }
@@ -176,7 +178,7 @@ export class DonationService {
     try {
       await firstValueFrom(this.donationApi.markAsExpired());
     } catch (error) {
-      console.error('Failed to mark as expired:', error);
+      this.logger.error('Failed to mark as expired:', error);
       throw error;
     }
   }

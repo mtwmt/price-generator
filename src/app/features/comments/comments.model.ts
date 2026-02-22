@@ -30,7 +30,7 @@ export interface Comment {
 export interface CommentResponse {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
   timestamp: string;
 }
 

@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
@@ -25,6 +25,7 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
     DragDropModule,
   ],
   templateUrl: './service-items-section.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceItemsSection {
   // Icons

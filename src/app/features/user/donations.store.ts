@@ -18,6 +18,7 @@ import {
 } from '@app/features/user/user.model';
 import { DonationService } from '@app/features/user/services/donation.service';
 import { ToastService } from '@app/shared/services/toast.service';
+import { LoggerService } from '@app/shared/services/logger.service';
 import { autoToDate } from '@app/shared/utils/date.utils';
 
 /**
@@ -72,7 +73,8 @@ export const DonationsStore = signalStore(
     (
       store,
       donationService = inject(DonationService),
-      toastService = inject(ToastService)
+      toastService = inject(ToastService),
+      loggerService = inject(LoggerService)
     ) => ({
       /**
        * 載入我的申請
@@ -132,7 +134,10 @@ export const DonationsStore = signalStore(
                 patchState(store, { submitting: false });
                 toastService.success('贊助申請已送出，我們會儘快審核！');
                 return from(donationService.getMyRequests(uid)).pipe(
-                  catchError(() => EMPTY)
+                  catchError(() => {
+                    toastService.error('重新載入申請記錄失敗');
+                    return EMPTY;
+                  })
                 );
               }),
               tapResponse({
@@ -170,7 +175,10 @@ export const DonationsStore = signalStore(
                 patchState(store, { submitting: false });
                 toastService.success('已撤回申請');
                 return from(donationService.getMyRequests(uid)).pipe(
-                  catchError(() => EMPTY)
+                  catchError(() => {
+                    toastService.error('重新載入申請記錄失敗');
+                    return EMPTY;
+                  })
                 );
               }),
               tapResponse({
@@ -208,7 +216,7 @@ export const DonationsStore = signalStore(
                     // 靜默成功
                   },
                   error: (error: Error) => {
-                    console.error('Failed to mark as expired:', error);
+                    loggerService.error('Failed to mark as expired:', error);
                   },
                 })
               );

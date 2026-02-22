@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   LucideAngularModule,
@@ -18,6 +18,7 @@ import { QuotationData } from '@app/features/quotation/models/quotation.model';
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   templateUrl: './quotation-history.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuotationHistory {
   // Icons

@@ -1,4 +1,4 @@
-import { Component, input, signal, output } from '@angular/core';
+import { Component, input, signal, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -22,6 +22,7 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule, LucideAngularModule],
   templateUrl: './user-profile.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserProfileComponent {
   // Inputs - 從父元件接收資料

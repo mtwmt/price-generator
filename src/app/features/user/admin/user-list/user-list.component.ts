@@ -1,5 +1,7 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
+import { Subject, debounceTime } from 'rxjs';
 import {
   LucideAngularModule,
   Users,
@@ -9,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-angular';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
+import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { UsersStore } from '@app/features/user/users.store';
 import { UserData, UserRole } from '@app/features/user/user.model';
 import { UserEditFormComponent } from '@app/features/user/admin/user-edit-modal/user-edit-modal.component';
@@ -34,10 +37,16 @@ import {
     UserEditFormComponent,
   ],
   templateUrl: './user-list.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserListComponent implements OnInit {
   // ==================== Store ====================
   readonly usersStore = inject(UsersStore);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  // ==================== 搜尋防抖 ====================
+  private readonly searchSubject$ = new Subject<string>();
 
   // ==================== Icons ====================
   readonly Users = Users;
@@ -67,11 +76,27 @@ export class UserListComponent implements OnInit {
     return toUserDisplayDataList(filtered.slice(start, end));
   });
 
+  constructor() {
+    this.setupSearchDebounce();
+  }
+
   // ==================== Lifecycle ====================
   ngOnInit(): void {
     if (!this.usersStore.hasUsers()) {
       this.usersStore.loadUsers();
     }
+  }
+
+  /**
+   * 設定搜尋防抖，避免每次按鍵都觸發查詢
+   */
+  private setupSearchDebounce(): void {
+    this.searchSubject$
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe((query) => {
+        this.usersStore.setSearchQuery(query);
+        this.currentPage.set(1);
+      });
   }
 
   // ==================== 分頁方法 ====================
@@ -89,8 +114,7 @@ export class UserListComponent implements OnInit {
   }
 
   onSearchChange(query: string): void {
-    this.usersStore.setSearchQuery(query);
-    this.currentPage.set(1);
+    this.searchSubject$.next(query);
   }
 
   // ==================== 編輯方法 ====================
@@ -116,11 +140,16 @@ export class UserListComponent implements OnInit {
   }
 
   // ==================== 刪除方法 ====================
-  confirmDelete(user: UserData): void {
+  async confirmDelete(user: UserData): Promise<void> {
     const displayName = user.displayName || user.email || user.uid;
-    if (!confirm(`確定要刪除使用者「${displayName}」嗎？此操作無法復原。`)) {
-      return;
-    }
+    const confirmed = await this.confirmDialog.confirm({
+      title: '刪除使用者',
+      message: `確定要刪除使用者「${displayName}」嗎？此操作無法復原。`,
+      confirmText: '刪除',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
+
     this.usersStore.deleteUser(user.uid);
   }
 }

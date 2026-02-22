@@ -72,7 +72,7 @@ export interface D1UserResponseDTO {
   user: D1UserDTO;
   profiles: {
     quotation?: D1QuotationDTO;
-    bookshelf?: any;
+    bookshelf?: Record<string, unknown>;
   };
   timestamp: number;
 }

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Clock } from 'lucide-angular';
 
@@ -7,6 +7,7 @@ import { LucideAngularModule, Clock } from 'lucide-angular';
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   templateUrl: './changelog.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChangelogComponent {
   // Lucide Icons

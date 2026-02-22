@@ -1,10 +1,11 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { LucideAngularModule, Upload, X } from 'lucide-angular';
 
 @Component({
   selector: 'app-file-upload',
   imports: [LucideAngularModule],
   templateUrl: './file-upload.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FileUpload {
   // Inputs

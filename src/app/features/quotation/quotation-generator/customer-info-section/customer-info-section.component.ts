@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
@@ -22,6 +22,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
   templateUrl: './customer-info-section.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomerInfoSection {
   // Icons

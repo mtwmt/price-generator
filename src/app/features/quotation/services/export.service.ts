@@ -6,6 +6,7 @@ import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { ExcelExporter } from '@app/features/templates/models/quotation-template.model';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { GoogleSheetsService } from '@app/core/services/google-sheets.service';
+import { LoggerService } from '@app/shared/services/logger.service';
 
 
 
@@ -28,6 +29,7 @@ export class ExportService {
 
   private analytics = inject(AnalyticsService);
   private googleSheets = inject(GoogleSheetsService);
+  private logger = inject(LoggerService);
 
   /**
    * 生成帶有時間戳的檔名
@@ -215,7 +217,7 @@ export class ExportService {
           }
         } catch (shareError) {
           // Web Share API 失敗或使用者取消，繼續使用下載方式
-          console.log('分享取消或不支援，改用下載方式');
+          this.logger.log('分享取消或不支援，改用下載方式');
         }
       }
 
@@ -224,7 +226,7 @@ export class ExportService {
       this.downloadFile(dataUrl, fileName);
       this.analytics.trackExport('image');
     } catch (error) {
-      console.error('匯出圖片失敗:', error);
+      this.logger.error('匯出圖片失敗:', error);
       this.analytics.trackError(error as Error, 'export_image');
       throw new Error('匯出圖片失敗，請重試');
     }
@@ -286,7 +288,7 @@ export class ExportService {
 
       this.analytics.trackExport('pdf');
     } catch (error) {
-      console.error('匯出 PDF 失敗:', error);
+      this.logger.error('匯出 PDF 失敗:', error);
       this.analytics.trackError(error as Error, 'export_pdf');
       throw new Error('匯出 PDF 失敗，請重試');
     }
@@ -443,7 +445,7 @@ export class ExportService {
 
       this.analytics.trackExport('excel');
     } catch (error) {
-      console.error('匯出 Excel 失敗:', error);
+      this.logger.error('匯出 Excel 失敗:', error);
       this.analytics.trackError(error as Error, 'export_excel');
       throw new Error('匯出 Excel 失敗，請重試');
     }

@@ -17,107 +17,112 @@
   </header>
 
   <!-- Tabs -->
-  <div
-    role="tablist"
-    class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm justify-between items-center"
-  >
-    <div>
-      <a
-        role="tab"
-        class="tab text-base"
-        routerLink="/"
-        routerLinkActive="tab-active font-bold"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        報價單
-      </a>
-      <a
-        role="tab"
-        class="tab text-base"
-        routerLink="/changelog"
-        routerLinkActive="tab-active font-bold"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        更新記錄
-      </a>
-      @if (authService.isAuthenticated()) {
+  <nav aria-label="主導航">
+    <div
+      role="tablist"
+      class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm justify-between items-center"
+    >
+      <div>
         <a
           role="tab"
           class="tab text-base"
-          routerLink="/member"
+          routerLink="/"
           routerLinkActive="tab-active font-bold"
           [routerLinkActiveOptions]="{ exact: true }"
         >
-          會員中心
+          報價單
         </a>
-      }
-    </div>
-
-    <div class="px-2">
-      @if (authService.isAuthenticated()) {
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-            (click)="navigateToTab('member')"
-            title="會員中心"
+        <a
+          role="tab"
+          class="tab text-base"
+          routerLink="/changelog"
+          routerLinkActive="tab-active font-bold"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          更新記錄
+        </a>
+        @if (authService.isAuthenticated()) {
+          <a
+            role="tab"
+            class="tab text-base"
+            routerLink="/member"
+            routerLinkActive="tab-active font-bold"
+            [routerLinkActiveOptions]="{ exact: true }"
           >
-            <div class="avatar">
-              <div class="w-8 h-8 rounded-full bg-primary text-primary-content">
-                @if (authService.userPhotoURL()) {
-                  <img
-                    [src]="authService.userPhotoURL()"
-                    [alt]="authService.userDisplayName()"
-                    referrerpolicy="no-referrer"
-                    class="object-cover"
-                  />
-                } @else {
+            會員中心
+          </a>
+        }
+      </div>
+
+      <div class="px-2">
+        @if (authService.isAuthenticated()) {
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              (click)="navigateToTab('member')"
+              title="會員中心"
+              aria-label="前往會員中心"
+            >
+              <div class="avatar">
+                <div class="w-8 h-8 rounded-full bg-primary text-primary-content">
+                  @if (authService.userPhotoURL()) {
+                    <img
+                      [src]="authService.userPhotoURL()"
+                      [alt]="authService.userDisplayName()"
+                      referrerpolicy="no-referrer"
+                      class="object-cover"
+                    />
+                  } @else {
+                    <span
+                      class="text-xs flex items-center justify-center w-full h-full"
+                    >
+                      {{ authService.userDisplayName().charAt(0).toUpperCase() }}
+                    </span>
+                  }
+                </div>
+              </div>
+              <div class="hidden sm:flex items-center gap-1">
+                <span class="font-medium">{{
+                  authService.userDisplayName()
+                }}</span>
+                @if (authService.isPremium()) {
                   <span
-                    class="text-xs flex items-center justify-center w-full h-full"
+                    class="badge badge-warning badge-sm gap-1"
+                    title="贊助會員"
                   >
-                    {{ authService.userDisplayName().charAt(0).toUpperCase() }}
+                    <lucide-icon [img]="Crown" [size]="12" />
+                    贊助
                   </span>
                 }
               </div>
-            </div>
-            <div class="hidden sm:flex items-center gap-1">
-              <span class="font-medium">{{
-                authService.userDisplayName()
-              }}</span>
-              @if (authService.isPremium()) {
-                <span
-                  class="badge badge-warning badge-sm gap-1"
-                  title="贊助會員"
-                >
-                  <lucide-icon [img]="Crown" [size]="12" />
-                  贊助
-                </span>
-              }
-            </div>
-          </button>
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost gap-1"
+              (click)="logout()"
+              title="登出"
+              aria-label="登出帳號"
+            >
+              <lucide-icon [img]="LogOut" [size]="16" />
+              <span class="hidden sm:inline">登出</span>
+            </button>
+          </div>
+        } @else {
           <button
             type="button"
-            class="btn btn-ghost gap-1"
-            (click)="logout()"
-            title="登出"
+            class="btn btn-primary gap-1"
+            (click)="loginWithGoogle()"
+            title="使用 Google 帳號登入"
+            aria-label="使用 Google 帳號登入"
           >
-            <lucide-icon [img]="LogOut" [size]="16" />
-            <span class="hidden sm:inline">登出</span>
+            <lucide-icon [img]="LogIn" [size]="16" />
+            <span class="hidden sm:inline">登入</span>
           </button>
-        </div>
-      } @else {
-        <button
-          type="button"
-          class="btn btn-primary gap-1"
-          (click)="loginWithGoogle()"
-          title="使用 Google 帳號登入"
-        >
-          <lucide-icon [img]="LogIn" [size]="16" />
-          <span class="hidden sm:inline">登入</span>
-        </button>
-      }
+        }
+      </div>
     </div>
-  </div>
+  </nav>
 
   <!-- Main Content -->
   <router-outlet />
@@ -143,6 +148,9 @@
     </div>
   </footer>
 </div>
+
+<!-- 全域確認對話框 -->
+<app-confirm-dialog />
 
 <!-- 全域 Toast 通知 -->
 @if (toastService.visible()) {
