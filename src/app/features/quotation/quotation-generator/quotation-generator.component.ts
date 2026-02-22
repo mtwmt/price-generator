@@ -24,6 +24,7 @@ import {
 } from '@app/features/quotation/models/quotation.constants';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { ToastService } from '@app/shared/services/toast.service';
+import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { QuotationStorageService } from '@app/features/quotation/services/quotation-storage.service';
 import { ImageUploadService } from '@app/features/quotation/services/image-upload.service';
 import { DatePickerService } from '@app/features/quotation/services/date-picker.service';
@@ -86,6 +87,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private renderer = inject(Renderer2);
   private analytics = inject(AnalyticsService);
   readonly toastService = inject(ToastService);
+  private confirmDialog = inject(ConfirmDialogService);
   private quotationStorage = inject(QuotationStorageService);
   private imageUploadService = inject(ImageUploadService);
   private datePickerService = inject(DatePickerService);
@@ -308,10 +310,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.serviceItems.insert(currentIndex, movedItem);
   }
 
-  onCreateNewForm(): void {
+  async onCreateNewForm(): Promise<void> {
     // 確認是否要建立新表單
-    if (this.form.dirty && !confirm('目前表單尚未儲存，確定要建立新表單嗎？')) {
-      return;
+    if (this.form.dirty) {
+      const confirmed = await this.confirmDialog.confirm({
+        title: '建立新表單',
+        message: '目前表單尚未儲存，確定要建立新表單嗎？',
+        confirmText: '確定',
+        confirmStyle: 'warning',
+      });
+      if (!confirmed) return;
     }
 
     this.selectedHistoryIndex.set(null);
@@ -331,10 +339,14 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.loadQuotationData(data);
   }
 
-  onDeleteHistory(index: number): void {
-    if (!this.confirmDelete()) {
-      return;
-    }
+  async onDeleteHistory(index: number): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: '刪除歷史記錄',
+      message: '確定要刪除此筆歷史記錄嗎？',
+      confirmText: '刪除',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
 
     this.analytics.trackHistoryDeleted(index);
     this.updateSelectedIndexAfterDelete(index);
@@ -345,10 +357,6 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       // 重新載入歷史記錄
       this.loadHistoryFromLocalStorage();
     }
-  }
-
-  private confirmDelete(): boolean {
-    return confirm('確定要刪除此筆歷史記錄嗎？');
   }
 
   private updateSelectedIndexAfterDelete(deletedIndex: number): void {

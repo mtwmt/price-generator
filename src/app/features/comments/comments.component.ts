@@ -3,6 +3,7 @@ import {
   Input,
   OnInit,
   OnChanges,
+  OnDestroy,
   SimpleChanges,
   inject,
   signal,
@@ -13,11 +14,13 @@ import {
   AfterViewInit,
   DestroyRef,
   effect,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '@app/core/services/auth.service';
+import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { CommentsStore } from './comments.store';
 import { Comment } from './comments.model';
 import { LucideAngularModule, Smile, Pin, PinOff } from 'lucide-angular';
@@ -30,8 +33,9 @@ import { PaginationComponent } from '@app/shared/components/pagination/paginatio
   selector: 'app-comments',
   imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe, SafeHtmlPipe, PaginationComponent],
   templateUrl: './comments.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
+export class CommentsComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
   @Input() pagePath!: string;
 
   @ViewChildren('reactionDropdown', { read: ElementRef })
@@ -39,11 +43,16 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
 
   readonly store = inject(CommentsStore);
   private readonly authService = inject(AuthService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly Smile = Smile;
   readonly Pin = Pin;
   readonly PinOff = PinOff;
+
+  /** 定期遞增以觸發 TimeAgoPipe 重新計算 */
+  refreshTick = signal(0);
+  private refreshInterval?: ReturnType<typeof setInterval>;
 
   newCommentBody = signal('');
   replyingTo = signal<string | null>(null);
@@ -104,11 +113,21 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
 
   async ngOnInit() {
     this.loadComments();
+    // 每 60 秒遞增 refreshTick，觸發 TimeAgoPipe 重新計算
+    this.refreshInterval = setInterval(() => {
+      this.refreshTick.update((v) => v + 1);
+    }, 60_000);
   }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['pagePath'] && !changes['pagePath'].firstChange) {
       this.loadComments();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
     }
   }
 
@@ -173,8 +192,14 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit {
     this.replyingTo.set(null);
   }
 
-  deleteComment(commentId: string) {
-    if (!confirm('確定要刪除這則留言嗎?')) return;
+  async deleteComment(commentId: string): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: '刪除留言',
+      message: '確定要刪除這則留言嗎？',
+      confirmText: '刪除',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
 
     this.store.deleteComment(commentId);
   }

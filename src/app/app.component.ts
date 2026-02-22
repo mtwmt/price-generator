@@ -8,6 +8,7 @@ import {
 } from '@angular/router';
 import { CommentsComponent } from '@app/features/comments/comments.component';
 import { DonateComponent } from '@app/shared/components/donate/donate.component';
+import { ConfirmDialogComponent } from '@app/shared/components/confirm-dialog/confirm-dialog.component';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import {
   LucideAngularModule,
@@ -33,6 +34,7 @@ import { ToastService } from '@app/shared/services/toast.service';
     CommentsComponent,
     DonateComponent,
     LucideAngularModule,
+    ConfirmDialogComponent,
   ],
   templateUrl: './app.component.html',
 })

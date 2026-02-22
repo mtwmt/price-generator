@@ -10,6 +10,7 @@ import {
   Info,
 } from 'lucide-angular';
 import { ExportService } from '@app/features/quotation/services/export.service';
+import { ToastService } from '@app/shared/services/toast.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { QuotationTemplate } from '@app/features/templates/models/quotation-template.model';
 import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
@@ -34,6 +35,7 @@ export class ExportControls {
 
   // Services
   private exportService = inject(ExportService);
+  private toastService = inject(ToastService);
 
   // Inputs
   form = input.required<FormGroup>();
@@ -88,7 +90,7 @@ export class ExportControls {
         templateName
       );
     } catch (error) {
-      alert((error as Error).message);
+      this.toastService.error((error as Error).message);
     }
   }
 
@@ -109,7 +111,7 @@ export class ExportControls {
         templateName
       );
     } catch (error) {
-      alert((error as Error).message);
+      this.toastService.error((error as Error).message);
     }
   }
 
@@ -134,7 +136,7 @@ export class ExportControls {
         currentTemplate.name
       );
     } catch (error) {
-      alert((error as Error).message);
+      this.toastService.error((error as Error).message);
     }
   }
 }

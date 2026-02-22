@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { LucideAngularModule, FileCheck } from 'lucide-angular';
@@ -12,6 +12,7 @@ import { LucideAngularModule, FileCheck } from 'lucide-angular';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
   templateUrl: './other-info-section.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OtherInfoSection {
   // Icons

@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { ToastService } from '@app/shared/services/toast.service';
+import { LoggerService } from '@app/shared/services/logger.service';
 import { UserData } from '@app/features/user/user.model';
 import { AuthApiService } from '@app/core/services/auth-api.service';
 import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
@@ -28,10 +29,12 @@ export class AuthService {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly toastService = inject(ToastService);
   private readonly authApi = inject(AuthApiService);
+  private readonly logger = inject(LoggerService);
 
   /** 儲存的 Google ID Token */
   private idTokenValue: string | null = null;
   private tokenExpiry = 0;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly currentUser = signal<GoogleUser | null>(null);
   readonly userData = signal<UserData | null>(null);
@@ -79,6 +82,9 @@ export class AuthService {
     localStorage.setItem('oauth_callback_token', idToken);
     window.close();
 
+    // iframe 中（silent refresh）只需傳遞 token，不執行 fallback
+    if (window.self !== window.top) return true;
+
     // 如果 window.close() 沒有作用（非 popup），直接在此視窗處理
     setTimeout(() => {
       localStorage.removeItem('oauth_callback_token');
@@ -98,7 +104,7 @@ export class AuthService {
     const payload = this.decodeJwt(savedToken);
     if (payload && payload.exp * 1000 > Date.now()) {
       this.setSession(savedToken, payload);
-      this.loadUserData(savedToken);
+      this.loadUserData();
     } else {
       localStorage.removeItem('oauth_credential');
     }
@@ -113,7 +119,7 @@ export class AuthService {
 
     const params = new URLSearchParams({
       client_id: environment.googleClientId,
-      redirect_uri: window.location.origin,
+      redirect_uri: document.baseURI.replace(/\/+$/, ''),
       response_type: 'id_token',
       scope: 'openid email profile',
       nonce,
@@ -162,7 +168,7 @@ export class AuthService {
     }
 
     this.setSession(response.credential, payload);
-    this.loadUserData(response.credential);
+    this.loadUserData();
     this.toastService.success('登入成功');
 
     this.analyticsService.trackEvent('user_signed_in', {
@@ -186,6 +192,8 @@ export class AuthService {
       displayName: payload.name,
       photoURL: payload.picture,
     });
+
+    this.scheduleTokenRefresh();
   }
 
   /**
@@ -202,13 +210,114 @@ export class AuthService {
   }
 
   /**
-   * 載入使用者的 D1 資料
-   * @param idToken Google ID Token
+   * 排程 Token 靜默刷新
+   * 在 token 過期前 5 分鐘觸發 silentRefresh，取得新 token
    */
-  private async loadUserData(idToken: string): Promise<void> {
+  private scheduleTokenRefresh(): void {
+    this.clearRefreshTimer();
+    const refreshIn = Math.max(this.tokenExpiry - Date.now() - 5 * 60 * 1000, 0);
+    this.refreshTimer = setTimeout(() => this.silentRefresh(), refreshIn);
+  }
+
+  /**
+   * 靜默刷新 Token
+   * 用隱藏 iframe + prompt=none 向 Google 取得新 ID Token
+   * 複用既有的 localStorage 傳遞機制（與 popup 登入相同）
+   * 失敗時排程重試，並在 token 即將過期時提醒使用者
+   */
+  private silentRefresh(): void {
+    const params = new URLSearchParams({
+      client_id: environment.googleClientId,
+      redirect_uri: document.baseURI.replace(/\/+$/, ''),
+      response_type: 'id_token',
+      scope: 'openid email profile',
+      nonce: crypto.randomUUID(),
+      prompt: 'none',
+    });
+
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+
+    let settled = false;
+    const cleanup = (success: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('storage', storageHandler);
+      iframe.remove();
+
+      // 刷新失敗：排程重試或提醒使用者
+      if (!success) this.handleRefreshFailure();
+    };
+
+    const storageHandler = (event: StorageEvent) => {
+      if (event.key !== 'oauth_callback_token' || !event.newValue) return;
+      localStorage.removeItem('oauth_callback_token');
+      const payload = this.decodeJwt(event.newValue);
+      if (payload) {
+        this.refreshFailCount = 0;
+        this.setSession(event.newValue, payload);
+        this.loadUserData();
+      }
+      cleanup(!!payload);
+    };
+    window.addEventListener('storage', storageHandler);
+
+    // 10 秒逾時 — silent refresh 失敗時觸發 fallback
+    setTimeout(() => {
+      if (!settled) cleanup(false);
+    }, 10_000);
+
+    iframe.src = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    document.body.appendChild(iframe);
+  }
+
+  /** 靜默刷新連續失敗次數 */
+  private refreshFailCount = 0;
+
+  /**
+   * 處理靜默刷新失敗
+   * 第 1 次：1 分鐘後重試
+   * 第 2 次：提醒使用者，2 分鐘後再試
+   * 第 3 次以上：不再重試，提醒重新登入
+   */
+  private handleRefreshFailure(): void {
+    this.refreshFailCount++;
+    const remaining = this.tokenExpiry - Date.now();
+
+    if (remaining <= 0) {
+      this.toastService.warning('登入已過期，請重新登入');
+      return;
+    }
+
+    if (this.refreshFailCount >= 3) {
+      this.toastService.warning('登入即將過期，請儘快重新登入以避免操作中斷');
+      return;
+    }
+
+    const retryDelay = this.refreshFailCount === 1 ? 60_000 : 120_000;
+    const safeDelay = Math.min(retryDelay, remaining - 30_000);
+
+    if (safeDelay > 0) {
+      this.refreshTimer = setTimeout(() => this.silentRefresh(), safeDelay);
+    } else {
+      this.toastService.warning('登入即將過期，請重新登入');
+    }
+  }
+
+  private clearRefreshTimer(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  /**
+   * 載入使用者的 D1 資料
+   */
+  private async loadUserData(): Promise<void> {
     try {
       const d1Response = await firstValueFrom(
-        this.authApi.getUserMe(idToken)
+        this.authApi.getUserMe()
       );
       const data = UserApiMapper.mapD1ToUserData(d1Response);
       this.userData.set(data);
@@ -219,7 +328,7 @@ export class AuthService {
         this.currentUser.set({ ...current, uid: data.uid });
       }
     } catch (error: any) {
-      console.error('無法從 D1 載入使用者資料:', error);
+      this.logger.error('無法從 D1 載入使用者資料:', error);
       this.analyticsService.trackError(error, 'load_user_data_d1');
       this.userData.set(null);
     }
@@ -231,6 +340,7 @@ export class AuthService {
   async logout(): Promise<void> {
     const userId = this.userId();
 
+    this.clearRefreshTimer();
     this.idTokenValue = null;
     this.tokenExpiry = 0;
     localStorage.removeItem('oauth_credential');

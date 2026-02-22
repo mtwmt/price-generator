@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Shield } from 'lucide-angular';
 import {
@@ -10,6 +10,7 @@ import { UserListComponent } from '@app/features/user/admin/user-list/user-list.
 import { ProofModalComponent } from '@app/features/user/admin/proof-modal/proof-modal.component';
 import { UserEditFormComponent } from '@app/features/user/admin/user-edit-modal/user-edit-modal.component';
 import { ToastService } from '@app/shared/services/toast.service';
+import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { DonationService } from '@app/features/user/services/donation.service';
 import { AuthService } from '@app/core/services/auth.service';
 import { UsersStore } from '@app/features/user/users.store';
@@ -29,10 +30,12 @@ import { UsersStore } from '@app/features/user/users.store';
     UserEditFormComponent,
   ],
   templateUrl: './admin-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminPanelComponent {
   private readonly donationService = inject(DonationService);
   private readonly toastService = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly authService = inject(AuthService);
   readonly usersStore = inject(UsersStore);
 
@@ -129,7 +132,13 @@ export class AdminPanelComponent {
    */
   async approveRequest(request: DonationRequest): Promise<void> {
     if (this.processing()) return;
-    if (!confirm(`確定要核准 ${request.userDisplayName} 的申請嗎？`)) return;
+    const approved = await this.confirmDialog.confirm({
+      title: '核准申請',
+      message: `確定要核准 ${request.userDisplayName} 的申請嗎？`,
+      confirmText: '核准',
+      confirmStyle: 'primary',
+    });
+    if (!approved) return;
 
     this.processing.set(true);
     try {
@@ -161,7 +170,13 @@ export class AdminPanelComponent {
    */
   async rejectRequest(request: DonationRequest): Promise<void> {
     if (this.processing()) return;
-    if (!confirm(`確定要拒絕 ${request.userDisplayName} 的申請嗎？`)) return;
+    const confirmed = await this.confirmDialog.confirm({
+      title: '拒絕申請',
+      message: `確定要拒絕 ${request.userDisplayName} 的申請嗎？`,
+      confirmText: '拒絕',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
 
     this.processing.set(true);
     try {
@@ -187,8 +202,13 @@ export class AdminPanelComponent {
    */
   async resetRequest(request: DonationRequest): Promise<void> {
     if (this.processing()) return;
-    if (!confirm(`確定要重新審核 ${request.userDisplayName} 的申請嗎？`))
-      return;
+    const confirmed = await this.confirmDialog.confirm({
+      title: '重新審核',
+      message: `確定要重新審核 ${request.userDisplayName} 的申請嗎？`,
+      confirmText: '重新審核',
+      confirmStyle: 'warning',
+    });
+    if (!confirmed) return;
 
     this.processing.set(true);
     try {

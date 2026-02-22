@@ -5,7 +5,8 @@ import {
   provideAppInitializer,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from '@app/core/interceptors/auth.interceptor';
 import { routes } from './app.routes';
 import { AuthService } from '@app/core/services/auth.service';
 import { GlobalErrorHandler } from '@app/core/services/error-handler.service';
@@ -22,7 +23,7 @@ async function initializeAuthApp(): Promise<void> {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([authInterceptor])),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     // OAuth 初始化 - 使用 provideAppInitializer (Angular 19+ 推薦方式)
     provideAppInitializer(initializeAuthApp),

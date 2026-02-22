@@ -9,7 +9,7 @@ import {
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { EMPTY, catchError, pipe, switchMap, tap } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
-import { UserData, UpdateUserRoleParams } from '@app/features/user/user.model';
+import { UserData, UpdateUserRoleParams, D1UserResponseDTO } from '@app/features/user/user.model';
 import { AdminApiService } from '@app/core/services/admin-api.service';
 import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
 import { ToastService } from '@app/shared/services/toast.service';
@@ -83,7 +83,7 @@ export const UsersStore = signalStore(
               )
               .pipe(
                 tapResponse({
-                  next: (response: any) => {
+                  next: (response: { data: D1UserResponseDTO[] }) => {
                     const users = UserApiMapper.mapMany(response.data);
                     patchState(store, {
                       users,
@@ -116,11 +116,14 @@ export const UsersStore = signalStore(
                 patchState(store, { updating: false });
                 toastService.success('使用者權限已更新');
                 return adminApiService.getAllUsers().pipe(
-                  catchError(() => EMPTY)
+                  catchError(() => {
+                    toastService.error('重新載入使用者列表失敗');
+                    return EMPTY;
+                  })
                 );
               }),
               tapResponse({
-                next: (res: any) => {
+                next: (res: { data: D1UserResponseDTO[] }) => {
                   const users = UserApiMapper.mapMany(res.data);
                   patchState(store, { users });
                 },

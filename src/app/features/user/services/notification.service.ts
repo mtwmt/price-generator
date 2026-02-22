@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { environment } from 'src/environments/environment';
+import { LoggerService } from '@app/shared/services/logger.service';
 
 /**
  * 通知服務
@@ -9,6 +10,7 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root',
 })
 export class NotificationService {
+  private readonly logger = inject(LoggerService);
   private readonly NOTIFICATION_URL = environment.googleSheets.notificationUrl;
 
   /**
@@ -22,7 +24,7 @@ export class NotificationService {
   ): Promise<void> {
     // 如果沒有設定 GAS URL，跳過發送
     if (!this.NOTIFICATION_URL) {
-      console.warn(
+      this.logger.warn(
         'GAS Web App URL not configured, skipping email notification'
       );
       return;
@@ -45,9 +47,9 @@ export class NotificationService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      console.log('Sponsor approval email sent successfully');
+      this.logger.log('Sponsor approval email sent successfully');
     } catch (error) {
-      console.error('Failed to send sponsor approval email:', error);
+      this.logger.error('Failed to send sponsor approval email:', error);
     }
   }
 }

@@ -27,7 +27,7 @@
           <span class="text-xs divider my-1">歷史記錄</span>
         </li>
       }
-      @for (item of history(); track $index) {
+      @for (item of history(); track (item.startDate + '-' + item.customerCompany)) {
         <li>
           <div
             class="flex items-center justify-between gap-2 py-2 px-2"

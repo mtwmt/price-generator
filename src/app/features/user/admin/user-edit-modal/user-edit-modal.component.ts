@@ -1,4 +1,4 @@
-import { Component, input, output, signal, effect } from '@angular/core';
+import { Component, input, output, signal, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UserData, UserRole } from '@app/features/user/user.model';
@@ -13,6 +13,7 @@ import { autoToDate } from '@app/shared/utils/date.utils';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './user-edit-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserEditFormComponent {
   // Inputs

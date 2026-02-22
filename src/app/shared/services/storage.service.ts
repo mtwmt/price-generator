@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ToastService } from './toast.service';
+import { LoggerService } from './logger.service';
 
 /**
  * 統一管理 localStorage 的服務
@@ -10,6 +11,7 @@ import { ToastService } from './toast.service';
 })
 export class StorageService {
   private readonly toastService = inject(ToastService);
+  private readonly logger = inject(LoggerService);
 
   /**
    * 從 localStorage 讀取資料
@@ -28,7 +30,7 @@ export class StorageService {
       const parsed = JSON.parse(raw);
       return parsed as T;
     } catch (error) {
-      console.error(`Failed to read from localStorage (key: ${key}):`, error);
+      this.logger.error(`Failed to read from localStorage (key: ${key}):`, error);
       this.toastService.warning('讀取資料失敗，已使用預設值');
       return defaultValue;
     }
@@ -46,7 +48,7 @@ export class StorageService {
       localStorage.setItem(key, json);
       return true;
     } catch (error) {
-      console.error(`Failed to write to localStorage (key: ${key}):`, error);
+      this.logger.error(`Failed to write to localStorage (key: ${key}):`, error);
 
       // 檢查是否為容量超出錯誤
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
@@ -67,7 +69,7 @@ export class StorageService {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.error(`Failed to remove from localStorage (key: ${key}):`, error);
+      this.logger.error(`Failed to remove from localStorage (key: ${key}):`, error);
     }
   }
 
@@ -79,7 +81,7 @@ export class StorageService {
     try {
       localStorage.clear();
     } catch (error) {
-      console.error('Failed to clear localStorage:', error);
+      this.logger.error('Failed to clear localStorage:', error);
       this.toastService.error('清空資料失敗');
     }
   }

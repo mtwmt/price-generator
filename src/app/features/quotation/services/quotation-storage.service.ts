@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { StorageService } from '@app/shared/services/storage.service';
+import { LoggerService } from '@app/shared/services/logger.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 
 /**
@@ -11,6 +12,7 @@ import { QuotationData } from '@app/features/quotation/models/quotation.model';
 })
 export class QuotationStorageService {
   private readonly storage = inject(StorageService);
+  private readonly logger = inject(LoggerService);
 
   // Constants
   private readonly STORAGE_KEY = 'quotation';
@@ -50,7 +52,7 @@ export class QuotationStorageService {
 
     // 檢查索引是否有效
     if (index < 0 || index >= history.length) {
-      console.warn(`Invalid history index: ${index}`);
+      this.logger.warn(`Invalid history index: ${index}`);
       return false;
     }
 

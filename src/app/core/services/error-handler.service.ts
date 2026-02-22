@@ -1,5 +1,6 @@
 import { ErrorHandler, Injectable, inject } from '@angular/core';
 import { AnalyticsService } from './analytics.service';
+import { environment } from '../../../environments/environment';
 
 /**
  * 全域錯誤處理器
@@ -30,8 +31,10 @@ export class GlobalErrorHandler implements ErrorHandler {
       return;
     }
 
-    // 記錄錯誤到 console
-    console.error('Global error:', error);
+    // 記錄錯誤到 console（僅在非正式環境）
+    if (!environment.production) {
+      console.error('Global error:', error);
+    }
 
     // 發送錯誤到 Analytics 進行追蹤
     this.analytics.trackError(error, 'global');

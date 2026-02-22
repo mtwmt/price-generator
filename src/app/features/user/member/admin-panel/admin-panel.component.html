@@ -91,12 +91,16 @@
                       </div>
                     </td>
                     <td>
-                      <button
-                        class="btn btn-ghost btn-xs whitespace-nowrap"
-                        (click)="openProofModal(request.proofKey || request.proof)"
-                      >
-                        查看憑證
-                      </button>
+                      @if (request.proofKey || request.proof) {
+                        <button
+                          class="btn btn-ghost btn-xs whitespace-nowrap"
+                          (click)="openProofModal(request.proofKey || request.proof)"
+                        >
+                          查看憑證
+                        </button>
+                      } @else {
+                        <span class="text-xs opacity-50">無憑證</span>
+                      }
                     </td>
                     <td class="max-w-xs whitespace-pre-wrap text-xs">
                       {{ request.note || '-' }}
@@ -188,12 +192,16 @@
                       }
                     </td>
                     <td>
-                      <button
-                        class="btn btn-ghost btn-xs whitespace-nowrap"
-                        (click)="openProofModal(request.proofKey || request.proof)"
-                      >
-                        查看憑證
-                      </button>
+                      @if (request.proofKey || request.proof) {
+                        <button
+                          class="btn btn-ghost btn-xs whitespace-nowrap"
+                          (click)="openProofModal(request.proofKey || request.proof)"
+                        >
+                          查看憑證
+                        </button>
+                      } @else {
+                        <span class="text-xs opacity-50">無憑證</span>
+                      }
                     </td>
                     <td class="max-w-xs whitespace-pre-wrap text-xs">
                       {{ request.note || '-' }}
