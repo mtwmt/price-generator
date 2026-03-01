@@ -40,7 +40,10 @@ export class AuthService {
   readonly userData = signal<UserData | null>(null);
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly userDisplayName = computed(
-    () => this.currentUser()?.displayName || '訪客'
+    () =>
+      this.userData()?.displayName ||
+      this.currentUser()?.displayName ||
+      '訪客'
   );
   readonly userPhotoURL = computed(() => this.currentUser()?.photoURL || null);
   readonly userEmail = computed(() => this.currentUser()?.email || null);
@@ -203,7 +206,9 @@ export class AuthService {
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      return JSON.parse(atob(base64));
+      const binary = atob(base64);
+      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
     } catch {
       return null;
     }
