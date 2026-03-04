@@ -43,7 +43,6 @@
           class="input"
           [class.input-error]="formGroup().get('price')?.errors?.['required']"
           placeholder="單價"
-          min="0"
           (input)="onInput($event, 'price')"
       /></label>
       @if (formGroup().get('price')?.errors?.['required']) {
