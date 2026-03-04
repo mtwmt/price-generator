@@ -1,0 +1,2 @@
+# 統一換行符：repo 內一律 LF，checkout 時依各平台自動轉換
+* text=auto eol=lf

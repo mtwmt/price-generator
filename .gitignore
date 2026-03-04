@@ -41,6 +41,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Claude Code
+.claude/
+
 # Environment files
 src/environments/environment.ts
 
