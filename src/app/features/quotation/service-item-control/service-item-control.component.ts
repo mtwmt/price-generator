@@ -58,8 +58,9 @@ export class ServiceItemControlComponent {
   }
 
   private getNumericValue(controlName: string, defaultValue: number): number {
-    const form = this.formGroup();
-    return Number(form.get(controlName)?.value) || defaultValue;
+    const raw = this.formGroup().get(controlName)?.value;
+    const num = Number(raw);
+    return raw != null && raw !== '' && !isNaN(num) ? num : defaultValue;
   }
 
   private updateAmount(amount: number): void {
