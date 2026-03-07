@@ -241,9 +241,26 @@ export class SideBySideExcelExporter implements ExcelExporter {
     worksheet: ExcelJS.Worksheet,
     data: QuotationData
   ): void {
+    const titleBgColor = createFillStyle(EXCEL_STYLES.COLORS.TITLE_BG);
+
+    // 付款條件
+    if (data.paymentTerms) {
+      worksheet.addRow([]);
+
+      const paymentTitleRow = worksheet.addRow(['付款條件']);
+      worksheet.mergeCells(`A${paymentTitleRow.number}:E${paymentTitleRow.number}`);
+      paymentTitleRow.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.NORMAL, bold: true };
+      paymentTitleRow.getCell(1).fill = titleBgColor;
+      paymentTitleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      const paymentRow = worksheet.addRow([data.paymentTerms]);
+      worksheet.mergeCells(`A${paymentRow.number}:E${paymentRow.number}`);
+      paymentRow.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.SMALL };
+      paymentRow.getCell(1).alignment = { wrapText: true };
+    }
+
     if (data.desc) {
       worksheet.addRow([]);
-      const titleBgColor = createFillStyle(EXCEL_STYLES.COLORS.TITLE_BG);
 
       const remarkTitleRow = worksheet.addRow(['備註']);
       worksheet.mergeCells(

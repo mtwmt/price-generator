@@ -39,6 +39,7 @@ export class ServiceItemsSection {
   // Outputs
   readonly addField = output<void>();
   readonly removeField = output<number>();
+  readonly copyField = output<number>();
   readonly drop = output<CdkDragDrop<string[]>>();
 
   /**
@@ -60,6 +61,13 @@ export class ServiceItemsSection {
    */
   onRemoveField(index: number): void {
     this.removeField.emit(index);
+  }
+
+  /**
+   * 複製服務項目
+   */
+  onCopyField(index: number): void {
+    this.copyField.emit(index);
   }
 
   /**

@@ -52,6 +52,17 @@
             會員中心
           </a>
         }
+        @if (authService.isAdmin()) {
+          <a
+            role="tab"
+            class="tab text-base"
+            routerLink="/admin"
+            routerLinkActive="tab-active font-bold"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            管理
+          </a>
+        }
       </div>
 
       <div class="px-2">
@@ -138,12 +149,14 @@
       <p class="text-xs text-base-content/60">
         本系統會記錄報價資訊以改善服務品質，資料僅供內部保存，不會外洩或用於商業行為。
       </p>
-      <p>
+      <p class="text-xs text-base-content/60">
         © 2022-{{ currentYear }}
         <a href="https://mtwmt.com/" target="_blank" class="link link-hover">
           Mandy
         </a>
         . All rights reserved.
+        <span class="mx-1">|</span>
+        <a routerLink="/privacy" class="link link-hover">隱私權政策</a>
       </p>
     </div>
   </footer>

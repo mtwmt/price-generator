@@ -1,3 +1,4 @@
+<div class="mx-auto px-4 py-8">
 <div class="card bg-base-100 shadow-sm">
   <div class="card-body">
     <div class="flex items-center justify-between mb-6">
@@ -6,7 +7,7 @@
         <h2 class="card-title">管理員面板</h2>
       </div>
 
-      <!-- 主頁籤切換 -->
+      <!-- 頁籤切換 -->
       <div class="tabs tabs-boxed">
         <a
           class="tab"
@@ -17,30 +18,8 @@
         </a>
         <a
           class="tab"
-          [class.tab-active]="activeTab() === 'donations'"
-          (click)="switchTab('donations')"
-        >
-          贊助審核
-          @if (pendingRequests().length > 0) {
-            <span class="badge badge-sm badge-error ml-1">{{
-              pendingRequests().length
-            }}</span>
-          }
-        </a>
-      </div>
-    </div>
-
-    @if (activeTab() === 'users') {
-      <!-- 使用者列表元件（使用全局 UsersStore） -->
-      <app-user-list />
-    } @else {
-      <!-- 贊助審核區塊 -->
-      <!-- 子分頁切換 -->
-      <div class="tabs tabs-boxed mb-4">
-        <a
-          class="tab"
-          [class.tab-active]="donationTab() === 'pending'"
-          (click)="switchDonationTab('pending')"
+          [class.tab-active]="activeTab() === 'pending'"
+          (click)="switchTab('pending')"
         >
           待審核
           @if (pendingRequests().length > 0) {
@@ -51,14 +30,18 @@
         </a>
         <a
           class="tab"
-          [class.tab-active]="donationTab() === 'history'"
-          (click)="switchDonationTab('history')"
+          [class.tab-active]="activeTab() === 'history'"
+          (click)="switchTab('history')"
         >
           已處理
         </a>
       </div>
+    </div>
 
-      @if (donationTab() === 'pending') {
+    @if (activeTab() === 'users') {
+      <!-- 使用者列表元件（使用全局 UsersStore） -->
+      <app-user-list />
+    } @else if (activeTab() === 'pending') {
         <!-- 待審核列表 -->
         @if (donationLoading()) {
           <div class="flex justify-center items-center py-12">
@@ -139,8 +122,8 @@
             </table>
           </div>
         }
-      } @else {
-        <!-- 已處理列表 -->
+    } @else {
+      <!-- 已處理列表 -->
         @if (donationLoading()) {
           <div class="flex justify-center items-center py-12">
             <span
@@ -161,7 +144,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (request of processedRequests(); track request.id) {
+                @for (request of paginatedProcessedRequests(); track request.id) {
                   <tr>
                     <td>
                       {{ request.updatedAt | date: 'yyyy/MM/dd HH:mm' }}
@@ -251,10 +234,20 @@
               </tbody>
             </table>
           </div>
-        }
+
+          @if (processedRequests().length > 0) {
+            <app-pagination
+              [totalItems]="processedTotal()"
+              [pageSize]="processedPageSize()"
+              [currentPage]="processedPage()"
+              (pageChange)="onProcessedPageChange($event)"
+              (pageSizeChange)="onProcessedPageSizeChange($event)"
+            />
+          }
       }
     }
   </div>
+</div>
 </div>
 
 <!-- 憑證預覽 Modal -->

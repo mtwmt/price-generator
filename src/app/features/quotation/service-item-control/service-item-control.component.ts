@@ -6,7 +6,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, Trash2 } from 'lucide-angular';
+import { LucideAngularModule, Trash2, Copy } from 'lucide-angular';
 
 @Component({
   selector: 'app-service-item-control',
@@ -26,9 +26,11 @@ export class ServiceItemControlComponent {
   formGroup = input.required<FormGroup>();
   index = input<number>(0);
   removeField = output<void>();
+  copyField = output<void>();
 
   // Icons
   readonly Trash2 = Trash2;
+  readonly Copy = Copy;
 
   onAmountChange(): void {
     const amount = this.calculateAmount();
@@ -49,6 +51,11 @@ export class ServiceItemControlComponent {
   onRemoveField(e?: MouseEvent): void {
     e?.preventDefault();
     this.removeField.emit();
+  }
+
+  onCopyField(e?: MouseEvent): void {
+    e?.preventDefault();
+    this.copyField.emit();
   }
 
   private calculateAmount(): number {

@@ -293,6 +293,16 @@
     </div>
   </div>
 
+  <!-- 付款條件 -->
+  @if (form().get('paymentTerms')?.value) {
+    <div class="mb-3 border-t border-base-300 pt-3">
+      <h3 class="font-bold text-base-content mb-2">付款條件</h3>
+      <div class="bg-base-50 border border-base-300 rounded p-2 text-base-content whitespace-pre-wrap leading-normal">
+        {{ form().get('paymentTerms')?.value }}
+      </div>
+    </div>
+  }
+
   <!-- 備註說明 -->
   @if (form().get('desc')?.value) {
     <div class="mb-3 border-t border-base-300 pt-3">

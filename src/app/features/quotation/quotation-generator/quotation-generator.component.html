@@ -82,6 +82,7 @@
         [form]="form"
         (addField)="onAddField()"
         (removeField)="onRemoveField($event)"
+        (copyField)="onCopyField($event)"
         (drop)="onDrop($event)"
       >
         <!-- 計價設定（嵌入服務項目 card 內） -->
@@ -96,7 +97,7 @@
       <!-- 其他資訊 -->
       <app-other-info-section [form]="form" />
       <!-- Action Buttons -->
-      <div class="card bg-base-100 shadow-sm bottom-4 z-10">
+      <div class="card bg-base-100 shadow-sm sticky bottom-0 z-10 lg:relative">
         <div class="card-body p-4">
           <div class="flex flex-row justify-end gap-3">
             <button

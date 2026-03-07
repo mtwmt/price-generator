@@ -59,6 +59,7 @@ export const DEFAULT_FORM_VALUES = {
   excludingTax: 0,
   afterDiscount: 0,
   includingTax: 0,
+  paymentTerms: '',
   desc: '',
   isSign: true,
 } as const;
