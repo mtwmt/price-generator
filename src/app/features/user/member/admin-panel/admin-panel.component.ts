@@ -1,4 +1,4 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Shield } from 'lucide-angular';
 import {
@@ -7,6 +7,7 @@ import {
   DonationRequest,
 } from '@app/features/user/user.model';
 import { UserListComponent } from '@app/features/user/admin/user-list/user-list.component';
+import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 import { ProofModalComponent } from '@app/features/user/admin/proof-modal/proof-modal.component';
 import { UserEditFormComponent } from '@app/features/user/admin/user-edit-modal/user-edit-modal.component';
 import { ToastService } from '@app/shared/services/toast.service';
@@ -26,6 +27,7 @@ import { UsersStore } from '@app/features/user/users.store';
     CommonModule,
     LucideAngularModule,
     UserListComponent,
+    PaginationComponent,
     ProofModalComponent,
     UserEditFormComponent,
   ],
@@ -42,11 +44,20 @@ export class AdminPanelComponent {
   // 內部狀態
   pendingRequests = signal<DonationRequest[]>([]);
   processedRequests = signal<DonationRequest[]>([]);
-  activeTab = signal<'users' | 'donations'>('users');
-  donationTab = signal<'pending' | 'history'>('pending');
+  activeTab = signal<'users' | 'pending' | 'history'>('users');
   donationLoading = signal<boolean>(false);
   isProofModalOpen = signal<boolean>(false);
   selectedProofKey = signal<string>('');
+
+  // 已處理分頁狀態
+  processedPage = signal(1);
+  processedPageSize = signal(10);
+  readonly processedTotal = computed(() => this.processedRequests().length);
+  readonly paginatedProcessedRequests = computed(() => {
+    const all = this.processedRequests();
+    const start = (this.processedPage() - 1) * this.processedPageSize();
+    return all.slice(start, start + this.processedPageSize());
+  });
 
   // 操作中狀態（防連點）
   processing = signal<boolean>(false);
@@ -58,23 +69,13 @@ export class AdminPanelComponent {
   readonly Shield = Shield;
 
   /**
-   * 切換主頁籤
+   * 切換頁籤
    */
-  switchTab(tab: 'users' | 'donations'): void {
+  switchTab(tab: 'users' | 'pending' | 'history'): void {
     this.activeTab.set(tab);
-    if (tab === 'donations') {
-      this.loadPendingRequests();
-    }
-  }
-
-  /**
-   * 切換贊助申請子頁籤
-   */
-  switchDonationTab(tab: 'pending' | 'history'): void {
-    this.donationTab.set(tab);
     if (tab === 'pending') {
       this.loadPendingRequests();
-    } else {
+    } else if (tab === 'history') {
       this.loadProcessedRequests();
     }
   }
@@ -224,6 +225,16 @@ export class AdminPanelComponent {
     } finally {
       this.processing.set(false);
     }
+  }
+
+  // ==================== 已處理分頁方法 ====================
+  onProcessedPageChange(page: number): void {
+    this.processedPage.set(page);
+  }
+
+  onProcessedPageSizeChange(size: number): void {
+    this.processedPageSize.set(size);
+    this.processedPage.set(1);
   }
 
   // ==================== 編輯權限方法 ====================

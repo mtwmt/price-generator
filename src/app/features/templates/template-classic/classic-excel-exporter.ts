@@ -214,6 +214,19 @@ export class ClassicExcelExporter implements ExcelExporter {
   ): void {
     const titleBgColor = createFillStyle(EXCEL_STYLES.COLORS.TITLE_BG);
 
+    // 付款條件
+    if (data.paymentTerms) {
+      worksheet.addRow([]);
+      const paymentTitleRow = worksheet.addRow(['【付款條件】']);
+      styleRemarkTitleRow(paymentTitleRow, titleBgColor, this.TABLE_COLUMNS);
+
+      const paymentRow = worksheet.addRow([data.paymentTerms]);
+      const paymentRowIndex = paymentRow.number;
+      worksheet.mergeCells(`A${paymentRowIndex}:E${paymentRowIndex}`);
+      paymentRow.getCell(1).font = { size: EXCEL_STYLES.FONT_SIZES.NORMAL };
+      paymentRow.getCell(1).alignment = { wrapText: true };
+    }
+
     // 備註區
     if (data.desc) {
       worksheet.addRow([]);

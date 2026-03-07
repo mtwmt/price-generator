@@ -15,6 +15,10 @@ export class ChangelogComponent {
 
   changelog = [
     {
+      date: '2026-03-07',
+      features: ['新增隱私權政策頁面', '新增付款條件欄位'],
+    },
+    {
       date: '2026-02-14',
       features: [
         '認證系統升級為 Google OAuth 2.0，提升安全性與穩定性',

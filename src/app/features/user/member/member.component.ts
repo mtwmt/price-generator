@@ -12,7 +12,6 @@ import { LoggerService } from '@app/shared/services/logger.service';
 import { DonationApiService } from '@app/core/services/donation-api.service';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { DonationFormComponent } from './donation-form/donation-form.component';
-import { AdminPanelComponent } from './admin-panel/admin-panel.component';
 import { ProofModalComponent } from '@app/features/user/admin/proof-modal/proof-modal.component';
 import { DonationsStore } from '@app/features/user/donations.store';
 import { ProfileStore } from '@app/features/user/profile.store';
@@ -32,7 +31,6 @@ import { firstValueFrom } from 'rxjs';
     LucideAngularModule,
     UserProfileComponent,
     DonationFormComponent,
-    AdminPanelComponent,
     ProofModalComponent,
   ],
   templateUrl: './member.component.html',

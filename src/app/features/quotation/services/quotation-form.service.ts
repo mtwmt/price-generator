@@ -58,6 +58,7 @@ export class QuotationFormService {
       includingTax: [0],
 
       // 其他資訊
+      paymentTerms: [''],
       desc: [''],
       isSign: [true],
     });
@@ -224,4 +225,5 @@ export class QuotationFormService {
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
+
 }

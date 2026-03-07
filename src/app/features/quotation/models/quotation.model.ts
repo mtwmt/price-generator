@@ -85,6 +85,8 @@ export interface QuotationData {
   includingTax: number;
 
   // 其他資訊
+  /** 付款條件 */
+  paymentTerms?: string;
   /** 備註說明 */
   desc?: string;
   /** 是否顯示簽章區 */

@@ -290,6 +290,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * 複製服務項目
+   */
+  onCopyField(index: number): void {
+    const source = this.serviceItems.at(index) as FormGroup;
+    const newItem = this.quotationFormService.createServiceItem();
+    newItem.patchValue(source.getRawValue());
+    this.serviceItems.insert(index + 1, newItem);
+  }
+
+  /**
    * 處理拖曳排序事件
    */
   onDrop(event: CdkDragDrop<any>): void {

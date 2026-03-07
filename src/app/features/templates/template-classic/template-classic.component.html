@@ -73,6 +73,7 @@
           </span>
         </div>
       }
+
     </div>
     @if (stamp()) {
       <div class="text-center">
@@ -179,6 +180,20 @@
         </tr>
       </tbody>
     </table>
+    @if (form().get('paymentTerms')?.value) {
+      <table class="table table-sm w-full border border-base-300">
+        <thead class="bg-base-200">
+          <tr>
+            <th>付款條件</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="whitespace-pre-line">{{ form().get('paymentTerms')?.value }}</td>
+          </tr>
+        </tbody>
+      </table>
+    }
     @if (form().get('desc')?.value) {
       <table class="table table-sm w-full border border-base-300">
         <thead class="bg-base-200">

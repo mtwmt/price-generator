@@ -53,6 +53,7 @@
                   [formGroup]="$any(item)"
                   [index]="idx"
                   (removeField)="onRemoveField(idx)"
+                  (copyField)="onCopyField(idx)"
                 />
                 <hr
                   class="my-2 border-secondary md:hidden"
