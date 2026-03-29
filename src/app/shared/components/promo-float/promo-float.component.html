@@ -1,0 +1,47 @@
+@if (visible()) {
+  <aside
+    class="fixed top-1/2 -translate-y-1/2 right-0 z-40 animate-slide-up"
+    role="region"
+    aria-label="書櫃日記推廣"
+  >
+    <div
+      class="relative overflow-hidden rounded-l-xl shadow-lg bg-gradient-to-b from-amber-50 to-orange-50 border border-r-0 border-orange-200/40 hover:shadow-xl transition-shadow duration-300"
+    >
+      <button
+        (click)="onDismiss()"
+        class="absolute top-1 right-1 p-1 rounded-md hover:bg-orange-200/30 transition-colors z-10"
+        aria-label="關閉"
+      >
+        <lucide-icon
+          [img]="X"
+          [size]="12"
+          class="text-amber-700/50 hover:text-amber-900"
+        />
+      </button>
+
+      <a
+        href="https://mtwmt.com/bookshelf-diary/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex flex-col items-center gap-2 no-underline px-3 pt-7 pb-3"
+        (click)="onClickPromo()"
+      >
+        <img
+          src="https://mtwmt.com/bookshelf-diary/assets/icon-BcidMviD.png"
+          alt="書櫃日記"
+          class="w-9 h-9 rounded-lg shadow-sm object-cover"
+        />
+        <div class="flex flex-col items-center gap-0.5">
+          <span class="text-xs text-amber-700/60 leading-tight">
+            最新力作
+          </span>
+          <span
+            class="text-sm font-semibold text-amber-900 leading-tight hover:text-amber-600 transition-colors"
+          >
+            書櫃日記
+          </span>
+        </div>
+      </a>
+    </div>
+  </aside>
+}
