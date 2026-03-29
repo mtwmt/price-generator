@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import {
   TAX_RATES,
   CUSTOM_TAX_NAME,
+  TAX_MODES,
 } from '@app/features/quotation/models/quotation.constants';
 
 /**
@@ -21,6 +22,7 @@ export class PricingSection {
   // Constants for template
   readonly taxRates = TAX_RATES;
   readonly customTaxName = CUSTOM_TAX_NAME;
+  readonly taxModes = TAX_MODES;
 
   // Inputs
   readonly form = input.required<FormGroup>();

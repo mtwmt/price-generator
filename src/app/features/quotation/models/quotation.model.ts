@@ -83,6 +83,8 @@ export interface QuotationData {
   tax: number;
   /** 含稅金額 */
   includingTax: number;
+  /** 稅金計算模式：'excluding' 未稅（稅金另加）| 'including' 含稅（價格已含稅） */
+  taxMode?: 'excluding' | 'including';
 
   // 其他資訊
   /** 付款條件 */

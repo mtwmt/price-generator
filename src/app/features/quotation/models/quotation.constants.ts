@@ -33,6 +33,14 @@ export function getTaxPercentage(taxName: string): number {
   return taxRate?.percentage ?? 0;
 }
 
+/**
+ * 稅金計算模式選項
+ */
+export const TAX_MODES = [
+  { value: 'excluding', label: '未稅（稅金另加）' },
+  { value: 'including', label: '含稅（價格已含稅）' },
+] as const;
+
 export const DEFAULT_FORM_VALUES = {
   customerCompany: '',
   customerTaxID: '',
@@ -59,6 +67,7 @@ export const DEFAULT_FORM_VALUES = {
   excludingTax: 0,
   afterDiscount: 0,
   includingTax: 0,
+  taxMode: 'excluding',
   paymentTerms: '',
   desc: '',
   isSign: true,

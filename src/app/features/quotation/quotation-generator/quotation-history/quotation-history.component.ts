@@ -48,6 +48,8 @@ export class QuotationHistory {
    */
   onDelete(index: number, event: Event): void {
     event.stopPropagation();
+    // 關閉 daisyUI dropdown，避免與確認對話框焦點衝突
+    (document.activeElement as HTMLElement)?.blur();
     this.delete.emit(index);
   }
 
