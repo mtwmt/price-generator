@@ -32,6 +32,26 @@
       </div>
     </fieldset>
 
+    <!-- 稅金計算模式（僅在有稅率時顯示） -->
+    @if (form().get('taxName')?.value && form().get('percentage')?.value > 0) {
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend whitespace-nowrap">計算模式</legend>
+        <div class="flex gap-2">
+          @for (mode of taxModes; track mode.value) {
+            <label class="label cursor-pointer gap-2">
+              <input
+                type="radio"
+                formControlName="taxMode"
+                [value]="mode.value"
+                class="radio radio-sm"
+              />
+              <span class="text-sm">{{ mode.label }}</span>
+            </label>
+          }
+        </div>
+      </fieldset>
+    }
+
     <!-- 稅別設定 -->
     <div
       class="grid gap-x-3"
@@ -85,7 +105,13 @@
 
   <div class="md:w-1/4 space-y-2 mt-6">
     <div class="flex justify-between items-center">
-      <span class="font-medium">小計</span>
+      <span class="font-medium">
+        @if (form().get('taxMode')?.value === 'including') {
+          小計（含稅）
+        } @else {
+          小計
+        }
+      </span>
       <span class="font-semibold">
         ${{ form().get('excludingTax')?.value || 0 }}
       </span>
@@ -116,6 +142,9 @@
 
     <div class="flex justify-between items-center">
       <span class="font-medium">
+        @if (form().get('taxMode')?.value === 'including') {
+          含
+        }
         @if (
           form().get('taxName')?.value === customTaxName &&
           form().get('customTaxName')?.value

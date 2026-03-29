@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   calculateDiscount,
   calculateTaxAndTotal,
+  calculateTaxFromIncluding,
 } from '@app/features/quotation/utils/calculator';
 import {
   QuotationData,
@@ -57,6 +58,9 @@ export class QuotationFormService {
       tax: [{ value: 0, disabled: true }],
       includingTax: [0],
 
+      // 稅金計算模式
+      taxMode: ['excluding'],
+
       // 其他資訊
       paymentTerms: [''],
       desc: [''],
@@ -90,7 +94,7 @@ export class QuotationFormService {
       .subscribe(() => this.calculateTotals(form));
 
     // 監聽其他影響金額的欄位
-    const controlsToWatch = ['percentage', 'discountType', 'discountValue'];
+    const controlsToWatch = ['percentage', 'discountType', 'discountValue', 'taxMode'];
     controlsToWatch.forEach((controlName) => {
       form
         .get(controlName)
@@ -115,18 +119,28 @@ export class QuotationFormService {
       discountValue
     );
 
-    // 3. 計算稅額和總計
+    // 3. 根據稅金模式計算稅額和總計
     const taxPercentage = Number(form.get('percentage')?.value) || 0;
-    const { tax, includingTax } = calculateTaxAndTotal(
-      afterDiscount,
-      taxPercentage
-    );
+    const taxMode = form.get('taxMode')?.value || 'excluding';
 
-    // 4. 更新表單
-    form.patchValue(
-      { excludingTax, discountAmount, afterDiscount, tax, includingTax },
-      { emitEvent: false }
-    );
+    if (taxMode === 'including') {
+      // 含稅模式：價格已含稅，反推稅額
+      const { tax } = calculateTaxFromIncluding(afterDiscount, taxPercentage);
+      form.patchValue(
+        { excludingTax, discountAmount, afterDiscount, tax, includingTax: afterDiscount },
+        { emitEvent: false }
+      );
+    } else {
+      // 未稅模式：稅金另計
+      const { tax, includingTax } = calculateTaxAndTotal(
+        afterDiscount,
+        taxPercentage
+      );
+      form.patchValue(
+        { excludingTax, discountAmount, afterDiscount, tax, includingTax },
+        { emitEvent: false }
+      );
+    }
   }
 
   /**
@@ -153,6 +167,10 @@ export class QuotationFormService {
         serviceItemsArray.push(itemGroup);
       });
     }
+
+    // 重新計算所有金額並更新驗證狀態
+    this.calculateTotals(form);
+    form.updateValueAndValidity();
   }
 
   /**

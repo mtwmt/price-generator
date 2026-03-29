@@ -20,10 +20,12 @@ export class QuotationStorageService {
 
   /**
    * 取得歷史記錄列表
+   * 自動遷移舊版 multi-tax 格式為現行單一稅別格式
    * @returns 歷史記錄陣列（最多 5 筆）
    */
   getHistory(): QuotationData[] {
-    return this.storage.get<QuotationData[]>(this.STORAGE_KEY, []);
+    const raw = this.storage.get<Record<string, unknown>[]>(this.STORAGE_KEY, []);
+    return raw.map((item) => this.migrateRecord(item));
   }
 
   /**
@@ -97,5 +99,43 @@ export class QuotationStorageService {
       return history.slice(0, this.MAX_HISTORY_ITEMS);
     }
     return history;
+  }
+
+  /**
+   * 遷移舊版 multi-tax 格式（taxes[] 陣列）為現行單一稅別格式
+   * 舊版格式：taxes: [{ name, percentage, amount }]
+   * 現行格式：taxName, percentage, tax
+   */
+  private migrateRecord(record: Record<string, unknown>): QuotationData {
+    const taxes = record['taxes'] as Array<{ name: string; percentage: number; amount: number }> | undefined;
+
+    // 已有現行格式的 taxName 或沒有舊版 taxes，無需遷移
+    if (!Array.isArray(taxes) || taxes.length === 0 || record['taxName']) {
+      return record as unknown as QuotationData;
+    }
+
+    // 取第一筆有效稅別
+    const firstTax = taxes.find((t) => t.name) || taxes[0];
+    if (!firstTax?.name) {
+      this.logger.warn('遷移失敗：舊版記錄無有效稅名', { taxes });
+      return record as unknown as QuotationData;
+    }
+
+    const totalTax = taxes.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    if (taxes.length > 1) {
+      this.logger.warn('遷移舊版 multi-tax 記錄（只保留第一筆稅別）', { taxes, kept: firstTax });
+    } else {
+      this.logger.warn('遷移舊版 multi-tax 記錄', { taxes });
+    }
+
+    const migrated = { ...record };
+    migrated['taxName'] = firstTax.name || '';
+    migrated['percentage'] = firstTax.percentage || 0;
+    migrated['tax'] = totalTax;
+    delete migrated['taxes'];
+    delete migrated['customTaxOptions'];
+
+    return migrated as unknown as QuotationData;
   }
 }

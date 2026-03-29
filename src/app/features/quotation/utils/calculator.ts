@@ -106,3 +106,24 @@ export function calculateTaxAndTotal(
 function calculateTax(amount: number, taxPercentage: number): number {
   return Math.ceil((taxPercentage / PERCENTAGE_DIVISOR) * amount);
 }
+
+/**
+ * 從含稅金額反推稅額（含稅模式）
+ * @param includingAmount 含稅金額
+ * @param taxPercentage 稅率百分比
+ * @returns 包含稅額和未稅金額的結果
+ */
+export function calculateTaxFromIncluding(
+  includingAmount: number,
+  taxPercentage: number
+): { tax: number; excludingTax: number } {
+  if (taxPercentage === 0) {
+    return { tax: 0, excludingTax: includingAmount };
+  }
+
+  const taxRate = taxPercentage / PERCENTAGE_DIVISOR;
+  const excludingTax = Math.round(includingAmount / (1 + taxRate));
+  const tax = includingAmount - excludingTax;
+
+  return { tax, excludingTax };
+}

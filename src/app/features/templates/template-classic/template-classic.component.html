@@ -140,7 +140,11 @@
 
         <tr>
           <td colspan="5" class="text-right">
-            未稅：NT$
+            @if (form().get('taxMode')?.value === 'including') {
+              小計（含稅）：NT$
+            } @else {
+              未稅：NT$
+            }
             <span class="text-lg font-bold text-error">
               {{ form().get('excludingTax')?.value || 0 | number }}
             </span>
@@ -163,14 +167,28 @@
 
             @if (form().get('tax')?.value !== 0) {
               <br />
-              {{ form().get('taxName')?.value }}稅
+              @if (form().get('taxMode')?.value === 'including') {
+                含
+              }
+              {{ form().get('taxName')?.value }}
               {{ form().get('percentage')?.value }}%
               <span class="text-lg font-bold text-error">{{
                 form().get('tax')?.value
               }}</span>
               元
               <br />
-              含稅：NT$
+              @if (form().get('taxMode')?.value !== 'including') {
+                含稅：NT$
+                <span class="text-lg font-bold text-error">{{
+                  form().get('includingTax')?.value || 0 | number
+                }}</span>
+                元整
+              }
+            }
+
+            @if (form().get('taxMode')?.value === 'including') {
+              <br />
+              總計：NT$
               <span class="text-lg font-bold text-error">{{
                 form().get('includingTax')?.value || 0 | number
               }}</span>

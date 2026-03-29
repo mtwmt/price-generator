@@ -171,7 +171,9 @@ export class ClassicExcelExporter implements ExcelExporter {
     data: QuotationData
   ): void {
     const taxLabel = getTaxLabel(data);
-    const summaryData: any[] = [['', '', '', '小計', data.excludingTax]];
+    const isTaxIncluding = data.taxMode === 'including';
+    const subtotalLabel = isTaxIncluding ? '小計（含稅）' : '小計';
+    const summaryData: any[] = [['', '', '', subtotalLabel, data.excludingTax]];
 
     // 折扣行
     if (data.discountValue && data.discountValue > 0) {
@@ -190,14 +192,15 @@ export class ClassicExcelExporter implements ExcelExporter {
     }
 
     // 稅額和總計
+    const taxPrefix = isTaxIncluding ? '含' : '';
     summaryData.push([
       '',
       '',
-      taxLabel + '稅',
+      `${taxPrefix}${taxLabel}`,
       data.percentage + '%',
       data.tax,
     ]);
-    summaryData.push(['', '', '', '含稅計', data.includingTax]);
+    summaryData.push(['', '', '', '總計', data.includingTax]);
 
     summaryData.forEach((rowData) => {
       const row = worksheet.addRow(rowData);

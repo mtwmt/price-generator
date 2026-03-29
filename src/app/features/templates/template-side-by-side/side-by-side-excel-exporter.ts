@@ -166,13 +166,15 @@ export class SideBySideExcelExporter implements ExcelExporter {
   ): void {
     const startRow = worksheet.rowCount + 1;
     const taxLabel = getTaxLabel(data);
+    const isTaxIncluding = data.taxMode === 'including';
 
     // 小計
+    const subtotalLabel = isTaxIncluding ? '小計（含稅）：' : '小計：';
     const subtotalRow = worksheet.addRow([
       '',
       '',
       '',
-      '小計：',
+      subtotalLabel,
       data.excludingTax,
     ]);
     styleSummaryRow(subtotalRow, data.excludingTax, 4, 5);
@@ -195,11 +197,12 @@ export class SideBySideExcelExporter implements ExcelExporter {
 
     // 稅額
     if (taxLabel) {
+      const taxPrefix = isTaxIncluding ? '含' : '';
       const taxRow = worksheet.addRow([
         '',
         '',
         '',
-        `${taxLabel}(${data.percentage}%)`,
+        `${taxPrefix}${taxLabel}(${data.percentage}%)`,
         data.tax,
       ]);
       styleSummaryRow(taxRow, data.tax, 4, 5);
