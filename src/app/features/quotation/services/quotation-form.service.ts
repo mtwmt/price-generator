@@ -19,7 +19,8 @@ import { phoneValidator } from '@app/shared/validators/phone.validator';
 })
 export class QuotationFormService {
   private fb = inject(FormBuilder);
-  private destroyRef = inject(DestroyRef);
+  /** 後備 DestroyRef（root 注入）：當呼叫端未提供時使用 */
+  private readonly rootDestroyRef = inject(DestroyRef);
 
   /**
    * 建立報價單表單
@@ -84,13 +85,17 @@ export class QuotationFormService {
 
   /**
    * 設定表單監聽器，自動觸發計算
+   * @param form 報價單表單
+   * @param destroyRef 呼叫端（元件）的 DestroyRef。傳入後訂閱會隨元件銷毀而自動退訂，
+   *                   避免本服務為 root 單例時訂閱無限累積。未傳入則退回 root 生命週期（相容舊行為）。
    */
-  setupFormListeners(form: FormGroup): void {
+  setupFormListeners(form: FormGroup, destroyRef?: DestroyRef): void {
+    const cleanupRef = destroyRef ?? this.rootDestroyRef;
     const serviceItems = form.get('serviceItems') as FormArray;
 
     // 監聽服務項目變更
     serviceItems.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntilDestroyed(cleanupRef))
       .subscribe(() => this.calculateTotals(form));
 
     // 監聽其他影響金額的欄位
@@ -98,7 +103,7 @@ export class QuotationFormService {
     controlsToWatch.forEach((controlName) => {
       form
         .get(controlName)
-        ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+        ?.valueChanges.pipe(takeUntilDestroyed(cleanupRef))
         .subscribe(() => this.calculateTotals(form));
     });
   }

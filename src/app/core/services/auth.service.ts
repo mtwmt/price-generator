@@ -1,8 +1,9 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { LoggerService } from '@app/shared/services/logger.service';
-import { UserData } from '@app/features/user/user.model';
+import { UserData, D1UserResponseDTO } from '@app/features/user/user.model';
 import { AuthApiService } from '@app/core/services/auth-api.service';
 import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
 import { firstValueFrom } from 'rxjs';
@@ -18,295 +19,202 @@ export interface GoogleUser {
   photoURL: string;
 }
 
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number; // 秒
+}
+
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+const ACCESS_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+
 /**
- * 認證服務
- * 使用 OAuth 2.0 Implicit Flow 處理 Google 登入/登出功能，整合 D1 使用者權限管理
+ * 認證服務（永久登入版）
+ * 採 Google Authorization Code（GIS popup）+ 後端自發 session token：
+ * - access token（短效）打 API；過期前自動用 refresh token 換新（滑動續命）
+ * - refresh token（長效）存 localStorage，常用即不掉線，登出或逾時才需重登
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
   private readonly analyticsService = inject(AnalyticsService);
   private readonly toastService = inject(ToastService);
   private readonly authApi = inject(AuthApiService);
   private readonly logger = inject(LoggerService);
 
-  /** 儲存的 Google ID Token */
-  private idTokenValue: string | null = null;
-  private tokenExpiry = 0;
+  private readonly authBase = environment.portalApiUrl + '/api/auth';
+
+  private accessToken: string | null = null;
+  private accessExpiry = 0;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private gisPromise: Promise<void> | null = null;
+  private refreshInFlight: Promise<boolean> | null = null;
 
   readonly currentUser = signal<GoogleUser | null>(null);
   readonly userData = signal<UserData | null>(null);
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
   readonly userDisplayName = computed(
-    () =>
-      this.userData()?.displayName ||
-      this.currentUser()?.displayName ||
-      '訪客'
+    () => this.userData()?.displayName || this.currentUser()?.displayName || '訪客',
   );
   readonly userPhotoURL = computed(() => this.currentUser()?.photoURL || null);
   readonly userEmail = computed(() => this.currentUser()?.email || null);
   readonly userId = computed(() => this.currentUser()?.uid || null);
   readonly isPremium = computed(() => this.userRole() === 'premium');
   readonly isAdmin = computed(() => this.userRole() === 'admin');
-  readonly userRole = computed(
-    () => this.userData()?.platforms?.quotation?.role || 'free'
-  );
+  readonly userRole = computed(() => this.userData()?.platforms?.quotation?.role || 'free');
 
   /**
-   * 初始化認證
-   * 檢查 OAuth callback 或從 localStorage 恢復 session
+   * 初始化：若本機有 refresh token，嘗試換新並還原登入狀態
    */
   async initializeAuth(): Promise<void> {
-    // 檢查是否為 OAuth callback（popup 被重新導向回來）
-    if (this.handleOAuthCallback()) return;
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) return;
 
-    // 嘗試從 localStorage 恢復 session
-    this.restoreSession();
-  }
-
-  /**
-   * 處理 OAuth implicit flow callback
-   * 當 popup 被 Google 重新導向回來時，URL hash 會包含 id_token
-   * 將 token 傳回主視窗並關閉 popup
-   */
-  private handleOAuthCallback(): boolean {
-    const hash = window.location.hash;
-    if (!hash || !hash.includes('id_token')) return false;
-
-    const params = new URLSearchParams(hash.substring(1));
-    const idToken = params.get('id_token');
-
-    if (!idToken) return false;
-
-    // 透過 localStorage 將 token 傳給主視窗（不受 COOP 限制）
-    // 主視窗透過 storage 事件接收
-    localStorage.setItem('oauth_callback_token', idToken);
-    window.close();
-
-    // iframe 中（silent refresh）只需傳遞 token，不執行 fallback
-    if (window.self !== window.top) return true;
-
-    // 如果 window.close() 沒有作用（非 popup），直接在此視窗處理
-    setTimeout(() => {
-      localStorage.removeItem('oauth_callback_token');
-      window.location.hash = '';
-      this.handleCredentialResponse({ credential: idToken });
-    }, 200);
-    return true;
-  }
-
-  /**
-   * 從 localStorage 恢復 session
-   */
-  private restoreSession(): void {
-    const savedToken = localStorage.getItem('oauth_credential');
-    if (!savedToken) return;
-
-    const payload = this.decodeJwt(savedToken);
-    if (payload && payload.exp * 1000 > Date.now()) {
-      this.setSession(savedToken, payload);
-      this.loadUserData();
+    const ok = await this.refreshTokens();
+    if (ok) {
+      await this.loadUserData();
     } else {
-      localStorage.removeItem('oauth_credential');
+      this.clearLocal();
     }
   }
 
   /**
-   * Google 登入（由自訂按鈕呼叫）
-   * 使用 OAuth 2.0 Implicit Flow 開啟帳戶選擇器彈窗，取得 ID Token
+   * Google 登入（GIS popup 授權碼模式）
    */
-  loginWithGoogle(): void {
-    const nonce = crypto.randomUUID();
-
-    const params = new URLSearchParams({
-      client_id: environment.googleClientId,
-      redirect_uri: document.baseURI.replace(/\/+$/, ''),
-      response_type: 'id_token',
-      scope: 'openid email profile',
-      nonce,
-      prompt: 'select_account',
-    });
-
-    const width = 500;
-    const height = 600;
-    const left = Math.round((screen.width - width) / 2);
-    const top = Math.round((screen.height - height) / 2);
-
-    const popup = window.open(
-      `https://accounts.google.com/o/oauth2/v2/auth?${params}`,
-      'google-auth',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-    );
-
-    if (!popup) {
-      this.toastService.error('無法開啟登入視窗，請允許彈出視窗');
-      return;
-    }
-
-    // 監聽 popup 透過 localStorage 傳回的 token（storage 事件不受 COOP 限制）
-    const storageHandler = (event: StorageEvent) => {
-      if (event.key !== 'oauth_callback_token' || !event.newValue) return;
-      window.removeEventListener('storage', storageHandler);
-      localStorage.removeItem('oauth_callback_token');
-      this.handleCredentialResponse({ credential: event.newValue });
-    };
-    window.addEventListener('storage', storageHandler);
-
-    // 安全逾時：30 秒後若仍未收到 token，清除 listener
-    setTimeout(() => {
-      window.removeEventListener('storage', storageHandler);
-    }, 30_000);
-  }
-
-  /**
-   * Credential 回呼處理
-   */
-  private handleCredentialResponse(response: any): void {
-    const payload = this.decodeJwt(response.credential);
-    if (!payload) {
-      this.toastService.error('登入失敗，請稍後再試');
-      return;
-    }
-
-    this.setSession(response.credential, payload);
-    this.loadUserData();
-    this.toastService.success('登入成功');
-
-    this.analyticsService.trackEvent('user_signed_in', {
-      method: 'google',
-      user_id: payload.sub,
-      user_role: this.userRole(),
-    });
-  }
-
-  /**
-   * 設定本地 session（token + 使用者資訊）
-   */
-  private setSession(token: string, payload: any): void {
-    this.idTokenValue = token;
-    this.tokenExpiry = payload.exp * 1000;
-    localStorage.setItem('oauth_credential', token);
-
-    this.currentUser.set({
-      uid: payload.sub,
-      email: payload.email,
-      displayName: payload.name,
-      photoURL: payload.picture,
-    });
-
-    this.scheduleTokenRefresh();
-  }
-
-  /**
-   * 解碼 JWT（不做簽章驗證，僅用於讀取 payload）
-   */
-  private decodeJwt(token: string): any {
+  async loginWithGoogle(): Promise<void> {
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const binary = atob(base64);
-      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-      return JSON.parse(new TextDecoder().decode(bytes));
+      await this.loadGis();
     } catch {
-      return null;
+      this.toastService.error('無法載入 Google 登入元件，請檢查網路');
+      return;
     }
-  }
 
-  /**
-   * 排程 Token 靜默刷新
-   * 在 token 過期前 5 分鐘觸發 silentRefresh，取得新 token
-   */
-  private scheduleTokenRefresh(): void {
-    this.clearRefreshTimer();
-    const refreshIn = Math.max(this.tokenExpiry - Date.now() - 5 * 60 * 1000, 0);
-    this.refreshTimer = setTimeout(() => this.silentRefresh(), refreshIn);
-  }
-
-  /**
-   * 靜默刷新 Token
-   * 用隱藏 iframe + prompt=none 向 Google 取得新 ID Token
-   * 複用既有的 localStorage 傳遞機制（與 popup 登入相同）
-   * 失敗時排程重試，並在 token 即將過期時提醒使用者
-   */
-  private silentRefresh(): void {
-    const params = new URLSearchParams({
+    const google = (window as any).google;
+    const codeClient = google.accounts.oauth2.initCodeClient({
       client_id: environment.googleClientId,
-      redirect_uri: document.baseURI.replace(/\/+$/, ''),
-      response_type: 'id_token',
       scope: 'openid email profile',
-      nonce: crypto.randomUUID(),
-      prompt: 'none',
+      ux_mode: 'popup',
+      callback: (response: { code?: string; error?: string }) => {
+        if (response.code) {
+          this.exchangeCode(response.code);
+        } else {
+          this.toastService.error('登入已取消');
+        }
+      },
     });
-
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-
-    let settled = false;
-    const cleanup = (success: boolean) => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener('storage', storageHandler);
-      iframe.remove();
-
-      // 刷新失敗：排程重試或提醒使用者
-      if (!success) this.handleRefreshFailure();
-    };
-
-    const storageHandler = (event: StorageEvent) => {
-      if (event.key !== 'oauth_callback_token' || !event.newValue) return;
-      localStorage.removeItem('oauth_callback_token');
-      const payload = this.decodeJwt(event.newValue);
-      if (payload) {
-        this.refreshFailCount = 0;
-        this.setSession(event.newValue, payload);
-        this.loadUserData();
-      }
-      cleanup(!!payload);
-    };
-    window.addEventListener('storage', storageHandler);
-
-    // 10 秒逾時 — silent refresh 失敗時觸發 fallback
-    setTimeout(() => {
-      if (!settled) cleanup(false);
-    }, 10_000);
-
-    iframe.src = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    document.body.appendChild(iframe);
+    codeClient.requestCode();
   }
 
-  /** 靜默刷新連續失敗次數 */
-  private refreshFailCount = 0;
+  /** 以授權碼向後端換取 session token */
+  private async exchangeCode(code: string): Promise<void> {
+    try {
+      const res = await firstValueFrom(
+        this.http.post<TokenPair & { user: any; profiles: any }>(
+          `${this.authBase}/google/exchange`,
+          { code },
+        ),
+      );
+      this.setTokens(res);
+      this.applyUserDto({ user: res.user, profiles: res.profiles, timestamp: Date.now() });
+      this.toastService.success('登入成功');
+      this.analyticsService.trackEvent('user_signed_in', {
+        method: 'google',
+        user_id: res.user?.id,
+        user_role: this.userRole(),
+      });
+    } catch (e) {
+      this.logger.error('登入失敗（code 交換）', e);
+      this.toastService.error('登入失敗，請稍後再試');
+    }
+  }
 
   /**
-   * 處理靜默刷新失敗
-   * 第 1 次：1 分鐘後重試
-   * 第 2 次：提醒使用者，2 分鐘後再試
-   * 第 3 次以上：不再重試，提醒重新登入
+   * 取得有效 access token（給 interceptor 用）；過期則先換新
    */
-  private handleRefreshFailure(): void {
-    this.refreshFailCount++;
-    const remaining = this.tokenExpiry - Date.now();
-
-    if (remaining <= 0) {
-      this.toastService.warning('登入已過期，請重新登入');
-      return;
+  async getAccessToken(): Promise<string | null> {
+    if (this.accessToken && Date.now() < this.accessExpiry - 10_000) {
+      return this.accessToken;
     }
+    const ok = await this.refreshTokens();
+    return ok ? this.accessToken : null;
+  }
 
-    if (this.refreshFailCount >= 3) {
-      this.toastService.warning('登入即將過期，請儘快重新登入以避免操作中斷');
-      return;
+  /** 介面相容：舊名稱 */
+  async getIdToken(): Promise<string | null> {
+    return this.getAccessToken();
+  }
+
+  /**
+   * 用 refresh token 換新 access/refresh（滑動續命）。並行呼叫會共用同一個請求。
+   */
+  refreshTokens(): Promise<boolean> {
+    if (this.refreshInFlight) return this.refreshInFlight;
+
+    this.refreshInFlight = (async () => {
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (!refreshToken) return false;
+      try {
+        const res = await firstValueFrom(
+          this.http.post<TokenPair>(`${this.authBase}/refresh`, { refreshToken }),
+        );
+        this.setTokens(res);
+        return true;
+      } catch (e) {
+        this.logger.warn('refresh token 失效，需重新登入');
+        this.clearLocal();
+        this.currentUser.set(null);
+        this.userData.set(null);
+        return false;
+      } finally {
+        this.refreshInFlight = null;
+      }
+    })();
+
+    return this.refreshInFlight;
+  }
+
+  /** 載入使用者 D1 資料（GET /me） */
+  private async loadUserData(): Promise<void> {
+    try {
+      const dto = await firstValueFrom(this.authApi.getUserMe());
+      this.applyUserDto(dto);
+    } catch (error) {
+      this.logger.error('無法從 D1 載入使用者資料:', error);
+      this.userData.set(null);
     }
+  }
 
-    const retryDelay = this.refreshFailCount === 1 ? 60_000 : 120_000;
-    const safeDelay = Math.min(retryDelay, remaining - 30_000);
+  /** 套用 /me 或 /exchange 回傳的使用者資料到 signals */
+  private applyUserDto(dto: D1UserResponseDTO): void {
+    const data = UserApiMapper.mapD1ToUserData(dto);
+    this.userData.set(data);
+    this.currentUser.set({
+      uid: data.uid,
+      email: data.email ?? '',
+      displayName: data.displayName ?? '',
+      photoURL: data.photoURL ?? '',
+    });
+  }
 
-    if (safeDelay > 0) {
-      this.refreshTimer = setTimeout(() => this.silentRefresh(), safeDelay);
-    } else {
-      this.toastService.warning('登入即將過期，請重新登入');
-    }
+  /** 儲存 token、排程續命 */
+  private setTokens(t: TokenPair): void {
+    this.accessToken = t.accessToken;
+    this.accessExpiry = Date.now() + (t.expiresIn ?? 1800) * 1000;
+    localStorage.setItem(ACCESS_KEY, t.accessToken);
+    localStorage.setItem(REFRESH_KEY, t.refreshToken);
+    this.scheduleRefresh();
+  }
+
+  /** access token 到期前 2 分鐘自動換新 */
+  private scheduleRefresh(): void {
+    this.clearRefreshTimer();
+    const delay = Math.max(this.accessExpiry - Date.now() - 2 * 60 * 1000, 5_000);
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTokens().then((ok) => {
+        if (ok) this.scheduleRefresh();
+      });
+    }, delay);
   }
 
   private clearRefreshTimer(): void {
@@ -316,98 +224,64 @@ export class AuthService {
     }
   }
 
-  /**
-   * 載入使用者的 D1 資料
-   */
-  private async loadUserData(): Promise<void> {
-    try {
-      const d1Response = await firstValueFrom(
-        this.authApi.getUserMe()
-      );
-      const data = UserApiMapper.mapD1ToUserData(d1Response);
-      this.userData.set(data);
-
-      // 將 currentUser.uid 校正為 D1 users.id（既有使用者的 ID 可能與 Google sub 不同）
-      const current = this.currentUser();
-      if (current && data.uid && data.uid !== current.uid) {
-        this.currentUser.set({ ...current, uid: data.uid });
-      }
-    } catch (error: any) {
-      this.logger.error('無法從 D1 載入使用者資料:', error);
-      this.analyticsService.trackError(error, 'load_user_data_d1');
-      this.userData.set(null);
-    }
+  private clearLocal(): void {
+    this.clearRefreshTimer();
+    this.accessToken = null;
+    this.accessExpiry = 0;
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
   }
 
-  /**
-   * 登出
-   */
+  /** 登出：撤銷後端 session 並清除本機 */
   async logout(): Promise<void> {
     const userId = this.userId();
-
-    this.clearRefreshTimer();
-    this.idTokenValue = null;
-    this.tokenExpiry = 0;
-    localStorage.removeItem('oauth_credential');
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (refreshToken) {
+      try {
+        await firstValueFrom(this.http.post(`${this.authBase}/logout`, { refreshToken }));
+      } catch {
+        // 後端撤銷失敗不影響本機登出
+      }
+    }
+    this.clearLocal();
     this.currentUser.set(null);
     this.userData.set(null);
-
-    this.analyticsService.trackEvent('logout_success', {
-      user_id: userId,
-    });
+    this.analyticsService.trackEvent('logout_success', { user_id: userId });
   }
 
   /**
-   * 取得使用者 ID Token（用於後端驗證）
-   * 若 token 已過期則清除登入狀態
-   */
-  async getIdToken(): Promise<string | null> {
-    if (!this.idTokenValue) {
-      return null;
-    }
-
-    // 若 token 已過期，清除登入狀態
-    if (Date.now() > this.tokenExpiry) {
-      await this.logout();
-      this.toastService.warning('登入已過期，請重新登入');
-      return null;
-    }
-
-    return this.idTokenValue;
-  }
-
-  /**
-   * 更新使用者顯示名稱
-   * 僅更新本地狀態
-   * @param newDisplayName 新的顯示名稱
+   * 更新使用者顯示名稱（僅本地狀態）
    */
   async updateDisplayName(newDisplayName: string): Promise<void> {
     const current = this.currentUser();
-    if (!current) {
-      throw new Error('使用者未登入');
-    }
+    if (!current) throw new Error('使用者未登入');
 
     const trimmedName = newDisplayName.trim();
-    if (!trimmedName) {
-      throw new Error('顯示名稱不能為空');
-    }
+    if (!trimmedName) throw new Error('顯示名稱不能為空');
+    if (trimmedName.length > 50) throw new Error('顯示名稱不能超過 50 個字');
 
-    if (trimmedName.length > 50) {
-      throw new Error('顯示名稱不能超過 50 個字');
-    }
-
-    // 更新本地 currentUser
     this.currentUser.set({ ...current, displayName: trimmedName });
-
-    // 更新本地 userData
     const currentData = this.userData();
     if (currentData) {
-      this.userData.set({
-        ...currentData,
-        displayName: trimmedName,
-      });
+      this.userData.set({ ...currentData, displayName: trimmedName });
     }
-
     this.toastService.success('顯示名稱已更新');
+  }
+
+  /** 動態載入 Google Identity Services 程式庫（只載一次） */
+  private loadGis(): Promise<void> {
+    if ((window as any).google?.accounts?.oauth2) return Promise.resolve();
+    if (this.gisPromise) return this.gisPromise;
+
+    this.gisPromise = new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = GIS_SRC;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('GIS load failed'));
+      document.head.appendChild(script);
+    });
+    return this.gisPromise;
   }
 }

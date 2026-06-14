@@ -108,13 +108,24 @@
               <lucide-icon [img]="Eye" [size]="16" />
               預覽
             </button>
+            @if (isEditingExisting()) {
+              <button
+                type="button"
+                class="btn btn-outline btn-md"
+                (click)="onSaveAsNew()"
+                title="以目前內容另外新增一筆，不覆蓋原紀錄"
+              >
+                <lucide-icon [img]="Copy" [size]="16" />
+                另存新檔
+              </button>
+            }
             <button
               type="button"
               class="btn btn-primary btn-md"
               (click)="onSubmit()"
             >
               <lucide-icon [img]="Check" [size]="16" />
-              儲存記錄
+              {{ isEditingExisting() ? '更新此筆' : '儲存記錄' }}
             </button>
           </div>
         </div>

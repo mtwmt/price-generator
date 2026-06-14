@@ -35,7 +35,14 @@ export class ExportService {
    * 生成帶有時間戳的檔名
    */
   private generateFileName(extension: string): string {
-    const timestamp = new Date().toLocaleString('roc', { hour12: false });
+    // 使用檔名安全的時間戳（避免 '/'、':' 等非法字元）
+    // 沿用民國紀年（西元年 - 1911），格式：YYY-MM-DD_HHmmss
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const rocYear = now.getFullYear() - 1911;
+    const timestamp =
+      `${rocYear}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
+      `_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     return `${timestamp}_quotation.${extension}`;
   }
 
@@ -146,7 +153,9 @@ export class ExportService {
       scale: this.CANVAS_SCALE,
       logging: false,
       useCORS: true,
-      allowTaint: true,
+      // 不啟用 allowTaint：避免跨域圖片污染 canvas 導致 toDataURL/toBlob 拋錯而匯出失敗
+      // （logo、印章皆為同源 base64 data URL，不受影響）
+      allowTaint: false,
       onclone: (clonedDoc) => {
         // 在 clone 的文檔中處理元素
         const clonedElements = clonedDoc.querySelectorAll(`#${elementId}`);

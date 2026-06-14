@@ -45,6 +45,27 @@ export class QuotationStorageService {
   }
 
   /**
+   * 更新（覆蓋）指定索引的歷史記錄
+   * 用於載入既有紀錄、修改後原地儲存，避免產生重複筆數
+   * @param index 要更新的索引（0-based）
+   * @param quotation 更新後的報價單資料
+   * @returns 是否成功更新
+   */
+  updateHistory(index: number, quotation: QuotationData): boolean {
+    const history = this.getHistory();
+
+    if (index < 0 || index >= history.length) {
+      this.logger.warn(`Invalid history index: ${index}`);
+      return false;
+    }
+
+    const newHistory = [...history];
+    newHistory[index] = quotation;
+
+    return this.storage.set(this.STORAGE_KEY, newHistory);
+  }
+
+  /**
    * 從歷史記錄中刪除指定索引的項目
    * @param index 要刪除的索引（0-based）
    * @returns 是否成功刪除
