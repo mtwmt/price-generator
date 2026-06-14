@@ -40,6 +40,7 @@ import {
   Eye,
   FileText,
   Check,
+  Copy,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-angular';
@@ -107,6 +108,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   readonly Eye = Eye;
   readonly FileText = FileText;
   readonly Check = Check;
+  readonly Copy = Copy;
   readonly PanelLeftClose = PanelLeftClose;
   readonly PanelLeftOpen = PanelLeftOpen;
 
@@ -126,6 +128,12 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
 
+  /** 目前是否正在編輯一筆既有的歷史記錄（決定儲存時是覆蓋或新增） */
+  isEditingExisting = computed(() => {
+    const index = this.selectedHistoryIndex();
+    return index !== null && index >= 0 && index < this.historyData().length;
+  });
+
   get serviceItems() {
     return this.form?.get('serviceItems') as FormArray;
   }
@@ -139,8 +147,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     // 預設建立一個服務項目
     this.createServiceItem();
 
-    // 設定監聽器
-    this.quotationFormService.setupFormListeners(this.form);
+    // 設定監聽器（綁定本元件生命週期，元件銷毀時自動退訂）
+    this.quotationFormService.setupFormListeners(this.form, this.destroyRef);
 
     this.setupResizeListener();
   }
@@ -393,23 +401,37 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.quoterLogo.set(data.quoterLogo || '');
   }
 
-  onSubmit() {
+  /** 收集目前表單內容（含圖片）為 QuotationData */
+  private collectFormData(): QuotationData {
     const data = this.form.getRawValue();
-    const dataWithImages = {
+    return {
       ...data,
       customerLogo: this.customerLogo(),
       quoterStamp: this.stamp(),
       quoterLogo: this.quoterLogo(),
     };
-    this.saveLocalStorage(dataWithImages);
-    this.analytics.trackQuotationGenerated();
-
-    // 顯示成功通知
-    this.showSuccessToast();
   }
 
-  private showSuccessToast(): void {
-    this.toastService.success('報價單已成功儲存');
+  /**
+   * 儲存記錄：編輯既有筆時覆蓋更新，否則新增
+   */
+  onSubmit() {
+    this.saveLocalStorage(this.collectFormData());
+    this.analytics.trackQuotationGenerated();
+  }
+
+  /**
+   * 另存新檔：不論目前是否在編輯既有筆，都以目前內容新增一筆
+   */
+  onSaveAsNew() {
+    // 清除選取索引，強制走「新增」流程
+    this.selectedHistoryIndex.set(null);
+    this.saveLocalStorage(this.collectFormData());
+    this.analytics.trackQuotationGenerated();
+  }
+
+  private showSuccessToast(isUpdate: boolean): void {
+    this.toastService.success(isUpdate ? '報價單已更新' : '報價單已成功儲存');
   }
 
   ngOnDestroy(): void {
@@ -423,11 +445,28 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private saveLocalStorage(data: QuotationData): void {
-    // 使用 QuotationStorageService 儲存
-    const success = this.quotationStorage.saveToHistory(data);
+    const selectedIndex = this.selectedHistoryIndex();
+    const isUpdate =
+      selectedIndex !== null &&
+      selectedIndex >= 0 &&
+      selectedIndex < this.historyData().length;
+
+    // 載入既有紀錄並修改 → 原地覆蓋更新；否則新增一筆
+    const success = isUpdate
+      ? this.quotationStorage.updateHistory(selectedIndex, data)
+      : this.quotationStorage.saveToHistory(data);
+
     if (success) {
       // 重新載入歷史記錄
       this.loadHistoryFromLocalStorage();
+
+      // 新增時，新紀錄位於最前面，將選取索引指向它，
+      // 以便後續再次儲存時會更新同一筆，而非持續新增重複
+      if (!isUpdate) {
+        this.selectedHistoryIndex.set(0);
+      }
+
+      this.showSuccessToast(isUpdate);
     }
   }
 }

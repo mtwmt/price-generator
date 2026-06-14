@@ -30,6 +30,11 @@
           }
         </label>
       </div>
+      @if (form().get('discountType')?.value === 'percentage') {
+        <p class="text-xs opacity-60 mt-1">
+          台灣習慣：輸入「9」為 9 折（付 90%）、「85」為 85 折（付 85%）
+        </p>
+      }
     </fieldset>
 
     <!-- 稅金計算模式（僅在有稅率時顯示） -->
