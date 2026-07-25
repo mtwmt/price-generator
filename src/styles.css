@@ -6,6 +6,11 @@
   themes: wireframe --default;
 }
 
+/* 停用瀏覽器自動深色（Chrome Auto Dark Theme）：報價單須維持白底黑字 */
+:root {
+  color-scheme: only light;
+}
+
 /* 全域背景色和字體大小 */
 body {
   background: #f9fafb;
