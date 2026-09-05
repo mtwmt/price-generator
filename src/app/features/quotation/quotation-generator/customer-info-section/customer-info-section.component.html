@@ -1,7 +1,7 @@
 <!-- 客戶基本資料 -->
 <div class="mb-2 bg-base-200 p-4 rounded-sm" [formGroup]="form()">
   <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
-    <lucide-icon [img]="Users" [size]="18" class="text-base-content/70" />
+    <svg lucideUsers width="18" height="18" class="text-base-content/70" />
     客戶資料
   </h3>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3">
@@ -19,7 +19,7 @@
             : ''
         "
       >
-        <lucide-icon [img]="Building2" [size]="16" class="opacity-70" />
+        <svg lucideBuilding2 width="16" height="16" class="opacity-70" />
         <input
           formControlName="customerCompany"
           type="text"
@@ -45,7 +45,7 @@
             : ''
         "
       >
-        <lucide-icon [img]="ReceiptText" [size]="16" class="opacity-70" />
+        <svg lucideReceiptText width="16" height="16" class="opacity-70" />
         <input
           formControlName="customerTaxID"
           type="text"
@@ -89,7 +89,7 @@
         <fieldset class="fieldset">
           <legend class="fieldset-legend whitespace-nowrap">聯絡人</legend>
           <label class="input w-full">
-            <lucide-icon [img]="UserRound" [size]="16" class="opacity-70" />
+            <svg lucideUserRound width="16" height="16" class="opacity-70" />
             <input
               formControlName="customerContact"
               type="text"
@@ -110,7 +110,7 @@
                   : ''
               "
             >
-              <lucide-icon [img]="Phone" [size]="16" class="opacity-70" />
+                <svg lucidePhone width="16" height="16" class="opacity-70" />
               <input
                 formControlName="customerPhone"
                 type="tel"
@@ -146,7 +146,7 @@
                 : ''
             "
           >
-            <lucide-icon [img]="Mail" [size]="16" class="opacity-70" />
+              <svg lucideMail width="16" height="16" class="opacity-70" />
             <input
               formControlName="customerEmail"
               type="email"
@@ -164,7 +164,7 @@
         <fieldset class="fieldset">
           <legend class="fieldset-legend whitespace-nowrap">地址</legend>
           <label class="input w-full">
-            <lucide-icon [img]="MapPin" [size]="16" class="opacity-70" />
+              <svg lucideMapPin width="16" height="16" class="opacity-70" />
             <input
               formControlName="customerAddress"
               type="text"

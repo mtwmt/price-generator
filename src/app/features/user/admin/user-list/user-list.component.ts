@@ -1,15 +1,22 @@
-import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+  ChangeDetectionStrategy,
+  DestroyRef,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+
 import { Subject, debounceTime } from 'rxjs';
 import {
-  LucideAngularModule,
-  Users,
-  Crown,
-  Shield,
-  Search,
-  RefreshCw,
-} from 'lucide-angular';
+  LucideCrown,
+  LucideRefreshCw,
+  LucideSearch,
+  LucideShield,
+  LucideUsers,
+} from '@lucide/angular';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
 import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { UsersStore } from '@app/features/user/users.store';
@@ -31,8 +38,11 @@ import {
   selector: 'app-user-list',
   standalone: true,
   imports: [
-    CommonModule,
-    LucideAngularModule,
+    LucideCrown,
+    LucideRefreshCw,
+    LucideSearch,
+    LucideShield,
+    LucideUsers,
     PaginationComponent,
     UserEditFormComponent,
   ],
@@ -47,13 +57,6 @@ export class UserListComponent implements OnInit {
 
   // ==================== 搜尋防抖 ====================
   private readonly searchSubject$ = new Subject<string>();
-
-  // ==================== Icons ====================
-  readonly Users = Users;
-  readonly Crown = Crown;
-  readonly Shield = Shield;
-  readonly Search = Search;
-  readonly RefreshCw = RefreshCw;
 
   // ==================== 分頁狀態 ====================
   currentPage = signal(1);

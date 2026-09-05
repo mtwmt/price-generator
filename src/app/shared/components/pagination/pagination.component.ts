@@ -1,5 +1,10 @@
-import { Component, input, output, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  input,
+  output,
+  computed,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 
 /**
  * 共用分頁元件
@@ -17,7 +22,8 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-pagination',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './pagination.component.html',
 })
 export class PaginationComponent {
@@ -168,4 +174,3 @@ export class PaginationComponent {
     }
   }
 }
-

@@ -1,6 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Shield } from 'lucide-angular';
+import { LucideShield } from '@lucide/angular';
 import { AuthService } from '@app/core/services/auth.service';
 import { UserListComponent } from './user-list/user-list.component';
 
@@ -11,11 +11,10 @@ import { UserListComponent } from './user-list/user-list.component';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, UserListComponent],
+  imports: [CommonModule, LucideShield, UserListComponent],
   templateUrl: './admin.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminComponent {
   readonly authService = inject(AuthService);
-  readonly Shield = Shield;
 }

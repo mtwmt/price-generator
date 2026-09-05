@@ -14,9 +14,9 @@
               <div
                 class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
               >
-                <lucide-icon
-                  [img]="FileText"
-                  [size]="20"
+                <svg lucideFileText
+                  width="20"
+                  height="20"
                   class="text-base-content/70"
                 />
               </div>
@@ -39,7 +39,7 @@
                   (click)="showPreview.set(true)"
                   title="顯示預覽"
                 >
-                  <lucide-icon [img]="PanelLeftClose" [size]="16" />
+                  <svg lucidePanelLeftClose width="16" height="16" />
                   <span>顯示預覽</span>
                 </button>
               } @else {
@@ -49,7 +49,7 @@
                   (click)="showPreview.set(false)"
                   title="隱藏預覽"
                 >
-                  <lucide-icon [img]="PanelLeftOpen" [size]="16" />
+                  <svg lucidePanelLeftOpen width="16" height="16" />
                   <span>隱藏預覽</span>
                 </button>
               }
@@ -105,7 +105,7 @@
               class="btn btn-primary btn-md lg:hidden"
               (click)="preview_modal.showModal()"
             >
-              <lucide-icon [img]="Eye" [size]="16" />
+              <svg lucideEye width="16" height="16" />
               預覽
             </button>
             @if (isEditingExisting()) {
@@ -115,7 +115,7 @@
                 (click)="onSaveAsNew()"
                 title="以目前內容另外新增一筆，不覆蓋原紀錄"
               >
-                <lucide-icon [img]="Copy" [size]="16" />
+                <svg lucideCopy width="16" height="16" />
                 另存新檔
               </button>
             }
@@ -124,7 +124,7 @@
               class="btn btn-primary btn-md"
               (click)="onSubmit()"
             >
-              <lucide-icon [img]="Check" [size]="16" />
+              <svg lucideCheck width="16" height="16" />
               {{ isEditingExisting() ? '更新此筆' : '儲存記錄' }}
             </button>
           </div>
@@ -141,7 +141,7 @@
       <div class="bg-base-100 rounded-lg shadow-sm p-4 mt-4 lg:mt-0">
         <div class="flex items-center mb-4 bg-base-100 pb-2 border-b">
           <h3 class="text-lg font-bold flex items-center">
-            <lucide-icon [img]="Eye" [size]="16" class="mr-1" />
+            <svg lucideEye width="16" height="16" class="mr-1" />
             即時預覽
           </h3>
         </div>

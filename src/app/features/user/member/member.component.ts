@@ -1,12 +1,12 @@
 import { Component, inject, effect, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  LucideAngularModule,
-  User,
-  Check,
-  Clock,
-  CircleX,
-} from 'lucide-angular';
+  LucideCheck,
+  LucideCircleX,
+  LucideClock,
+  LucideDynamicIcon,
+  LucideUser,
+} from '@lucide/angular';
 import { AuthService } from '@app/core/services/auth.service';
 import { LoggerService } from '@app/shared/services/logger.service';
 import { DonationApiService } from '@app/core/services/donation-api.service';
@@ -28,7 +28,9 @@ import { firstValueFrom } from 'rxjs';
   standalone: true,
   imports: [
     CommonModule,
-    LucideAngularModule,
+    LucideCheck,
+    LucideDynamicIcon,
+    LucideUser,
     UserProfileComponent,
     DonationFormComponent,
     ProofModalComponent,
@@ -50,10 +52,8 @@ export class MemberComponent {
   selectedProofKey = signal('');
 
   // ==================== Icons ====================
-  readonly User = User;
-  readonly Check = Check;
-  readonly Clock = Clock;
-  readonly CircleX = CircleX;
+  readonly Clock = LucideClock;
+  readonly CircleX = LucideCircleX;
 
   // ==================== Constructor ====================
   constructor() {

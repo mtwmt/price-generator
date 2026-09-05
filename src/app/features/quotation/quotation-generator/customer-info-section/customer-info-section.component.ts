@@ -2,15 +2,14 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
-  LucideAngularModule,
-  Users,
-  Building2,
-  ReceiptText,
-  UserRound,
-  Phone,
-  Mail,
-  MapPin,
-} from 'lucide-angular';
+  LucideBuilding2,
+  LucideMail,
+  LucideMapPin,
+  LucidePhone,
+  LucideReceiptText,
+  LucideUserRound,
+  LucideUsers,
+} from '@lucide/angular';
 import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 
 /**
@@ -20,20 +19,22 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 @Component({
   selector: 'app-customer-info-section',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FileUpload,
+    LucideBuilding2,
+    LucideMail,
+    LucideMapPin,
+    LucidePhone,
+    LucideReceiptText,
+    LucideUserRound,
+    LucideUsers,
+  ],
   templateUrl: './customer-info-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomerInfoSection {
-  // Icons
-  readonly Users = Users;
-  readonly Building2 = Building2;
-  readonly ReceiptText = ReceiptText;
-  readonly UserRound = UserRound;
-  readonly Phone = Phone;
-  readonly Mail = Mail;
-  readonly MapPin = MapPin;
-
   // Inputs
   readonly form = input.required<FormGroup>();
   readonly customerLogo = input<string>('');

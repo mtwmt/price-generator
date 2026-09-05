@@ -1,7 +1,7 @@
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, FileCheck } from 'lucide-angular';
+import { LucideFileCheck } from '@lucide/angular';
 
 /**
  * 其他資訊區塊元件
@@ -10,14 +10,11 @@ import { LucideAngularModule, FileCheck } from 'lucide-angular';
 @Component({
   selector: 'app-other-info-section',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
+  imports: [ReactiveFormsModule, LucideFileCheck],
   templateUrl: './other-info-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OtherInfoSection {
-  // Icons
-  readonly FileCheck = FileCheck;
-
   // Inputs
   readonly form = input.required<FormGroup>();
 }

@@ -7,8 +7,8 @@ import {
   ChangeDetectionStrategy,
   Renderer2,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { LucideAngularModule, X, BookOpen } from 'lucide-angular';
+
+import { LucideX } from '@lucide/angular';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 
 const DISMISSED_KEY = 'promo_bookshelf_dismissed';
@@ -18,7 +18,7 @@ const SHOW_DELAY_MS = 500;
 @Component({
   selector: 'app-promo-float',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [LucideX],
   templateUrl: './promo-float.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -27,9 +27,6 @@ export class PromoFloatComponent implements OnInit, OnDestroy {
   private renderer = inject(Renderer2);
   private scrollListener?: () => void;
   private tracked = false;
-
-  readonly X = X;
-  readonly BookOpen = BookOpen;
 
   readonly visible = signal(false);
 

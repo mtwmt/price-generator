@@ -15,9 +15,9 @@
       (click)="fileInput.click()"
       aria-label="上傳檔案"
     >
-      <lucide-icon
-        [img]="Upload"
-        [size]="24"
+      <svg lucideUpload
+        width="24"
+        height="24"
         class="text-base-content/40"
       />
       <div class="flex flex-col items-center md:items-start">
@@ -59,7 +59,7 @@
             (click)="fileInput.click()"
             title="重新上傳"
           >
-            <lucide-icon [img]="Upload" [size]="14" />
+            <svg lucideUpload width="14" height="14" />
             <span class="md:inline">更換</span>
           </button>
           <button
@@ -68,7 +68,7 @@
             (click)="onRemove(); fileInput.value = ''"
             title="移除 LOGO"
           >
-            <lucide-icon [img]="X" [size]="14" />
+            <svg lucideX width="14" height="14" />
             <span class="md:inline">移除</span>
           </button>
         </div>
@@ -84,9 +84,9 @@
       (click)="fileInput.click()"
       aria-label="上傳檔案"
     >
-      <lucide-icon
-        [img]="Upload"
-        [size]="20"
+      <svg lucideUpload
+        width="20"
+        height="20"
         class="text-base-content/40"
       />
       <span class="text-base-content/60 text-xs">點擊上傳</span>
@@ -114,7 +114,7 @@
           (click)="fileInput.click()"
           title="更換"
         >
-          <lucide-icon [img]="Upload" [size]="14" />
+          <svg lucideUpload width="14" height="14" />
         </button>
         <button
           type="button"
@@ -122,7 +122,7 @@
           (click)="onRemove(); fileInput.value = ''"
           title="移除"
         >
-          <lucide-icon [img]="X" [size]="14" />
+          <svg lucideX width="14" height="14" />
         </button>
       </div>
     </div>

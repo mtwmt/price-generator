@@ -18,14 +18,11 @@
 
   <!-- Tabs -->
   <nav aria-label="主導航">
-    <div
-      role="tablist"
-      class="tabs tabs-boxed mb-4 bg-base-100 shadow-sm justify-between items-center"
-    >
-      <div>
+    <div class="flex items-center justify-between mb-4 bg-base-100 shadow-sm">
+      <div role="tablist" class="tabs">
         <a
           role="tab"
-          class="tab text-base"
+          class="tab text-base px-4"
           routerLink="/"
           routerLinkActive="tab-active font-bold"
           [routerLinkActiveOptions]="{ exact: true }"
@@ -34,7 +31,7 @@
         </a>
         <a
           role="tab"
-          class="tab text-base"
+          class="tab text-base px-4"
           routerLink="/changelog"
           routerLinkActive="tab-active font-bold"
           [routerLinkActiveOptions]="{ exact: true }"
@@ -44,7 +41,7 @@
         @if (authService.isAuthenticated()) {
           <a
             role="tab"
-            class="tab text-base"
+            class="tab text-base px-4"
             routerLink="/member"
             routerLinkActive="tab-active font-bold"
             [routerLinkActiveOptions]="{ exact: true }"
@@ -55,7 +52,7 @@
         @if (authService.isAdmin()) {
           <a
             role="tab"
-            class="tab text-base"
+            class="tab text-base px-4"
             routerLink="/admin"
             routerLinkActive="tab-active font-bold"
             [routerLinkActiveOptions]="{ exact: true }"
@@ -76,7 +73,9 @@
               aria-label="前往會員中心"
             >
               <div class="avatar">
-                <div class="w-8 h-8 rounded-full bg-primary text-primary-content">
+                <div
+                  class="w-8 h-8 rounded-full bg-primary text-primary-content"
+                >
                   @if (authService.userPhotoURL()) {
                     <img
                       [src]="authService.userPhotoURL()"
@@ -88,7 +87,9 @@
                     <span
                       class="text-xs flex items-center justify-center w-full h-full"
                     >
-                      {{ authService.userDisplayName().charAt(0).toUpperCase() }}
+                      {{
+                        authService.userDisplayName().charAt(0).toUpperCase()
+                      }}
                     </span>
                   }
                 </div>
@@ -102,7 +103,7 @@
                     class="badge badge-warning badge-sm gap-1"
                     title="贊助會員"
                   >
-                    <lucide-icon [img]="Crown" [size]="12" />
+                    <svg lucideCrown width="12" height="12" />
                     贊助
                   </span>
                 }
@@ -115,7 +116,7 @@
               title="登出"
               aria-label="登出帳號"
             >
-              <lucide-icon [img]="LogOut" [size]="16" />
+              <svg lucideLogOut width="16" height="16" />
               <span class="hidden sm:inline">登出</span>
             </button>
           </div>
@@ -127,7 +128,7 @@
             title="使用 Google 帳號登入"
             aria-label="使用 Google 帳號登入"
           >
-            <lucide-icon [img]="LogIn" [size]="16" />
+            <svg lucideLogIn width="16" height="16" />
             <span class="hidden sm:inline">登入</span>
           </button>
         }
@@ -172,7 +173,12 @@
     @if (toastService.type() === 'success') {
       <div class="alert alert-success shadow-lg">
         <div class="flex items-center gap-2">
-          <lucide-icon [img]="Check" [size]="20" class="text-success-content" />
+          <svg
+            lucideCheck
+            width="20"
+            height="20"
+            class="text-success-content"
+          />
           <span class="text-success-content font-medium">{{
             toastService.message()
           }}</span>
@@ -182,7 +188,7 @@
     @if (toastService.type() === 'error') {
       <div class="alert alert-error shadow-lg">
         <div class="flex items-center gap-2">
-          <lucide-icon [img]="X" [size]="20" class="text-error-content" />
+          <svg lucideX width="20" height="20" class="text-error-content" />
           <span class="text-error-content font-medium">{{
             toastService.message()
           }}</span>
@@ -192,7 +198,12 @@
     @if (toastService.type() === 'info') {
       <div class="alert alert-info shadow-lg">
         <div class="flex items-center gap-2">
-          <lucide-icon [img]="FileText" [size]="20" class="text-info-content" />
+          <svg
+            lucideFileText
+            width="20"
+            height="20"
+            class="text-info-content"
+          />
           <span class="text-info-content font-medium">{{
             toastService.message()
           }}</span>
@@ -202,9 +213,10 @@
     @if (toastService.type() === 'warning') {
       <div class="alert alert-warning shadow-lg">
         <div class="flex items-center gap-2">
-          <lucide-icon
-            [img]="MessageSquareQuote"
-            [size]="20"
+          <svg
+            lucideMessageSquareQuote
+            width="20"
+            height="20"
             class="text-warning-content"
           />
           <span class="text-warning-content font-medium">{{

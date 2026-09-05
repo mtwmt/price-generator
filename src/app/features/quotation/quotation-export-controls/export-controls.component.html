@@ -1,7 +1,7 @@
 <!-- 表單驗證提示 -->
 @if (!form().valid) {
   <div class="alert alert-warning alert-soft my-2 px-4 py-2">
-    <lucide-icon [img]="Info" [size]="16" />
+    <svg lucideInfo width="16" height="16" />
     <span>請先完成必填欄位後才能匯出報價單</span>
   </div>
 }
@@ -15,7 +15,7 @@
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
     (click)="onExportPDF()"
   >
-    <lucide-icon [img]="FileDown" [size]="16" />
+    <svg lucideFileDown width="16" height="16" />
     PDF
   </button>
   <button
@@ -25,7 +25,7 @@
     [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
     (click)="onExportImage()"
   >
-    <lucide-icon [img]="Image" [size]="16" />
+    <svg lucideImage width="16" height="16" />
     圖片
   </button>
   <button
@@ -35,7 +35,7 @@
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
     (click)="onExportExcel()"
   >
-    <lucide-icon [img]="FileSpreadsheet" [size]="16" />
+    <svg lucideFileSpreadsheet width="16" height="16" />
     Excel
   </button>
 </div>
@@ -63,7 +63,7 @@
         <!-- 選中標記 -->
         @if (selectedTemplate() === template.id) {
           <div class="absolute top-0 right-0 text-info">
-            <lucide-icon [img]="CircleCheck" [size]="20" />
+            <svg lucideCircleCheck width="20" height="20" />
           </div>
         }
       </div>

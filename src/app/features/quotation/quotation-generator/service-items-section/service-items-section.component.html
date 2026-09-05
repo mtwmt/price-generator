@@ -6,16 +6,16 @@
         <div
           class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
         >
-          <lucide-icon
-            [img]="ShoppingCart"
-            [size]="20"
+          <svg lucideShoppingCart
+            width="20"
+            height="20"
             class="text-base-content/70"
           />
         </div>
         <h2 class="text-lg font-semibold text-base-content">服務項目</h2>
       </div>
       <button type="button" class="btn btn-info btn-sm" (click)="onAddField()">
-        <lucide-icon [img]="ListPlus" [size]="16" />
+        <svg lucideListPlus width="16" height="16" />
         <span class="inline">新增項目</span>
       </button>
     </div>
@@ -39,9 +39,9 @@
                   class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
                   title="拖曳排序"
                 >
-                  <lucide-icon
-                    [img]="GripVertical"
-                    [size]="20"
+                  <svg lucideGripVertical
+                    width="20"
+                    height="20"
                     class="text-base-content"
                   />
                 </div>

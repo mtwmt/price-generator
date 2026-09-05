@@ -5,9 +5,9 @@
       role="button"
       class="btn btn-sm btn-ghost gap-2"
     >
-      <lucide-icon [img]="History" [size]="16" />
+      <svg lucideHistory width="16" height="16" />
       <span>載入歷史記錄</span>
-      <lucide-icon [img]="ChevronDown" [size]="16" />
+      <svg lucideChevronDown width="16" height="16" />
     </div>
     <ul
       tabindex="-1"
@@ -18,7 +18,7 @@
           class="flex items-center gap-2"
           (click)="onCreateNew()"
         >
-          <lucide-icon [img]="FilePlus" [size]="16" />
+          <svg lucideFilePlus width="16" height="16" />
           <span class="font-semibold">空白表單</span>
         </a>
       </li>
@@ -46,9 +46,9 @@
               (click)="onDelete($index, $event)"
               title="刪除此筆記錄"
             >
-              <lucide-icon
-                [img]="X"
-                [size]="14"
+              <svg lucideX
+                width="14"
+                height="14"
                 class="text-error"
               />
             </button>

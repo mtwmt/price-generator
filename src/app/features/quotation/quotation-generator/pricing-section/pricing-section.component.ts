@@ -1,7 +1,11 @@
-import { Component, input, output } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule } from 'lucide-angular';
 import {
   TAX_RATES,
   CUSTOM_TAX_NAME,
@@ -15,7 +19,8 @@ import {
 @Component({
   selector: 'app-pricing-section',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
+  imports: [CommonModule, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './pricing-section.component.html',
 })
 export class PricingSection {

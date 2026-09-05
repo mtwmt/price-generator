@@ -1,5 +1,13 @@
-import { Component, input, output, inject, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  signal,
+  effect,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+
 import { DonationApiService } from '@app/core/services/donation-api.service';
 import { LoggerService } from '@app/shared/services/logger.service';
 import { environment } from 'src/environments/environment';
@@ -12,7 +20,8 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'app-proof-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './proof-modal.component.html',
 })
 export class ProofModalComponent {
@@ -73,7 +82,7 @@ export class ProofModalComponent {
     this.errorMessage.set('');
     try {
       const response = await firstValueFrom(
-        this.donationApi.getProofSignedUrl(key),
+        this.donationApi.getProofSignedUrl(key)
       );
 
       // 競態保護：回應到達時確認仍為當前請求的 key
@@ -86,7 +95,11 @@ export class ProofModalComponent {
       const msg = err instanceof Error ? err.message : '未知錯誤';
       this.logger.error('[ProofModal] Failed to load signed URL:', key, msg);
       this.resolvedUrl.set('');
-      this.errorMessage.set(msg.includes('Token') ? '登入已過期，請重新登入' : `無法取得憑證（${msg}）`);
+      this.errorMessage.set(
+        msg.includes('Token')
+          ? '登入已過期，請重新登入'
+          : `無法取得憑證（${msg}）`
+      );
     } finally {
       if (this.currentRequestKey === key) {
         this.loading.set(false);

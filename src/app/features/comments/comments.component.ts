@@ -23,7 +23,12 @@ import { AuthService } from '@app/core/services/auth.service';
 import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { CommentsStore } from './comments.store';
 import { Comment } from './comments.model';
-import { LucideAngularModule, Smile, Pin, PinOff } from 'lucide-angular';
+import {
+  LucideDynamicIcon,
+  LucidePin,
+  LucidePinOff,
+  LucideSmile,
+} from '@lucide/angular';
 
 import { TimeAgoPipe } from '@app/shared/pipes/time-ago.pipe';
 import { SafeHtmlPipe } from '@app/shared/pipes/safe-html.pipe';
@@ -31,11 +36,22 @@ import { PaginationComponent } from '@app/shared/components/pagination/paginatio
 
 @Component({
   selector: 'app-comments',
-  imports: [CommonModule, FormsModule, LucideAngularModule, TimeAgoPipe, SafeHtmlPipe, PaginationComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    LucideDynamicIcon,
+    LucidePin,
+    LucideSmile,
+    TimeAgoPipe,
+    SafeHtmlPipe,
+    PaginationComponent,
+  ],
   templateUrl: './comments.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CommentsComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+export class CommentsComponent
+  implements OnInit, OnChanges, AfterViewInit, OnDestroy
+{
   @Input() pagePath!: string;
 
   @ViewChildren('reactionDropdown', { read: ElementRef })
@@ -46,9 +62,8 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit, OnDe
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly Smile = Smile;
-  readonly Pin = Pin;
-  readonly PinOff = PinOff;
+  readonly Pin = LucidePin;
+  readonly PinOff = LucidePinOff;
 
   /** 定期遞增以觸發 TimeAgoPipe 重新計算 */
   refreshTick = signal(0);
@@ -208,7 +223,6 @@ export class CommentsComponent implements OnInit, OnChanges, AfterViewInit, OnDe
     if (!this.isAdmin()) return;
     this.store.togglePin(commentId);
   }
-
 
   selectReaction(commentId: string, reactionType: string) {
     this.toggleReaction(commentId, reactionType);

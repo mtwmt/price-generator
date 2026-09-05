@@ -1,4 +1,11 @@
-import { Component, input, signal, computed, inject } from '@angular/core';
+import {
+  Component,
+  input,
+  signal,
+  computed,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ExportControls } from '@app/features/quotation/quotation-export-controls/export-controls.component';
@@ -14,6 +21,7 @@ import { AuthService } from '@app/core/services/auth.service';
   selector: 'app-quotation-preview',
   imports: [CommonModule, ExportControls],
   templateUrl: './quotation-preview.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class QuotationPreview {

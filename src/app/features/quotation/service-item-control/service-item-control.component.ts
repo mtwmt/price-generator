@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   Component,
   output,
@@ -6,12 +5,12 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { LucideAngularModule, Trash2, Copy } from 'lucide-angular';
+import { LucideCopy, LucideTrash2 } from '@lucide/angular';
 
 @Component({
   selector: 'app-service-item-control',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
+  imports: [ReactiveFormsModule, LucideCopy, LucideTrash2],
   templateUrl: './service-item-control.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -27,10 +26,6 @@ export class ServiceItemControlComponent {
   index = input<number>(0);
   removeField = output<void>();
   copyField = output<void>();
-
-  // Icons
-  readonly Trash2 = Trash2;
-  readonly Copy = Copy;
 
   onAmountChange(): void {
     const amount = this.calculateAmount();

@@ -1,19 +1,24 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Clock } from 'lucide-angular';
+import { LucideClock } from '@lucide/angular';
 
 @Component({
   selector: 'app-changelog',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, LucideClock],
   templateUrl: './changelog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChangelogComponent {
-  // Lucide Icons
-  readonly Clock = Clock;
-
   changelog = [
+    {
+      date: '2026-09-06',
+      features: [
+        '升級 Angular 至 22，提升相容性與穩定度',
+        '更新 Lucide 圖示 API，改善圖示元件相容性',
+        '修正更新記錄與會員中心頁面的字型及導覽列排版問題',
+      ],
+    },
     {
       date: '2026-03-07',
       features: ['新增隱私權政策頁面', '新增付款條件欄位'],

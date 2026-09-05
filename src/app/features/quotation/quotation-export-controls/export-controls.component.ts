@@ -1,14 +1,19 @@
-import { Component, input, output, inject } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {
-  LucideAngularModule,
-  FileDown,
-  Image,
-  FileSpreadsheet,
-  CircleCheck,
-  Info,
-} from 'lucide-angular';
+  LucideCircleCheck,
+  LucideFileDown,
+  LucideFileSpreadsheet,
+  LucideImage,
+  LucideInfo,
+} from '@lucide/angular';
 import { ExportService } from '@app/features/quotation/services/export.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
@@ -21,18 +26,19 @@ import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-t
  */
 @Component({
   selector: 'app-export-controls',
-  imports: [CommonModule, LucideAngularModule],
+  imports: [
+    CommonModule,
+    LucideCircleCheck,
+    LucideFileDown,
+    LucideFileSpreadsheet,
+    LucideImage,
+    LucideInfo,
+  ],
   templateUrl: './export-controls.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class ExportControls {
-  // Icons
-  readonly FileDown = FileDown;
-  readonly Image = Image;
-  readonly FileSpreadsheet = FileSpreadsheet;
-  readonly CircleCheck = CircleCheck;
-  readonly Info = Info;
-
   // Services
   private exportService = inject(ExportService);
   private toastService = inject(ToastService);

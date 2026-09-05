@@ -1,9 +1,9 @@
 <!-- 報價人員基本資料 -->
 <div class="mb-2 bg-base-200 p-4 rounded-sm" [formGroup]="form()">
   <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
-    <lucide-icon
-      [img]="MessageSquareQuote"
-      [size]="18"
+    <svg lucideMessageSquareQuote
+      width="18"
+      height="18"
       class="text-base-content/70"
     />
     報價人員資料
@@ -24,7 +24,7 @@
             : ''
         "
       >
-        <lucide-icon [img]="UserRound" [size]="16" class="opacity-70" />
+        <svg lucideUserRound width="16" height="16" class="opacity-70" />
         <input
           formControlName="quoterName"
           type="text"
@@ -51,7 +51,7 @@
             : ''
         "
       >
-        <lucide-icon [img]="ReceiptText" [size]="16" class="opacity-70" />
+        <svg lucideReceiptText width="16" height="16" class="opacity-70" />
         <input
           formControlName="quoterTaxID"
           type="text"
@@ -83,7 +83,7 @@
             : ''
         "
       >
-        <lucide-icon [img]="Mail" [size]="16" class="opacity-70" />
+        <svg lucideMail width="16" height="16" class="opacity-70" />
         <input
           formControlName="quoterEmail"
           type="email"
@@ -116,7 +116,7 @@
               : ''
           "
         >
-          <lucide-icon [img]="Phone" [size]="16" class="opacity-70" />
+          <svg lucidePhone width="16" height="16" class="opacity-70" />
           <input
             formControlName="quoterPhone"
             type="tel"
@@ -180,7 +180,7 @@
         <fieldset class="fieldset col-span-2">
           <legend class="fieldset-legend whitespace-nowrap">公司地址</legend>
           <label class="input w-full">
-            <lucide-icon [img]="MapPin" [size]="16" class="opacity-70" />
+            <svg lucideMapPin width="16" height="16" class="opacity-70" />
             <input
               formControlName="quoterAddress"
               type="text"
@@ -196,7 +196,7 @@
     <fieldset class="fieldset">
       <legend class="fieldset-legend whitespace-nowrap">報價日期</legend>
       <label class="input w-full">
-        <lucide-icon [img]="Calendar1" [size]="16" class="opacity-70" />
+        <svg lucideCalendar1 width="16" height="16" class="opacity-70" />
         <input
           #startDate
           id="startDate"
@@ -211,7 +211,7 @@
     <fieldset class="fieldset">
       <legend class="fieldset-legend whitespace-nowrap">有效日期</legend>
       <label class="input w-full">
-        <lucide-icon [img]="Calendar1" [size]="16" class="opacity-70" />
+        <svg lucideCalendar1 width="16" height="16" class="opacity-70" />
         <input
           #endDate
           id="endDate"

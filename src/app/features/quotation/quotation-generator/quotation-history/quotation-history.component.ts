@@ -1,12 +1,16 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
-  LucideAngularModule,
-  History,
-  FilePlus,
-  X,
-  ChevronDown,
-} from 'lucide-angular';
+  Component,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+
+import {
+  LucideChevronDown,
+  LucideFilePlus,
+  LucideHistory,
+  LucideX,
+} from '@lucide/angular';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 
 /**
@@ -16,17 +20,11 @@ import { QuotationData } from '@app/features/quotation/models/quotation.model';
 @Component({
   selector: 'app-quotation-history',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [LucideChevronDown, LucideFilePlus, LucideHistory, LucideX],
   templateUrl: './quotation-history.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuotationHistory {
-  // Icons
-  readonly History = History;
-  readonly FilePlus = FilePlus;
-  readonly X = X;
-  readonly ChevronDown = ChevronDown;
-
   // Inputs
   readonly history = input.required<QuotationData[]>();
   readonly selectedIndex = input<number | null>(null);

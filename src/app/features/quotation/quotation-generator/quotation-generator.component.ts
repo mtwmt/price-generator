@@ -36,14 +36,13 @@ import { ServiceItemsSection } from './service-items-section/service-items-secti
 import { PricingSection } from './pricing-section/pricing-section.component';
 import { OtherInfoSection } from './other-info-section/other-info-section.component';
 import {
-  LucideAngularModule,
-  Eye,
-  FileText,
-  Check,
-  Copy,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from 'lucide-angular';
+  LucideCheck,
+  LucideCopy,
+  LucideEye,
+  LucideFileText,
+  LucidePanelLeftClose,
+  LucidePanelLeftOpen,
+} from '@lucide/angular';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
 @Component({
@@ -74,7 +73,12 @@ import { CdkDragDrop } from '@angular/cdk/drag-drop';
     ServiceItemsSection,
     PricingSection,
     OtherInfoSection,
-    LucideAngularModule,
+    LucideCheck,
+    LucideCopy,
+    LucideEye,
+    LucideFileText,
+    LucidePanelLeftClose,
+    LucidePanelLeftOpen,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './quotation-generator.component.html',
@@ -103,14 +107,6 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   // Listeners
   private resizeListener?: () => void;
-
-  // Icons
-  readonly Eye = Eye;
-  readonly FileText = FileText;
-  readonly Check = Check;
-  readonly Copy = Copy;
-  readonly PanelLeftClose = PanelLeftClose;
-  readonly PanelLeftOpen = PanelLeftOpen;
 
   startDate!: Litepicker;
   endDate!: Litepicker;

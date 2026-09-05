@@ -1,7 +1,13 @@
-import { Component, inject, signal, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  inject,
+  signal,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Crown, Upload } from 'lucide-angular';
+import { LucideCrown, LucideUpload } from '@lucide/angular';
 import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 import { ToastService } from '@app/shared/services/toast.service';
 
@@ -12,7 +18,8 @@ import { ToastService } from '@app/shared/services/toast.service';
 @Component({
   selector: 'app-donation-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, FileUpload],
+  imports: [FormsModule, FileUpload, LucideCrown, LucideUpload],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './donation-form.component.html',
 })
 export class DonationFormComponent {
@@ -24,10 +31,6 @@ export class DonationFormComponent {
   // 內部狀態
   donationProof = signal<string | null>(null);
   donationNote = signal<string>('');
-
-  // Icons
-  readonly Crown = Crown;
-  readonly Upload = Upload;
 
   /**
    * 處理贊助憑證上傳

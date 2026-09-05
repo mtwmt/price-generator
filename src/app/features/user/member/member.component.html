@@ -3,9 +3,9 @@
     <!-- 未登入狀態 -->
     <div class="card bg-base-100 shadow-sm">
       <div class="card-body text-center">
-        <lucide-icon
-          [img]="User"
-          [size]="48"
+        <svg lucideUser
+          width="48"
+          height="48"
           class="mx-auto text-base-content/50"
         />
         <h2 class="card-title justify-center">請先登入</h2>
@@ -138,7 +138,7 @@
     <!-- 已經是贊助會員的感謝訊息 -->
     @if (profileStore.isPremium()) {
       <div class="alert alert-success alert-soft">
-        <lucide-icon [img]="Check" [size]="24" />
+        <svg lucideCheck width="24" height="24" />
         <div>
           <h3 class="font-bold">感謝您的贊助！</h3>
           <div class="text-sm">您已經是贊助會員，享有所有進階功能。</div>
@@ -169,11 +169,11 @@
   <div class="card bg-base-100 shadow-sm border-2 mb-6" [ngClass]="borderColor">
     <div class="card-body">
       <div class="flex items-start gap-4">
-        <lucide-icon
-          [img]="icon"
-          [size]="32"
-          [ngClass]="iconColor"
-          class="flex-shrink-0"
+        <svg
+          [lucideIcon]="icon"
+            [size]="32"
+            [ngClass]="iconColor"
+            class="flex-shrink-0"
         />
         <div class="flex-1">
           <h3 class="card-title" [ngClass]="titleColor">{{ title }}</h3>

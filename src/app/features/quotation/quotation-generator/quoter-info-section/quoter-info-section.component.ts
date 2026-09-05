@@ -11,15 +11,14 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
-  LucideAngularModule,
-  MessageSquareQuote,
-  UserRound,
-  ReceiptText,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar1,
-} from 'lucide-angular';
+  LucideCalendar1,
+  LucideMail,
+  LucideMapPin,
+  LucideMessageSquareQuote,
+  LucidePhone,
+  LucideReceiptText,
+  LucideUserRound,
+} from '@lucide/angular';
 import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 
 /**
@@ -29,20 +28,22 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 @Component({
   selector: 'app-quoter-info-section',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, FileUpload],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FileUpload,
+    LucideCalendar1,
+    LucideMail,
+    LucideMapPin,
+    LucideMessageSquareQuote,
+    LucidePhone,
+    LucideReceiptText,
+    LucideUserRound,
+  ],
   templateUrl: './quoter-info-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuoterInfoSection implements AfterViewInit, OnDestroy {
-  // Icons
-  readonly MessageSquareQuote = MessageSquareQuote;
-  readonly UserRound = UserRound;
-  readonly ReceiptText = ReceiptText;
-  readonly Mail = Mail;
-  readonly Phone = Phone;
-  readonly MapPin = MapPin;
-  readonly Calendar1 = Calendar1;
-
   // Inputs
   readonly form = input.required<FormGroup>();
   readonly quoterLogo = input<string>('');

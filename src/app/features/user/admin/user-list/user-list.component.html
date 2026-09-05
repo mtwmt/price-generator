@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="flex items-center gap-2">
         <h2 class="card-title flex items-center gap-2">
-          <lucide-icon [img]="Users" [size]="24" />
+          <svg lucideUsers width="24" height="24" />
           使用者管理
         </h2>
         <!-- 重新整理按鈕 -->
@@ -18,13 +18,13 @@
           @if (usersStore.loading()) {
             <span class="loading loading-spinner loading-sm"></span>
           } @else {
-            <lucide-icon [img]="RefreshCw" [size]="16" />
+            <svg lucideRefreshCw width="16" height="16" />
           }
         </button>
       </div>
       <!-- 搜尋框 -->
       <label class="input input-sm input-bordered flex items-center gap-2">
-        <lucide-icon [img]="Search" [size]="16" class="opacity-50" />
+        <svg lucideSearch width="16" height="16" class="opacity-50" />
         <input
           type="search"
           class="grow"
@@ -41,9 +41,9 @@
       </div>
     } @else if (!hasUsers()) {
       <div class="text-center py-8 text-base-content/60">
-        <lucide-icon
-          [img]="Users"
-          [size]="48"
+        <svg lucideUsers
+          width="48"
+          height="48"
           class="mx-auto mb-2 opacity-30"
         />
         <p>目前沒有使用者資料</p>
@@ -94,7 +94,7 @@
                 <td>
                   @if (item.isExpired) {
                     <span class="badge badge-soft gap-1 whitespace-nowrap">
-                      <lucide-icon [img]="Crown" [size]="12" />
+                      <svg lucideCrown width="12" height="12" />
                       贊助會員（已過期）
                     </span>
                   } @else {
@@ -103,9 +103,9 @@
                       [class]="item.roleBadgeClass"
                     >
                       @if (item.role === 'admin') {
-                        <lucide-icon [img]="Shield" [size]="12" />
+                        <svg lucideShield width="12" height="12" />
                       } @else if (item.role === 'premium') {
-                        <lucide-icon [img]="Crown" [size]="12" />
+                        <svg lucideCrown width="12" height="12" />
                       }
                       {{ item.roleDisplayName }}
                     </span>

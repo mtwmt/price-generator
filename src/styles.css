@@ -16,6 +16,10 @@ body {
   background: #f9fafb;
   min-height: 100vh;
   font-size: 16px; /* text-base - 標準字體大小 */
+  /* 對齊線上版，避免 DaisyUI 版本升級改變預設字型堆疊。 */
+  font-family:
+    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 /* 表單欄位標題字體大小 */

@@ -1,4 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  computed,
+  input,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormArray, FormGroup } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -9,6 +14,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-template-classic',
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './template-classic.component.html',
 })
 export class TemplateClassic {

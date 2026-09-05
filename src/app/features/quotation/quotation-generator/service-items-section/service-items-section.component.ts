@@ -3,11 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import {
-  LucideAngularModule,
-  ShoppingCart,
-  ListPlus,
-  GripVertical,
-} from 'lucide-angular';
+  LucideGripVertical,
+  LucideListPlus,
+  LucideShoppingCart,
+} from '@lucide/angular';
 import { ServiceItemControlComponent } from '@app/features/quotation/service-item-control/service-item-control.component';
 
 /**
@@ -20,7 +19,9 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    LucideAngularModule,
+    LucideGripVertical,
+    LucideListPlus,
+    LucideShoppingCart,
     ServiceItemControlComponent,
     DragDropModule,
   ],
@@ -28,11 +29,6 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceItemsSection {
-  // Icons
-  readonly ShoppingCart = ShoppingCart;
-  readonly ListPlus = ListPlus;
-  readonly GripVertical = GripVertical;
-
   // Inputs
   readonly form = input.required<FormGroup>();
 

@@ -1,9 +1,9 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { LucideAngularModule, Upload, X } from 'lucide-angular';
+import { LucideUpload, LucideX } from '@lucide/angular';
 
 @Component({
   selector: 'app-file-upload',
-  imports: [LucideAngularModule],
+  imports: [LucideUpload, LucideX],
   templateUrl: './file-upload.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -18,10 +18,6 @@ export class FileUpload {
   // Outputs
   fileSelected = output<FileList>();
   fileRemoved = output<void>();
-
-  // Icons
-  Upload = Upload;
-  X = X;
 
   onFileChange(files: FileList | null): void {
     if (files && files.length > 0) {

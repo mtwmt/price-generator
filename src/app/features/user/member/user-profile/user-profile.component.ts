@@ -2,16 +2,14 @@ import { Component, input, signal, output, ChangeDetectionStrategy } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  LucideAngularModule,
-  Crown,
-  User,
-  Mail,
-  Calendar,
-  Clock,
-  Pencil,
-  Check,
-  X,
-} from 'lucide-angular';
+  LucideCalendar,
+  LucideCheck,
+  LucideClock,
+  LucideMail,
+  LucidePencil,
+  LucideUser,
+  LucideX,
+} from '@lucide/angular';
 
 /**
  * 會員資料卡片元件
@@ -20,7 +18,16 @@ import {
 @Component({
   selector: 'app-user-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    LucideCalendar,
+    LucideCheck,
+    LucideClock,
+    LucideMail,
+    LucideUser,
+    LucideX,
+  ],
   templateUrl: './user-profile.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -41,16 +48,6 @@ export class UserProfileComponent {
   // 編輯狀態
   isEditing = signal(false);
   editingName = signal('');
-
-  // Icons
-  readonly Crown = Crown;
-  readonly User = User;
-  readonly Mail = Mail;
-  readonly Calendar = Calendar;
-  readonly Clock = Clock;
-  readonly Pencil = Pencil;
-  readonly Check = Check;
-  readonly X = X;
 
   /**
    * 開始編輯

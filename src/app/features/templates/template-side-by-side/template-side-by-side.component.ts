@@ -1,10 +1,16 @@
-import { Component, input, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  computed,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-template-side-by-side',
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './template-side-by-side.component.html',
 })
 export class TemplateSideBySide {

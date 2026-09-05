@@ -1,6 +1,6 @@
 import { Component, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Shield } from 'lucide-angular';
+import { LucideShield } from '@lucide/angular';
 import {
   UserData,
   UserRole,
@@ -25,7 +25,7 @@ import { UsersStore } from '@app/features/user/users.store';
   standalone: true,
   imports: [
     CommonModule,
-    LucideAngularModule,
+    LucideShield,
     UserListComponent,
     PaginationComponent,
     ProofModalComponent,
@@ -65,8 +65,6 @@ export class AdminPanelComponent {
   // 編輯權限相關
   editingUser = signal<UserData | null>(null);
 
-  // Icons
-  readonly Shield = Shield;
 
   /**
    * 切換頁籤

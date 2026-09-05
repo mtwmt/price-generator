@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+
 import {
   Router,
   RouterOutlet,
@@ -12,15 +12,14 @@ import { PromoFloatComponent } from '@app/shared/components/promo-float/promo-fl
 import { ConfirmDialogComponent } from '@app/shared/components/confirm-dialog/confirm-dialog.component';
 import { AnalyticsService } from '@app/core/services/analytics.service';
 import {
-  LucideAngularModule,
-  LogIn,
-  LogOut,
-  Check,
-  X,
-  FileText,
-  MessageSquareQuote,
-  Crown,
-} from 'lucide-angular';
+  LucideCheck,
+  LucideCrown,
+  LucideFileText,
+  LucideLogIn,
+  LucideLogOut,
+  LucideMessageSquareQuote,
+  LucideX,
+} from '@lucide/angular';
 import { AuthService } from '@app/core/services/auth.service';
 import { ToastService } from '@app/shared/services/toast.service';
 
@@ -28,16 +27,22 @@ import { ToastService } from '@app/shared/services/toast.service';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
     CommentsComponent,
     DonateComponent,
     PromoFloatComponent,
-    LucideAngularModule,
+    LucideCheck,
+    LucideCrown,
+    LucideFileText,
+    LucideLogIn,
+    LucideLogOut,
+    LucideMessageSquareQuote,
+    LucideX,
     ConfirmDialogComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './app.component.html',
 })
 export class AppComponent {
@@ -47,15 +52,6 @@ export class AppComponent {
   readonly toastService = inject(ToastService);
 
   readonly currentYear = new Date().getFullYear();
-
-  // Lucide Icons
-  readonly LogIn = LogIn;
-  readonly LogOut = LogOut;
-  readonly Check = Check;
-  readonly X = X;
-  readonly FileText = FileText;
-  readonly MessageSquareQuote = MessageSquareQuote;
-  readonly Crown = Crown;
 
   /**
    * 登入

@@ -1,7 +1,7 @@
 <div class="card bg-base-100 shadow-sm">
   <div class="card-body">
     <h2 class="card-title flex items-center gap-2">
-      <lucide-icon [img]="Crown" [size]="24" />
+      <svg lucideCrown width="24" height="24" />
       升級為贊助會員
     </h2>
     <p class="text-base-content/70">
@@ -49,7 +49,7 @@
         (click)="onSubmit()"
         [disabled]="!donationProof() && !donationNote().trim()"
       >
-        <lucide-icon [img]="Upload" [size]="18" />
+        <svg lucideUpload width="18" height="18" />
         提交贊助申請
       </button>
     </div>
