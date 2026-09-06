@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  effect,
   inject,
   OnInit,
   OnDestroy,
@@ -23,6 +24,7 @@ import {
   getTaxPercentage,
 } from '@app/features/quotation/models/quotation.constants';
 import { AnalyticsService } from '@app/core/services/analytics.service';
+import { AuthService } from '@app/core/services/auth.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { QuotationStorageService } from '@app/features/quotation/services/quotation-storage.service';
@@ -98,8 +100,24 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private imageUploadService = inject(ImageUploadService);
   private datePickerService = inject(DatePickerService);
   private cloudQuotationSync = inject(CloudQuotationSyncService);
+  private authService = inject(AuthService);
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
+  private initializedStorageRouteKey: string | null = null;
+  private storageRouteEffect = effect(() => {
+    const user = this.authService.currentUser();
+    const userData = this.authService.userData();
+    if (!user || !userData) {
+      this.initializedStorageRouteKey = null;
+      return;
+    }
+
+    const role = userData.platforms?.quotation?.role ?? 'free';
+    const routeKey = `${user.uid}:${role}`;
+    if (this.initializedStorageRouteKey === routeKey) return;
+    this.initializedStorageRouteKey = routeKey;
+    void this.initializeStorageRoute();
+  });
 
   // View Children
   private startDateInput = viewChild<ElementRef>('startDate');
@@ -142,7 +160,6 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadHistoryFromLocalStorage();
-    void this.initializeStorageRoute();
 
     // 初始化表單
     this.form = this.quotationFormService.createForm();

@@ -57,6 +57,8 @@ const DRIVE_APP_PROPERTY = 'price-quotation';
 const MAX_REVISION_BYTES = 8 * 1024 * 1024;
 const MULTIPART_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const TOKEN_EARLY_REFRESH_MS = 30_000;
+const SILENT_TOKEN_TIMEOUT_MS = 4_000;
+const INTERACTIVE_TOKEN_TIMEOUT_MS = 60_000;
 
 export class DriveAuthorizationRequiredError extends Error {
   constructor(message = 'Google Drive 授權已失效，請重新連結') {
@@ -514,10 +516,12 @@ export class DriveCloudApiService {
       throw new Error('Google Identity Services 未正確載入');
     }
     await new Promise<void>((resolve, reject) => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const client = google.accounts.oauth2.initTokenClient({
         client_id: environment.googleClientId,
         scope: DRIVE_SCOPE,
         callback: (response) => {
+          if (timeoutId) clearTimeout(timeoutId);
           if (!response.access_token) {
             this.clearAccessToken();
             reject(
@@ -534,6 +538,17 @@ export class DriveCloudApiService {
           resolve();
         },
       });
+      timeoutId = setTimeout(
+        () =>
+          reject(
+            new DriveAuthorizationRequiredError(
+              prompt === ''
+                ? 'Google Drive 尚未完成無提示授權'
+                : 'Google Drive 授權逾時'
+            )
+          ),
+        prompt === '' ? SILENT_TOKEN_TIMEOUT_MS : INTERACTIVE_TOKEN_TIMEOUT_MS
+      );
       client.requestAccessToken({ prompt });
     });
   }
