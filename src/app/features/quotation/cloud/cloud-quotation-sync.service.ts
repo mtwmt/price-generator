@@ -18,8 +18,8 @@ import {
   type DriveRevisionMetadata,
 } from './cloud-history';
 import {
+  DriveAuthorizationRequiredError,
   DriveCloudApiService,
-  type DriveConnectionState,
   type DriveOperationResponse,
 } from './drive-cloud-api.service';
 
@@ -130,158 +130,208 @@ export class CloudQuotationSyncService {
       return;
     }
 
-    try {
-      const status = await this.api.getStatus();
-      if (!isIdentifier(status.ownerSub)) throw new Error('雲端帳號識別無效');
-      this.ownerSub = status.ownerSub;
-      this.isAvailable.set(true);
-      this.route.set(
-        decideQuotationStorageRoute({
-          isPremium: true,
-          driveConnection: status.connected
-            ? 'connected'
-            : this.toRouteConnection(status.status),
-        })
-      );
-      if (status.connected) await this.reloadHistory();
-    } catch {
-      // 尚未配置 Worker secret 時保持既有 localStorage；不顯示一個必定失敗的連線按鈕。
+    if (!this.api.isConfigured()) {
       this.isAvailable.set(false);
+      this.setNotConnectedRoute();
+      return;
+    }
+
+    try {
+      const ownerSub = this.requireAuthenticatedOwner();
+      if (!(await this.api.restoreConnection())) {
+        this.setNotConnectedRoute();
+        return;
+      }
+      this.ownerSub = ownerSub;
       this.route.set(
         decideQuotationStorageRoute({
           isPremium: true,
-          driveConnection: 'not-connected',
+          driveConnection: 'connected',
         })
       );
+      await this.reloadHistory();
+    } catch {
+      // 首次使用、瀏覽器隱私限制或離線時，都仍可正常使用既有 localStorage。
+      this.ownerSub = null;
+      this.history.set([]);
+      this.setNotConnectedRoute();
     }
   }
 
   async beginConnect(): Promise<void> {
-    const result = await this.api.beginConnect();
-    const url = new URL(result.authorizationUrl);
-    if (url.protocol !== 'https:' || url.hostname !== 'accounts.google.com') {
-      throw new Error('Google 授權網址無效');
+    this.ownerSub = this.requireAuthenticatedOwner();
+    try {
+      await this.api.beginConnect();
+      this.route.set(
+        decideQuotationStorageRoute({
+          isPremium: true,
+          driveConnection: 'connected',
+        })
+      );
+      await this.reloadHistory();
+    } catch (error) {
+      this.handleDriveError(error);
+      throw error;
     }
-    window.location.assign(url.toString());
   }
 
   async reloadHistory(): Promise<void> {
-    this.requireConnectedOwner();
-    const revisions: DriveRevisionMetadata[] = [];
-    const seenTokens = new Set<string>();
-    let pageToken: string | undefined;
-    do {
-      const page = await this.api.listRevisions(pageToken);
-      for (const value of page.files) {
-        const metadata = readMetadata(value);
-        if (metadata) revisions.push(metadata);
-      }
-      const next = page.nextPageToken;
-      if (next !== null && (!next || seenTokens.has(next)))
-        throw new Error('雲端歷史分頁游標無效');
-      if (next) seenTokens.add(next);
-      pageToken = next ?? undefined;
-    } while (pageToken);
-    this.history.set(buildCloudHistoryEntries(revisions));
+    try {
+      const ownerSub = this.requireConnectedOwner();
+      const revisions: DriveRevisionMetadata[] = [];
+      const seenTokens = new Set<string>();
+      let pageToken: string | undefined;
+      do {
+        const page = await this.api.listRevisions(ownerSub, pageToken);
+        for (const value of page.files) {
+          const metadata = readMetadata(value);
+          if (metadata) revisions.push(metadata);
+        }
+        const next = page.nextPageToken;
+        if (next !== null && (!next || seenTokens.has(next))) {
+          throw new Error('雲端歷史分頁游標無效');
+        }
+        if (next) seenTokens.add(next);
+        pageToken = next ?? undefined;
+      } while (pageToken);
+      this.history.set(buildCloudHistoryEntries(revisions));
+    } catch (error) {
+      this.handleDriveError(error);
+      throw error;
+    }
   }
 
   async load(entry: CloudQuotationHistoryEntry): Promise<QuotationData> {
-    const ownerSub = this.requireConnectedOwner();
-    const revision = await verifyCloudQuotationEnvelope(
-      await this.api.getRevision(entry.fileId),
-      this.hashProvider
-    );
-    if (
-      revision.ownerSub !== ownerSub ||
-      revision.quotationId !== entry.quotationId ||
-      revision.revisionId !== entry.revisionId ||
-      revision.payload === null
-    ) {
-      throw new Error('雲端報價單內容與清單 metadata 不一致');
+    try {
+      const ownerSub = this.requireConnectedOwner();
+      const revision = await verifyCloudQuotationEnvelope(
+        await this.api.getRevision(entry.fileId),
+        this.hashProvider
+      );
+      if (
+        revision.ownerSub !== ownerSub ||
+        revision.quotationId !== entry.quotationId ||
+        revision.revisionId !== entry.revisionId ||
+        revision.payload === null
+      ) {
+        throw new Error('雲端報價單內容與清單 metadata 不一致');
+      }
+      const data = revision.payload as unknown as QuotationData;
+      this.history.update((entries) =>
+        entries.map((item) =>
+          item.revisionId === entry.revisionId ? { ...item, data } : item
+        )
+      );
+      return data;
+    } catch (error) {
+      this.handleDriveError(error);
+      throw error;
     }
-    const data = revision.payload as unknown as QuotationData;
-    this.history.update((entries) =>
-      entries.map((item) =>
-        item.revisionId === entry.revisionId ? { ...item, data } : item
-      )
-    );
-    return data;
   }
 
   async save(
     data: QuotationData,
     existing?: CloudQuotationHistoryEntry
   ): Promise<CloudQuotationHistoryEntry> {
-    const ownerSub = this.requireConnectedOwner();
-    const quotationId = existing?.quotationId ?? newIdentifier();
-    const draft = createCloudQuotationDraft({
-      ownerSub,
-      quotationId,
-      baseRevisionIds: existing?.headRevisionIds ?? [],
-      payload: data,
-      summary: createQuotationCloudSummary(data),
-    });
-    const operation = await createCloudSaveOperation(
-      {
-        draft,
-        operationId: newIdentifier(),
-        revisionId: newIdentifier(),
-        kind: existing ? 'update' : 'create',
-        createdAt: new Date().toISOString(),
-      },
-      this.hashProvider
-    );
-    const receipt = await this.api.createOperation(operation.revision);
-    assertOperationReceipt(receipt, operation.revision);
+    try {
+      const ownerSub = this.requireConnectedOwner();
+      const quotationId = existing?.quotationId ?? newIdentifier();
+      const draft = createCloudQuotationDraft({
+        ownerSub,
+        quotationId,
+        baseRevisionIds: existing?.headRevisionIds ?? [],
+        payload: data,
+        summary: createQuotationCloudSummary(data),
+      });
+      const operation = await createCloudSaveOperation(
+        {
+          draft,
+          operationId: newIdentifier(),
+          revisionId: newIdentifier(),
+          kind: existing ? 'update' : 'create',
+          createdAt: new Date().toISOString(),
+        },
+        this.hashProvider
+      );
+      const receipt = await this.api.createOperation(operation.revision);
+      assertOperationReceipt(receipt, operation.revision);
 
-    const entry: CloudQuotationHistoryEntry = {
-      fileId: receipt.driveFileId,
-      quotationId,
-      revisionId: operation.revision.revisionId,
-      headRevisionIds: Object.freeze([operation.revision.revisionId]),
-      data,
-    };
-    this.history.update((entries) =>
-      existing
-        ? entries.map((item) =>
-            item.quotationId === quotationId ? entry : item
-          )
-        : [entry, ...entries]
-    );
-    return entry;
+      const entry: CloudQuotationHistoryEntry = {
+        fileId: receipt.driveFileId,
+        quotationId,
+        revisionId: operation.revision.revisionId,
+        headRevisionIds: Object.freeze([operation.revision.revisionId]),
+        data,
+      };
+      this.history.update((entries) =>
+        existing
+          ? entries.map((item) =>
+              item.quotationId === quotationId ? entry : item
+            )
+          : [entry, ...entries]
+      );
+      return entry;
+    } catch (error) {
+      this.handleDriveError(error);
+      throw error;
+    }
   }
 
   async delete(entry: CloudQuotationHistoryEntry): Promise<void> {
-    const ownerSub = this.requireConnectedOwner();
-    const data = await this.load(entry);
-    const revision = await createCloudQuotationRevision(
-      {
-        schemaVersion: CLOUD_SCHEMA_VERSION,
-        quotationId: entry.quotationId,
-        revisionId: newIdentifier(),
-        parentRevisionIds: entry.headRevisionIds,
-        operationId: newIdentifier(),
-        ownerSub,
-        kind: 'delete',
-        payload: null,
-        summary: createQuotationCloudSummary(data),
-        createdAt: new Date().toISOString(),
-      },
-      this.hashProvider
-    );
-    const receipt = await this.api.createOperation(revision);
-    assertOperationReceipt(receipt, revision);
-    this.history.update((entries) =>
-      entries.filter((item) => item.quotationId !== entry.quotationId)
+    try {
+      const ownerSub = this.requireConnectedOwner();
+      const data = await this.load(entry);
+      const revision = await createCloudQuotationRevision(
+        {
+          schemaVersion: CLOUD_SCHEMA_VERSION,
+          quotationId: entry.quotationId,
+          revisionId: newIdentifier(),
+          parentRevisionIds: entry.headRevisionIds,
+          operationId: newIdentifier(),
+          ownerSub,
+          kind: 'delete',
+          payload: null,
+          summary: createQuotationCloudSummary(data),
+          createdAt: new Date().toISOString(),
+        },
+        this.hashProvider
+      );
+      const receipt = await this.api.createOperation(revision);
+      assertOperationReceipt(receipt, revision);
+      this.history.update((entries) =>
+        entries.filter((item) => item.quotationId !== entry.quotationId)
+      );
+    } catch (error) {
+      this.handleDriveError(error);
+      throw error;
+    }
+  }
+
+  private requireAuthenticatedOwner(): string {
+    const ownerSub = this.auth.userId();
+    if (!isIdentifier(ownerSub)) throw new Error('會員帳號識別無效');
+    return ownerSub;
+  }
+
+  private setNotConnectedRoute(): void {
+    this.route.set(
+      decideQuotationStorageRoute({
+        isPremium: true,
+        driveConnection: 'not-connected',
+      })
     );
   }
 
-  private toRouteConnection(
-    status: DriveConnectionState
-  ): 'not-connected' | 'reconnect-required' {
-    return status === 'reauthorization_required'
-      ? 'reconnect-required'
-      : 'not-connected';
+  private handleDriveError(error: unknown): void {
+    if (!(error instanceof DriveAuthorizationRequiredError)) return;
+    this.ownerSub = null;
+    this.history.set([]);
+    this.route.set(
+      decideQuotationStorageRoute({
+        isPremium: this.auth.isPremium(),
+        driveConnection: 'reconnect-required',
+      })
+    );
   }
 
   private requireConnectedOwner(): string {

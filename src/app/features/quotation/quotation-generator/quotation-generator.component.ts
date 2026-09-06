@@ -500,6 +500,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   async onDriveConnect(): Promise<void> {
     try {
       await this.cloudQuotationSync.beginConnect();
+      this.loadCloudHistory();
+      this.selectedHistoryIndex.set(null);
     } catch {
       this.toastService.error('無法開始 Google Drive 授權，請稍後再試');
     }

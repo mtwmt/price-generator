@@ -1,5 +1,5 @@
 /**
- * 純前端路由決策。會員與 Drive 連線狀態必須由 Worker 回應提供；
+ * 純前端路由決策。會員狀態來自既有登入流程，Drive 連線狀態由瀏覽器記憶體維護；
  * 此函式不接觸 token、localStorage、IndexedDB 或網路。
  */
 export interface CloudStorageEligibility {
@@ -30,7 +30,6 @@ export type QuotationStorageRoute =
   | {
       readonly repository: 'cloud-sync';
       readonly reason: 'premium-drive-connected';
-      readonly localDraftStore: 'indexeddb-adapter';
       readonly cloudAction: 'sync';
     };
 
@@ -54,7 +53,6 @@ export function decideQuotationStorageRoute(
     return {
       repository: 'cloud-sync',
       reason: 'premium-drive-connected',
-      localDraftStore: 'indexeddb-adapter',
       cloudAction: 'sync',
     };
   }

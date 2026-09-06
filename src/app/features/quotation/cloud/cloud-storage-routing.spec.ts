@@ -15,7 +15,7 @@ describe('報價單儲存路由決策', () => {
     });
   });
 
-  it('已連結 Drive 的贊助會員才路由到雲端同步與 IndexedDB adapter', () => {
+  it('已連結 Drive 的贊助會員才路由到雲端同步', () => {
     expect(
       decideQuotationStorageRoute({
         isPremium: true,
@@ -24,7 +24,6 @@ describe('報價單儲存路由決策', () => {
     ).toEqual({
       repository: 'cloud-sync',
       reason: 'premium-drive-connected',
-      localDraftStore: 'indexeddb-adapter',
       cloudAction: 'sync',
     });
   });
