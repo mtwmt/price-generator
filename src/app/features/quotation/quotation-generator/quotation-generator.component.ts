@@ -29,6 +29,7 @@ import { QuotationStorageService } from '@app/features/quotation/services/quotat
 import { ImageUploadService } from '@app/features/quotation/services/image-upload.service';
 import { DatePickerService } from '@app/features/quotation/services/date-picker.service';
 import { QuotationFormService } from '@app/features/quotation/services/quotation-form.service';
+import { CloudQuotationSyncService } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
 import { QuotationHistory } from './quotation-history/quotation-history.component';
 import { CustomerInfoSection } from './customer-info-section/customer-info-section.component';
 import { QuoterInfoSection } from './quoter-info-section/quoter-info-section.component';
@@ -96,6 +97,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private quotationStorage = inject(QuotationStorageService);
   private imageUploadService = inject(ImageUploadService);
   private datePickerService = inject(DatePickerService);
+  private cloudQuotationSync = inject(CloudQuotationSyncService);
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
 
@@ -120,9 +122,13 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   quoterLogo = signal<string>('');
   selectedHistoryIndex = signal<number | null>(null);
   showPreview = signal<boolean>(true);
+  readonly cloudRoute = this.cloudQuotationSync.route;
+  readonly cloudAvailable = this.cloudQuotationSync.isAvailable;
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
+  isCloudStorage = this.cloudQuotationSync.isCloudStorage;
+  driveAction = computed(() => this.cloudRoute().cloudAction);
 
   /** 目前是否正在編輯一筆既有的歷史記錄（決定儲存時是覆蓋或新增） */
   isEditingExisting = computed(() => {
@@ -136,6 +142,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadHistoryFromLocalStorage();
+    void this.initializeStorageRoute();
 
     // 初始化表單
     this.form = this.quotationFormService.createForm();
@@ -340,15 +347,26 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.resetForm();
   }
 
-  onLoadHistory(index: number): void {
+  async onLoadHistory(index: number): Promise<void> {
     this.analytics.trackHistoryLoaded(index);
 
-    const data = this.historyData()[index];
+    let data = this.historyData()[index];
     if (!data) {
       console.warn(`History data not found at index: ${index}`);
       return;
     }
 
+    if (this.isCloudStorage()) {
+      const entry = this.cloudQuotationSync.history()[index];
+      if (!entry) return;
+      try {
+        data = await this.cloudQuotationSync.load(entry);
+        this.loadCloudHistory();
+      } catch {
+        this.toastService.error('無法讀取雲端報價單，請稍後再試');
+        return;
+      }
+    }
     this.selectedHistoryIndex.set(index);
     this.loadQuotationData(data);
   }
@@ -362,13 +380,24 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     });
     if (!confirmed) return;
 
+    if (this.isCloudStorage()) {
+      const entry = this.cloudQuotationSync.history()[index];
+      if (!entry) return;
+      try {
+        await this.cloudQuotationSync.delete(entry);
+        this.analytics.trackHistoryDeleted(index);
+        this.updateSelectedIndexAfterDelete(index);
+        this.loadCloudHistory();
+      } catch {
+        this.toastService.error('無法刪除雲端報價單，請稍後再試');
+      }
+      return;
+    }
+
     this.analytics.trackHistoryDeleted(index);
     this.updateSelectedIndexAfterDelete(index);
-
-    // 使用 QuotationStorageService 刪除
     const success = this.quotationStorage.deleteFromHistory(index);
     if (success) {
-      // 重新載入歷史記錄
       this.loadHistoryFromLocalStorage();
     }
   }
@@ -411,19 +440,21 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   /**
    * 儲存記錄：編輯既有筆時覆蓋更新，否則新增
    */
-  onSubmit() {
-    this.saveLocalStorage(this.collectFormData());
-    this.analytics.trackQuotationGenerated();
+  async onSubmit(): Promise<void> {
+    if (await this.saveQuotation(this.collectFormData())) {
+      this.analytics.trackQuotationGenerated();
+    }
   }
 
   /**
    * 另存新檔：不論目前是否在編輯既有筆，都以目前內容新增一筆
    */
-  onSaveAsNew() {
+  async onSaveAsNew(): Promise<void> {
     // 清除選取索引，強制走「新增」流程
     this.selectedHistoryIndex.set(null);
-    this.saveLocalStorage(this.collectFormData());
-    this.analytics.trackQuotationGenerated();
+    if (await this.saveQuotation(this.collectFormData())) {
+      this.analytics.trackQuotationGenerated();
+    }
   }
 
   private showSuccessToast(isUpdate: boolean): void {
@@ -463,6 +494,51 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       }
 
       this.showSuccessToast(isUpdate);
+    }
+  }
+
+  async onDriveConnect(): Promise<void> {
+    try {
+      await this.cloudQuotationSync.beginConnect();
+    } catch {
+      this.toastService.error('無法開始 Google Drive 授權，請稍後再試');
+    }
+  }
+
+  private async initializeStorageRoute(): Promise<void> {
+    await this.cloudQuotationSync.initialize();
+    if (this.isCloudStorage()) this.loadCloudHistory();
+  }
+
+  private loadCloudHistory(): void {
+    this.historyData.set(
+      this.cloudQuotationSync.history().map((entry) => entry.data)
+    );
+  }
+
+  private async saveQuotation(data: QuotationData): Promise<boolean> {
+    if (!this.isCloudStorage()) {
+      this.saveLocalStorage(data);
+      return true;
+    }
+
+    const selectedIndex = this.selectedHistoryIndex();
+    const existing =
+      selectedIndex === null
+        ? undefined
+        : this.cloudQuotationSync.history()[selectedIndex];
+    try {
+      const saved = await this.cloudQuotationSync.save(data, existing);
+      this.loadCloudHistory();
+      const nextIndex = this.cloudQuotationSync
+        .history()
+        .findIndex((entry) => entry.revisionId === saved.revisionId);
+      this.selectedHistoryIndex.set(nextIndex >= 0 ? nextIndex : null);
+      this.showSuccessToast(!!existing);
+      return true;
+    } catch {
+      this.toastService.error('無法儲存到 Google Drive，請確認連線後再試');
+      return false;
     }
   }
 }
