@@ -4,6 +4,8 @@
  */
 export interface CloudStorageEligibility {
   readonly isPremium: boolean;
+  readonly isAdmin: boolean;
+  readonly isCloudSyncEnabled: boolean;
   readonly driveConnection:
     'connected' | 'not-connected' | 'reconnect-required';
 }
@@ -23,6 +25,12 @@ export type QuotationStorageRoute =
     }
   | {
       readonly repository: 'local-history';
+      readonly reason: 'cloud-sync-disabled';
+      readonly maxHistoryItems: 5;
+      readonly cloudAction: 'none';
+    }
+  | {
+      readonly repository: 'local-history';
       readonly reason: 'drive-reconnect-required';
       readonly maxHistoryItems: 5;
       readonly cloudAction: 'reconnect-drive';
@@ -34,16 +42,25 @@ export type QuotationStorageRoute =
     };
 
 /**
- * 非贊助會員一律走既有五筆 localStorage 歷史；不因這項功能而要求 Drive 授權。
- * 贊助會員尚未連結或需要重新連結時仍保留本機模式，UI 只需顯示相應入口。
+ * 一般會員一律走既有五筆 localStorage 歷史；贊助會員與管理員可使用 Drive。
+ * 尚未連結或需要重新連結時仍保留本機模式，UI 只需顯示相應入口。
  */
 export function decideQuotationStorageRoute(
   eligibility: CloudStorageEligibility
 ): QuotationStorageRoute {
-  if (!eligibility.isPremium) {
+  if (!eligibility.isPremium && !eligibility.isAdmin) {
     return {
       repository: 'local-history',
       reason: 'not-premium',
+      maxHistoryItems: 5,
+      cloudAction: 'none',
+    };
+  }
+
+  if (!eligibility.isCloudSyncEnabled) {
+    return {
+      repository: 'local-history',
+      reason: 'cloud-sync-disabled',
       maxHistoryItems: 5,
       cloudAction: 'none',
     };

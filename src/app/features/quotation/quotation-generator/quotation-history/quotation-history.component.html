@@ -1,23 +1,16 @@
 @if (history().length > 0) {
   <div class="dropdown dropdown-end">
-    <div
-      tabindex="0"
-      role="button"
-      class="btn btn-sm btn-ghost gap-2"
-    >
+    <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2">
       <svg lucideHistory width="16" height="16" />
       <span>載入歷史記錄</span>
       <svg lucideChevronDown width="16" height="16" />
     </div>
     <ul
       tabindex="-1"
-      class="dropdown-content menu bg-base-100 rounded-box z-[1] p-2 shadow-lg border border-base-300"
+      class="dropdown-content menu bg-base-100 rounded-box z-50 border border-base-300 p-2 shadow-lg"
     >
       <li>
-        <a
-          class="flex items-center gap-2"
-          (click)="onCreateNew()"
-        >
+        <a class="flex items-center gap-2" (click)="onCreateNew()">
           <svg lucideFilePlus width="16" height="16" />
           <span class="font-semibold">空白表單</span>
         </a>
@@ -27,11 +20,12 @@
           <span class="text-xs divider my-1">歷史記錄</span>
         </li>
       }
-      @for (item of history(); track (item.startDate + '-' + item.customerCompany)) {
+      @for (
+        item of history();
+        track item.startDate + '-' + item.customerCompany
+      ) {
         <li>
-          <div
-            class="flex items-center justify-between gap-2 py-2 px-2"
-          >
+          <div class="flex items-center justify-between gap-2 py-2 px-2">
             <a
               class="flex-1 min-w-0 p-0 hover:bg-transparent w-full"
               (click)="onLoad($index)"
@@ -46,11 +40,7 @@
               (click)="onDelete($index, $event)"
               title="刪除此筆記錄"
             >
-              <svg lucideX
-                width="14"
-                height="14"
-                class="text-error"
-              />
+              <svg lucideX width="14" height="14" class="text-error" />
             </button>
           </div>
         </li>

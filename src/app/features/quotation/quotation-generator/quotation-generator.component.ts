@@ -40,6 +40,7 @@ import { PricingSection } from './pricing-section/pricing-section.component';
 import { OtherInfoSection } from './other-info-section/other-info-section.component';
 import {
   LucideCheck,
+  LucideCloudUpload,
   LucideCopy,
   LucideEye,
   LucideFileText,
@@ -47,6 +48,113 @@ import {
   LucidePanelLeftOpen,
 } from '@lucide/angular';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
+
+export interface StorageRouteCoordinatorContext<T = QuotationData> {
+  isCloudStorage: () => boolean;
+  loadLocalHistory: () => T[];
+  loadCloudHistory: () => T[];
+  setHistoryData: (data: T[]) => void;
+  setLocalHistoryData?: (data: T[]) => void;
+  getSelectedIndex: () => number | null;
+  setSelectedIndex: (index: number | null) => void;
+  getHistoryLength?: () => number;
+}
+
+export class StorageRouteCoordinator<T = QuotationData> {
+  private operationVersion = 0;
+  readonly selectedStorage = signal<'local' | 'cloud' | null>(null);
+
+  constructor(private readonly ctx: StorageRouteCoordinatorContext<T>) {}
+
+  nextOperationVersion(): number {
+    return ++this.operationVersion;
+  }
+
+  isCurrentOperation(version: number): boolean {
+    return version === this.operationVersion;
+  }
+
+  setSelectedStorage(storage: 'local' | 'cloud' | null): void {
+    this.selectedStorage.set(storage);
+  }
+
+  getSelectedStorage(): 'local' | 'cloud' | null {
+    return this.selectedStorage();
+  }
+
+  isEditingExisting(historyLength?: number): boolean {
+    const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
+    const index = this.ctx.getSelectedIndex();
+    if (index === null || index < 0 || index >= length) return false;
+    const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
+    return this.selectedStorage() === currentMode;
+  }
+
+  resetInapplicableSelectedIndex(historyLength?: number): void {
+    const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
+    const index = this.ctx.getSelectedIndex();
+    if (index === null) {
+      this.selectedStorage.set(null);
+      return;
+    }
+    const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
+    if (
+      this.selectedStorage() !== currentMode ||
+      index < 0 ||
+      index >= length
+    ) {
+      this.ctx.setSelectedIndex(null);
+      this.selectedStorage.set(null);
+    }
+  }
+
+  syncHistoryByCurrentRoute(): void {
+    if (this.ctx.isCloudStorage()) {
+      const cloud = this.ctx.loadCloudHistory();
+      this.ctx.setHistoryData(cloud);
+      this.resetInapplicableSelectedIndex(cloud.length);
+    } else {
+      const local = this.ctx.loadLocalHistory();
+      this.ctx.setLocalHistoryData?.(local);
+      this.ctx.setHistoryData(local);
+      this.resetInapplicableSelectedIndex(local.length);
+    }
+  }
+
+  async handleInitialize(initFn: () => Promise<void>): Promise<void> {
+    const version = this.nextOperationVersion();
+    await initFn();
+    if (!this.isCurrentOperation(version)) return;
+    this.syncHistoryByCurrentRoute();
+  }
+
+  async handleToggle(toggleFn: () => Promise<void>): Promise<void> {
+    const version = this.nextOperationVersion();
+    await toggleFn();
+    if (!this.isCurrentOperation(version)) return;
+    this.ctx.setSelectedIndex(null);
+    this.selectedStorage.set(null);
+    this.syncHistoryByCurrentRoute();
+  }
+
+  async handleConnect(
+    connectFn: () => Promise<void>,
+    onError: (error: unknown) => void
+  ): Promise<void> {
+    const version = this.nextOperationVersion();
+    try {
+      await connectFn();
+      if (!this.isCurrentOperation(version)) return;
+      this.ctx.setSelectedIndex(null);
+      this.selectedStorage.set(null);
+      this.syncHistoryByCurrentRoute();
+    } catch (error) {
+      if (!this.isCurrentOperation(version)) return;
+      this.syncHistoryByCurrentRoute();
+      onError(error);
+    }
+  }
+}
 
 @Component({
   selector: 'app-quotation-generator',
@@ -77,6 +185,7 @@ import { CdkDragDrop } from '@angular/cdk/drag-drop';
     PricingSection,
     OtherInfoSection,
     LucideCheck,
+    LucideCloudUpload,
     LucideCopy,
     LucideEye,
     LucideFileText,
@@ -109,6 +218,9 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     const userData = this.authService.userData();
     if (!user || !userData) {
       this.initializedStorageRouteKey = null;
+      this.coordinator.nextOperationVersion();
+      this.cloudQuotationSync.disconnect();
+      this.loadHistoryFromLocalStorage();
       return;
     }
 
@@ -135,6 +247,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   // Signals
   historyData = signal<QuotationData[]>([]);
+  localHistoryData = signal<QuotationData[]>([]);
   customerLogo = signal<string>('');
   stamp = signal<string>('');
   quoterLogo = signal<string>('');
@@ -142,17 +255,37 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   showPreview = signal<boolean>(true);
   readonly cloudRoute = this.cloudQuotationSync.route;
   readonly cloudAvailable = this.cloudQuotationSync.isAvailable;
+  readonly cloudEligible = this.cloudQuotationSync.isEligible;
+  readonly cloudSyncEnabled = this.cloudQuotationSync.isSyncEnabled;
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
+  hasLocalHistoryToSync = computed(
+    () => this.isCloudStorage() && this.localHistoryData().length > 0
+  );
+  isSyncingLocalHistory = signal(false);
   isCloudStorage = this.cloudQuotationSync.isCloudStorage;
   driveAction = computed(() => this.cloudRoute().cloudAction);
+  storageModeLabel = computed(() =>
+    this.isCloudStorage() ? '雲端同步' : '本機儲存'
+  );
+
+  readonly coordinator = new StorageRouteCoordinator({
+    isCloudStorage: () => this.isCloudStorage(),
+    loadLocalHistory: () => this.quotationStorage.getHistory(),
+    loadCloudHistory: () =>
+      this.cloudQuotationSync.history().map((entry) => entry.data),
+    setHistoryData: (data) => this.historyData.set(data),
+    setLocalHistoryData: (data) => this.localHistoryData.set(data),
+    getSelectedIndex: () => this.selectedHistoryIndex(),
+    setSelectedIndex: (index) => this.selectedHistoryIndex.set(index),
+    getHistoryLength: () => this.historyData().length,
+  });
 
   /** 目前是否正在編輯一筆既有的歷史記錄（決定儲存時是覆蓋或新增） */
-  isEditingExisting = computed(() => {
-    const index = this.selectedHistoryIndex();
-    return index !== null && index >= 0 && index < this.historyData().length;
-  });
+  isEditingExisting = computed(() =>
+    this.coordinator.isEditingExisting(this.historyData().length)
+  );
 
   get serviceItems() {
     return this.form?.get('serviceItems') as FormArray;
@@ -175,7 +308,9 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   private loadHistoryFromLocalStorage(): void {
     const history = this.quotationStorage.getHistory();
+    this.localHistoryData.set(history);
     this.historyData.set(history);
+    this.coordinator.resetInapplicableSelectedIndex(history.length);
   }
 
   private setupResizeListener(): void {
@@ -361,6 +496,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     }
 
     this.selectedHistoryIndex.set(null);
+    this.coordinator.setSelectedStorage(null);
     this.resetForm();
   }
 
@@ -385,6 +521,9 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       }
     }
     this.selectedHistoryIndex.set(index);
+    this.coordinator.setSelectedStorage(
+      this.isCloudStorage() ? 'cloud' : 'local'
+    );
     this.loadQuotationData(data);
   }
 
@@ -424,6 +563,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
     if (currentIndex === deletedIndex) {
       this.selectedHistoryIndex.set(null);
+      this.coordinator.setSelectedStorage(null);
     } else if (currentIndex !== null && currentIndex > deletedIndex) {
       this.selectedHistoryIndex.update((current) => current! - 1);
     }
@@ -469,6 +609,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   async onSaveAsNew(): Promise<void> {
     // 清除選取索引，強制走「新增」流程
     this.selectedHistoryIndex.set(null);
+    this.coordinator.setSelectedStorage(null);
     if (await this.saveQuotation(this.collectFormData())) {
       this.analytics.trackQuotationGenerated();
     }
@@ -489,6 +630,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private saveLocalStorage(data: QuotationData): void {
+    this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
     const selectedIndex = this.selectedHistoryIndex();
     const isUpdate =
       selectedIndex !== null &&
@@ -508,6 +650,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       // 以便後續再次儲存時會更新同一筆，而非持續新增重複
       if (!isUpdate) {
         this.selectedHistoryIndex.set(0);
+        this.coordinator.setSelectedStorage('local');
       }
 
       this.showSuccessToast(isUpdate);
@@ -515,24 +658,68 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   async onDriveConnect(): Promise<void> {
+    await this.coordinator.handleConnect(
+      () => this.cloudQuotationSync.beginConnect(),
+      (error) => {
+        const message =
+          error instanceof Error ? error.message : 'Google Drive 授權流程失敗';
+        this.toastService.error(`Google Drive 連結失敗：${message}`);
+      }
+    );
+  }
+
+  async onCloudSyncToggle(enabled: boolean): Promise<void> {
+    await this.coordinator.handleToggle(() =>
+      this.cloudQuotationSync.setSyncEnabled(enabled)
+    );
+  }
+
+  async onSyncLocalHistory(): Promise<void> {
+    if (
+      !this.isCloudStorage() ||
+      this.localHistoryData().length === 0 ||
+      this.isSyncingLocalHistory()
+    ) {
+      return;
+    }
+
+    this.isSyncingLocalHistory.set(true);
     try {
-      await this.cloudQuotationSync.beginConnect();
-      this.loadCloudHistory();
-      this.selectedHistoryIndex.set(null);
+      const result = await this.cloudQuotationSync.syncLocalHistory(
+        this.localHistoryData()
+      );
+      this.coordinator.syncHistoryByCurrentRoute();
+      this.toastService.success(
+        result.uploaded > 0
+          ? `已將 ${result.uploaded} 筆本機報價單同步到雲端`
+          : '本機報價單已同步到雲端，沒有新增資料'
+      );
     } catch {
-      this.toastService.error('無法開始 Google Drive 授權，請稍後再試');
+      this.toastService.error('本機報價單同步失敗，請稍後再試');
+    } finally {
+      this.isSyncingLocalHistory.set(false);
     }
   }
 
   private async initializeStorageRoute(): Promise<void> {
-    await this.cloudQuotationSync.initialize();
-    if (this.isCloudStorage()) this.loadCloudHistory();
+    await this.coordinator.handleInitialize(() =>
+      this.cloudQuotationSync.initialize()
+    );
+  }
+
+  private loadHistoryForCurrentStorage(): void {
+    this.coordinator.syncHistoryByCurrentRoute();
   }
 
   private loadCloudHistory(): void {
+    if (!this.isCloudStorage()) {
+      this.loadHistoryFromLocalStorage();
+      return;
+    }
     this.historyData.set(
       this.cloudQuotationSync.history().map((entry) => entry.data)
     );
+    this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
   }
 
   private async saveQuotation(data: QuotationData): Promise<boolean> {
@@ -541,6 +728,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       return true;
     }
 
+    this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
     const selectedIndex = this.selectedHistoryIndex();
     const existing =
       selectedIndex === null
@@ -553,6 +741,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
         .history()
         .findIndex((entry) => entry.revisionId === saved.revisionId);
       this.selectedHistoryIndex.set(nextIndex >= 0 ? nextIndex : null);
+      this.coordinator.setSelectedStorage(nextIndex >= 0 ? 'cloud' : null);
       this.showSuccessToast(!!existing);
       return true;
     } catch {

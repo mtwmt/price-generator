@@ -22,6 +22,13 @@ import {
   DriveCloudApiService,
   type DriveOperationResponse,
 } from './drive-cloud-api.service';
+import {
+  decideCloudSyncInitialization,
+  readCloudSyncEnabledPreference,
+  writeCloudSyncEnabledPreference,
+} from './cloud-sync-preference';
+import { canonicalizeJsonValue } from './cloud-json';
+import { createLocalMigrationOperation } from './cloud-local-migration';
 
 function newIdentifier(): string {
   return crypto.randomUUID().replace(/-/g, '');
@@ -94,6 +101,11 @@ function assertOperationReceipt(
   }
 }
 
+export interface LocalHistorySyncResult {
+  readonly uploaded: number;
+  readonly skipped: number;
+}
+
 /**
  * 贊助會員的雲端同步協調層。完整內容只在選取或儲存時讀寫；列表只讀 Drive metadata，
  * 因而不會因報價單筆數增加而下載全部 payload。
@@ -104,29 +116,40 @@ export class CloudQuotationSyncService {
   private readonly api = inject(DriveCloudApiService);
   private readonly hashProvider = new WebCryptoSha256HashProvider();
   private ownerSub: string | null = null;
+  private operationVersion = 0;
+  private revisionMetadata: readonly DriveRevisionMetadata[] = [];
 
   readonly route = signal<QuotationStorageRoute>(
     decideQuotationStorageRoute({
       isPremium: false,
+      isAdmin: false,
+      isCloudSyncEnabled: false,
       driveConnection: 'not-connected',
     })
   );
   readonly history = signal<readonly CloudQuotationHistoryEntry[]>([]);
   readonly isAvailable = signal(true);
+  readonly isEligible = computed(
+    () => this.auth.isPremium() || this.auth.isAdmin()
+  );
+  readonly isSyncEnabled = signal(readCloudSyncEnabledPreference());
   readonly isCloudStorage = computed(
     () => this.route().repository === 'cloud-sync'
   );
 
   async initialize(): Promise<void> {
+    const operationVersion = ++this.operationVersion;
     this.history.set([]);
     this.ownerSub = null;
-    if (!this.auth.isAuthenticated() || !this.auth.isPremium()) {
-      this.route.set(
-        decideQuotationStorageRoute({
-          isPremium: false,
-          driveConnection: 'not-connected',
-        })
-      );
+    if (
+      decideCloudSyncInitialization({
+        isAuthenticated: this.auth.isAuthenticated(),
+        isEligible: this.isEligible(),
+        isSyncEnabled: this.isSyncEnabled(),
+      }) === 'disconnect'
+    ) {
+      this.api.disconnect();
+      this.setNotConnectedRoute();
       return;
     }
 
@@ -136,46 +159,82 @@ export class CloudQuotationSyncService {
       return;
     }
 
+    // 先保留本機模式；若 Google 仍保留既有授權，則無提示恢復 Drive token。
+    this.setNotConnectedRoute();
+
     try {
-      const ownerSub = this.requireAuthenticatedOwner();
-      if (!(await this.api.restoreConnection())) {
-        this.setNotConnectedRoute();
-        return;
-      }
-      this.ownerSub = ownerSub;
+      const restored = await this.api.restoreConnection(
+        this.requireAuthenticatedEmail()
+      );
+      if (!restored || !this.isCurrentOperation(operationVersion)) return;
+
+      this.ownerSub = this.requireAuthenticatedOwner();
       this.route.set(
         decideQuotationStorageRoute({
-          isPremium: true,
+          isPremium: this.auth.isPremium(),
+          isAdmin: this.auth.isAdmin(),
+          isCloudSyncEnabled: this.isSyncEnabled(),
           driveConnection: 'connected',
         })
       );
-      await this.reloadHistory();
-    } catch {
-      // 首次使用、瀏覽器隱私限制或離線時，都仍可正常使用既有 localStorage。
-      this.ownerSub = null;
-      this.history.set([]);
+      await this.reloadHistory(operationVersion);
+    } catch (error) {
+      if (!this.isCurrentOperation(operationVersion)) return;
+
+      // 自動恢復失敗不阻斷網站登入；使用者仍可按「連結 Google Drive」完成互動授權。
       this.setNotConnectedRoute();
     }
   }
 
   async beginConnect(): Promise<void> {
+    if (!this.auth.isAuthenticated() || !this.isEligible()) return;
+
+    this.setSyncEnabledPreference(true);
+    const operationVersion = ++this.operationVersion;
     this.ownerSub = this.requireAuthenticatedOwner();
     try {
-      await this.api.beginConnect();
+      await this.api.beginConnect(this.requireAuthenticatedEmail());
+      if (!this.isCurrentOperation(operationVersion)) return;
       this.route.set(
         decideQuotationStorageRoute({
-          isPremium: true,
+          isPremium: this.auth.isPremium(),
+          isAdmin: this.auth.isAdmin(),
+          isCloudSyncEnabled: this.isSyncEnabled(),
           driveConnection: 'connected',
         })
       );
-      await this.reloadHistory();
+      await this.reloadHistory(operationVersion);
     } catch (error) {
+      if (!this.isCurrentOperation(operationVersion)) return;
       this.handleDriveError(error);
       throw error;
     }
   }
 
-  async reloadHistory(): Promise<void> {
+  disconnect(): void {
+    ++this.operationVersion;
+    this.api.disconnect();
+    this.ownerSub = null;
+    this.history.set([]);
+    this.route.set(this.notConnectedRoute());
+  }
+
+  async setSyncEnabled(enabled: boolean): Promise<void> {
+    if (enabled && !this.isEligible()) {
+      this.disconnect();
+      return;
+    }
+
+    this.setSyncEnabledPreference(enabled);
+    if (!enabled) {
+      this.disconnect();
+      return;
+    }
+
+    await this.initialize();
+  }
+
+  async reloadHistory(operationVersion = this.operationVersion): Promise<void> {
     try {
       const ownerSub = this.requireConnectedOwner();
       const revisions: DriveRevisionMetadata[] = [];
@@ -183,6 +242,7 @@ export class CloudQuotationSyncService {
       let pageToken: string | undefined;
       do {
         const page = await this.api.listRevisions(ownerSub, pageToken);
+        if (!this.isCurrentOperation(operationVersion)) return;
         for (const value of page.files) {
           const metadata = readMetadata(value);
           if (metadata) revisions.push(metadata);
@@ -194,20 +254,31 @@ export class CloudQuotationSyncService {
         if (next) seenTokens.add(next);
         pageToken = next ?? undefined;
       } while (pageToken);
+      if (!this.isCurrentOperation(operationVersion)) return;
+      if (
+        this.requireConnectedOwner() !== ownerSub ||
+        this.requireAuthenticatedOwner() !== ownerSub
+      ) {
+        throw new Error('雲端同步帳號已變更');
+      }
+      this.revisionMetadata = revisions;
       this.history.set(buildCloudHistoryEntries(revisions));
     } catch (error) {
+      if (!this.isCurrentOperation(operationVersion)) return;
       this.handleDriveError(error);
       throw error;
     }
   }
 
   async load(entry: CloudQuotationHistoryEntry): Promise<QuotationData> {
+    const operationVersion = this.operationVersion;
     try {
       const ownerSub = this.requireConnectedOwner();
       const revision = await verifyCloudQuotationEnvelope(
         await this.api.getRevision(entry.fileId),
         this.hashProvider
       );
+      this.assertCurrentOperation(operationVersion);
       if (
         revision.ownerSub !== ownerSub ||
         revision.quotationId !== entry.quotationId ||
@@ -224,7 +295,9 @@ export class CloudQuotationSyncService {
       );
       return data;
     } catch (error) {
-      this.handleDriveError(error);
+      if (this.isCurrentOperation(operationVersion)) {
+        this.handleDriveError(error);
+      }
       throw error;
     }
   }
@@ -233,6 +306,7 @@ export class CloudQuotationSyncService {
     data: QuotationData,
     existing?: CloudQuotationHistoryEntry
   ): Promise<CloudQuotationHistoryEntry> {
+    const operationVersion = this.operationVersion;
     try {
       const ownerSub = this.requireConnectedOwner();
       const quotationId = existing?.quotationId ?? newIdentifier();
@@ -253,8 +327,10 @@ export class CloudQuotationSyncService {
         },
         this.hashProvider
       );
+      this.assertCurrentOperation(operationVersion);
       const receipt = await this.api.createOperation(operation.revision);
       assertOperationReceipt(receipt, operation.revision);
+      this.assertCurrentOperation(operationVersion);
 
       const entry: CloudQuotationHistoryEntry = {
         fileId: receipt.driveFileId,
@@ -272,12 +348,76 @@ export class CloudQuotationSyncService {
       );
       return entry;
     } catch (error) {
-      this.handleDriveError(error);
+      if (this.isCurrentOperation(operationVersion)) {
+        this.handleDriveError(error);
+      }
+      throw error;
+    }
+  }
+
+  /** 將本機歷史批次上傳到雲端；相同內容重複執行時會由固定 operationId 去重。 */
+  async syncLocalHistory(
+    localHistory: readonly QuotationData[]
+  ): Promise<LocalHistorySyncResult> {
+    const operationVersion = this.operationVersion;
+    try {
+      const ownerSub = this.requireConnectedOwner();
+      const assertCurrent = () => {
+        this.assertCurrentOperation(operationVersion);
+        if (
+          this.requireConnectedOwner() !== ownerSub ||
+          this.requireAuthenticatedOwner() !== ownerSub
+        ) {
+          throw new Error('雲端同步帳號已變更');
+        }
+      };
+      assertCurrent();
+      await this.reloadHistory(operationVersion);
+      assertCurrent();
+      const revisions = this.revisionMetadata;
+      const uniqueHistory = new Map<string, QuotationData>();
+
+      for (const data of localHistory) {
+        const dataHash = await this.hashProvider.hash(
+          canonicalizeJsonValue(data)
+        );
+        if (!uniqueHistory.has(dataHash)) uniqueHistory.set(dataHash, data);
+      }
+
+      let uploaded = 0;
+      for (const [dataHash, data] of uniqueHistory) {
+        assertCurrent();
+        const operation = await createLocalMigrationOperation(
+          ownerSub,
+          data,
+          dataHash,
+          revisions,
+          this.hashProvider
+        );
+        assertCurrent();
+        if (!operation) continue;
+        const receipt = await this.api.createOperation(operation.revision);
+        assertOperationReceipt(receipt, operation.revision);
+        assertCurrent();
+        if (receipt.status === 'accepted') uploaded += 1;
+      }
+
+      await this.reloadHistory(operationVersion);
+      assertCurrent();
+      return {
+        uploaded,
+        skipped: localHistory.length - uploaded,
+      };
+    } catch (error) {
+      if (this.isCurrentOperation(operationVersion)) {
+        this.handleDriveError(error);
+      }
       throw error;
     }
   }
 
   async delete(entry: CloudQuotationHistoryEntry): Promise<void> {
+    const operationVersion = this.operationVersion;
     try {
       const ownerSub = this.requireConnectedOwner();
       const data = await this.load(entry);
@@ -296,13 +436,17 @@ export class CloudQuotationSyncService {
         },
         this.hashProvider
       );
+      this.assertCurrentOperation(operationVersion);
       const receipt = await this.api.createOperation(revision);
       assertOperationReceipt(receipt, revision);
+      this.assertCurrentOperation(operationVersion);
       this.history.update((entries) =>
         entries.filter((item) => item.quotationId !== entry.quotationId)
       );
     } catch (error) {
-      this.handleDriveError(error);
+      if (this.isCurrentOperation(operationVersion)) {
+        this.handleDriveError(error);
+      }
       throw error;
     }
   }
@@ -313,13 +457,14 @@ export class CloudQuotationSyncService {
     return ownerSub;
   }
 
+  private requireAuthenticatedEmail(): string {
+    const email = this.auth.userEmail()?.trim();
+    if (!email) throw new Error('會員 Google 帳號電子郵件無效');
+    return email;
+  }
+
   private setNotConnectedRoute(): void {
-    this.route.set(
-      decideQuotationStorageRoute({
-        isPremium: true,
-        driveConnection: 'not-connected',
-      })
-    );
+    this.route.set(this.notConnectedRoute());
   }
 
   private handleDriveError(error: unknown): void {
@@ -329,6 +474,8 @@ export class CloudQuotationSyncService {
     this.route.set(
       decideQuotationStorageRoute({
         isPremium: this.auth.isPremium(),
+        isAdmin: this.auth.isAdmin(),
+        isCloudSyncEnabled: this.isSyncEnabled(),
         driveConnection: 'reconnect-required',
       })
     );
@@ -338,5 +485,31 @@ export class CloudQuotationSyncService {
     if (!this.isCloudStorage() || !this.ownerSub)
       throw new Error('Google Drive 尚未連結');
     return this.ownerSub;
+  }
+
+  private isCurrentOperation(operationVersion: number): boolean {
+    return operationVersion === this.operationVersion;
+  }
+
+  private assertCurrentOperation(operationVersion: number): void {
+    if (!this.isCurrentOperation(operationVersion)) {
+      throw new DriveAuthorizationRequiredError(
+        'Google Drive 同步狀態已變更，請重新儲存'
+      );
+    }
+  }
+
+  private notConnectedRoute(): QuotationStorageRoute {
+    return decideQuotationStorageRoute({
+      isPremium: this.auth.isPremium(),
+      isAdmin: this.auth.isAdmin(),
+      isCloudSyncEnabled: this.isSyncEnabled(),
+      driveConnection: 'not-connected',
+    });
+  }
+
+  private setSyncEnabledPreference(enabled: boolean): void {
+    this.isSyncEnabled.set(enabled);
+    writeCloudSyncEnabledPreference(enabled);
   }
 }

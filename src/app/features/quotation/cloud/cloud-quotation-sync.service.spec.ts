@@ -64,4 +64,18 @@ describe('buildCloudHistoryEntries', () => {
 
     expect(history.map((item) => item.quotationId)).toEqual(['quotation-b']);
   });
+
+  it('重新讀取 Drive metadata 時從檔名還原日期與客戶名稱', () => {
+    const history = buildCloudHistoryEntries([
+      revision({
+        name: '報價單 2026-08-31 Drive雲端測試客戶 revision-a.json',
+        createdAt: '2026-09-06T00:00:00.000Z',
+      }),
+    ]);
+
+    expect(history[0]?.data).toMatchObject({
+      customerCompany: 'Drive雲端測試客戶',
+      startDate: '2026-08-31',
+    });
+  });
 });

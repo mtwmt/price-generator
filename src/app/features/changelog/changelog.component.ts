@@ -12,6 +12,12 @@ import { LucideClock } from '@lucide/angular';
 export class ChangelogComponent {
   changelog = [
     {
+      date: '2026-09-09',
+      features: [
+        '新增贊助會員報價單雲端同步功能',
+      ],
+    },
+    {
       date: '2026-09-06',
       features: [
         '升級 Angular 至 22，提升相容性與穩定度',

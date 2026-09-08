@@ -20,12 +20,37 @@ export interface CloudQuotationHistoryEntry {
   readonly data: QuotationData;
 }
 
-function placeholderData(metadata: DriveRevisionMetadata): QuotationData {
+function parseQuotationFileName(metadata: DriveRevisionMetadata): {
+  readonly customerCompany: string;
+  readonly startDate: string;
+} {
+  let label = metadata.name.trim().replace(/^報價單\s+/, '');
+  const revisionSuffix = ` ${metadata.revisionId}.json`;
+  if (label.endsWith(revisionSuffix)) {
+    label = label.slice(0, -revisionSuffix.length).trim();
+  } else {
+    label = label.replace(/\.json$/i, '').trim();
+  }
+
+  const dateMatch = /^(\d{4}-\d{2}-\d{2})(?:\s+|$)/.exec(label);
+  const startDate = dateMatch?.[1] ?? metadata.createdAt.slice(0, 10);
+  const customerCompany = dateMatch
+    ? label.slice(dateMatch[0].length).trim()
+    : label;
+
   return {
-    customerCompany: metadata.name || '雲端報價單',
+    customerCompany: customerCompany || '雲端報價單',
+    startDate,
+  };
+}
+
+function placeholderData(metadata: DriveRevisionMetadata): QuotationData {
+  const summary = parseQuotationFileName(metadata);
+  return {
+    customerCompany: summary.customerCompany,
     quoterName: '',
     quoterEmail: '',
-    startDate: metadata.createdAt.slice(0, 10),
+    startDate: summary.startDate,
     serviceItems: [],
     excludingTax: 0,
     tax: 0,

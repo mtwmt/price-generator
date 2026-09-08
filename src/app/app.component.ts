@@ -1,4 +1,9 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+} from '@angular/core';
 
 import {
   Router,
@@ -21,6 +26,7 @@ import {
   LucideX,
 } from '@lucide/angular';
 import { AuthService } from '@app/core/services/auth.service';
+import { CloudQuotationSyncService } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
 import { ToastService } from '@app/shared/services/toast.service';
 
 @Component({
@@ -48,10 +54,17 @@ import { ToastService } from '@app/shared/services/toast.service';
 export class AppComponent {
   private analytics = inject(AnalyticsService);
   private router = inject(Router);
+  private cloudQuotationSync = inject(CloudQuotationSyncService);
   readonly authService = inject(AuthService);
   readonly toastService = inject(ToastService);
 
   readonly currentYear = new Date().getFullYear();
+
+  private authStateEffect = effect(() => {
+    if (!this.authService.currentUser()) {
+      this.cloudQuotationSync.disconnect();
+    }
+  });
 
   /**
    * 登入
@@ -72,6 +85,7 @@ export class AppComponent {
    * 登出
    */
   async logout(): Promise<void> {
+    this.cloudQuotationSync.disconnect();
     try {
       await this.authService.logout();
       this.toastService.info('已登出');

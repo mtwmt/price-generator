@@ -46,6 +46,10 @@ describe('DriveCloudApiService', () => {
   const originalFetch = globalThis.fetch;
   const browser = globalThis as unknown as { window?: typeof window };
   let fetchMock: jest.Mock;
+  let tokenClientConfig:
+    | { readonly login_hint?: string; readonly scope?: string }
+    | undefined;
+  let tokenRequestConfig: { readonly prompt?: string } | undefined;
 
   beforeEach(() => {
     fetchMock = jest.fn();
@@ -54,11 +58,19 @@ describe('DriveCloudApiService', () => {
     browser.window.google = {
       accounts: {
         oauth2: {
-          initTokenClient: ({ callback }) => ({
-            callback,
-            requestAccessToken: () =>
-              callback({ access_token: 'drive-token', expires_in: 3600 }),
-          }),
+          initTokenClient: (config) => {
+            tokenClientConfig = config;
+            return {
+              callback: config.callback,
+              requestAccessToken: (requestConfig) => {
+                tokenRequestConfig = requestConfig;
+                config.callback({
+                  access_token: 'drive-token',
+                  expires_in: 3600,
+                });
+              },
+            };
+          },
         },
       },
     };
@@ -70,12 +82,22 @@ describe('DriveCloudApiService', () => {
   });
 
   it('以既有 Google 授權無提示地還原連線', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ user: { emailAddress: 'member@example.com' } })
+    );
     const service = new DriveCloudApiService();
 
-    await expect(service.restoreConnection()).resolves.toBe(true);
+    await expect(service.restoreConnection('member@example.com')).resolves.toBe(
+      true
+    );
+    expect(tokenRequestConfig?.prompt).toBe('none');
+    expect(tokenClientConfig?.login_hint).toBe('member@example.com');
   });
 
   it('只列舉目前會員在 appDataFolder 的報價版本 metadata', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ user: { emailAddress: 'member@example.com' } })
+    );
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         files: [
@@ -96,7 +118,7 @@ describe('DriveCloudApiService', () => {
       })
     );
     const service = new DriveCloudApiService();
-    await service.beginConnect();
+    await service.beginConnect('member@example.com');
 
     const page = await service.listRevisions('member-1');
 
@@ -106,14 +128,30 @@ describe('DriveCloudApiService', () => {
         quotationId: 'quotation-1',
       }),
     ]);
-    const request = fetchMock.mock.calls[0][0] as URL;
+    expect(tokenClientConfig?.login_hint).toBe('member@example.com');
+    const request = fetchMock.mock.calls[1][0] as URL;
     expect(request.toString()).toContain('spaces=appDataFolder');
     expect(request.searchParams.get('q')).toContain(
       "key='ownerSub' and value='member-1'"
     );
   });
 
+  it('拒絕連結與目前會員不同的 Google Drive 帳號', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ user: { emailAddress: 'other@example.com' } })
+    );
+    const service = new DriveCloudApiService();
+
+    await expect(service.beginConnect('member@example.com')).rejects.toThrow(
+      'Google Drive 帳號不一致，請使用 member@example.com 連結'
+    );
+    expect(tokenClientConfig?.login_hint).toBe('member@example.com');
+  });
+
   it('同一 operationId 已存在時不重複上傳版本檔', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ user: { emailAddress: 'member@example.com' } })
+    );
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         files: [
@@ -135,7 +173,7 @@ describe('DriveCloudApiService', () => {
       })
     );
     const service = new DriveCloudApiService();
-    await service.beginConnect();
+    await service.beginConnect('member@example.com');
 
     const result: DriveOperationResponse =
       await service.createOperation(revision);
@@ -145,6 +183,6 @@ describe('DriveCloudApiService', () => {
       status: 'replayed',
       idempotent: true,
     });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

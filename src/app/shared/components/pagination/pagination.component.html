@@ -22,11 +22,11 @@
   }
 
   <!-- 中間：分頁按鈕 -->
-  <div class="join">
+  <div class="join max-w-full overflow-x-auto">
     <!-- 第一頁 -->
     <button
       type="button"
-      [class]="btnClass()"
+      [class]="'hidden md:inline-flex ' + btnClass()"
       [disabled]="isFirstPage()"
       (click)="goToFirstPage()"
       title="第一頁"
@@ -76,7 +76,7 @@
     <!-- 最後一頁 -->
     <button
       type="button"
-      [class]="btnClass()"
+      [class]="'hidden md:inline-flex ' + btnClass()"
       [disabled]="isLastPage()"
       (click)="goToLastPage()"
       title="最後一頁"
