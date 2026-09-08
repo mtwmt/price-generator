@@ -6,7 +6,8 @@
         <div
           class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
         >
-          <svg lucideShoppingCart
+          <svg
+            lucideShoppingCart
             width="20"
             height="20"
             class="text-base-content/70"
@@ -31,7 +32,7 @@
             [ngClass]=""
           >
             <!-- 服務項目 -->
-            <div class="flex items-center gap-2">
+            <div class="flex min-w-0 items-center gap-2">
               @if (serviceItems.length > 1) {
                 <!-- Drag Handle -->
                 <div
@@ -39,7 +40,8 @@
                   class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
                   title="拖曳排序"
                 >
-                  <svg lucideGripVertical
+                  <svg
+                    lucideGripVertical
                     width="20"
                     height="20"
                     class="text-base-content"
@@ -48,7 +50,7 @@
               }
 
               <!-- 服務項目元件 -->
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <app-service-item-control
                   [formGroup]="$any(item)"
                   [index]="idx"
