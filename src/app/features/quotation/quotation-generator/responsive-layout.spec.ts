@@ -12,18 +12,51 @@ function readTemplate(relativePath: string): string {
   return readFileSync(resolve(__dirname, relativePath), 'utf8');
 }
 
+function firstClassTokens(template: string): Set<string> {
+  const tagStart = template.indexOf('<div');
+  const tagEnd = template.indexOf('>', tagStart);
+  const classAttribute = template
+    .slice(tagStart, tagEnd)
+    .match(/class="([^"]+)"/);
+
+  return new Set(classAttribute?.[1].split(/\s+/) ?? []);
+}
+
+function classTokensAfter(template: string, marker: string): Set<string> {
+  const markerIndex = template.indexOf(marker);
+  const tagStart = template.indexOf('<div', markerIndex);
+  const tagEnd = template.indexOf('>', tagStart);
+  const classAttribute = template
+    .slice(tagStart, tagEnd)
+    .match(/class="([^"]+)"/);
+
+  return new Set(classAttribute?.[1].split(/\s+/) ?? []);
+}
+
 describe('報價單窄螢幕版面結構', () => {
-  it('服務項目的類別與項目在手機垂直堆疊，sm 以上恢復橫向', () => {
+  it('服務項目的類別與項目在手機保持並排', () => {
     const template = readTemplate(
       '../service-item-control/service-item-control.component.html'
     );
+    const outer = firstClassTokens(template);
+    const categoryAndItem = classTokensAfter(template, '<!-- 第一行');
+    const pricing = classTokensAfter(template, '<!-- 第二行');
 
-    expect(template).toContain(
-      'flex w-full min-w-0 flex-col gap-2 sm:flex-row md:w-3/7'
+    expect([...outer]).toEqual(expect.not.arrayContaining(['flex-col']));
+    expect([...outer]).toEqual(expect.arrayContaining(['flex', 'flex-wrap']));
+    expect([...categoryAndItem]).toEqual(
+      expect.arrayContaining(['flex', 'w-full', 'min-w-0', 'md:w-3/7'])
     );
-    expect(template).toContain(
-      'grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-4/7 md:flex-nowrap'
+    expect([...pricing]).toEqual(
+      expect.arrayContaining(['flex', 'w-full', 'min-w-0', 'md:w-4/7'])
     );
+    expect(template).not.toContain('grid-cols-2');
+    expect(
+      template.match(
+        /class="fieldset min-w-0 flex-1 max-w-16"/g
+      )
+    ).toHaveLength(2);
+    expect(template.match(/flex-\[2_1_0%\]/g)).toHaveLength(2);
   });
 
   it('拖曳把手保持固定寬度，不壓縮服務項目欄位', () => {
