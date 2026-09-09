@@ -4,12 +4,18 @@
     class="transition-all duration-300"
     [ngClass]="showPreview() ? 'lg:w-6/11' : 'lg:w-full'"
   >
-    <form id="form" [formGroup]="form">
+    <form
+      id="form"
+      class="pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0"
+      [formGroup]="form"
+    >
       <!-- 基本資料 -->
       <div class="card bg-base-100 md:shadow-sm mb-4">
         <div class="card-body p-2 md:p-4">
           <!-- 標題與工具列 -->
-          <div class="flex items-center gap-3 border-b border-base-200 pb-3">
+          <div
+            class="flex flex-wrap items-center gap-3 border-b border-base-200 pb-3"
+          >
             <div
               class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-base-200"
             >
@@ -156,7 +162,7 @@
       <app-other-info-section [form]="form" />
       <!-- Action Buttons -->
       <div class="card bg-base-100 shadow-sm sticky bottom-0 z-10 lg:relative">
-        <div class="card-body p-4">
+        <div class="card-body p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:p-4">
           <div class="flex flex-row justify-end gap-3">
             <button
               type="button"

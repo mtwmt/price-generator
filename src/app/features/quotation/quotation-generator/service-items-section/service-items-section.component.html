@@ -32,12 +32,12 @@
             [ngClass]=""
           >
             <!-- 服務項目 -->
-            <div class="flex min-w-0 items-center gap-2">
+            <div class="flex min-w-0 items-start gap-2">
               @if (serviceItems.length > 1) {
                 <!-- Drag Handle -->
                 <div
                   cdkDragHandle
-                  class="cursor-move opacity-30 hover:opacity-100 transition-opacity duration-200 flex-shrink-0 touch-none"
+                  class="w-5 shrink-0 cursor-move opacity-30 transition-opacity duration-200 touch-none hover:opacity-100"
                   title="拖曳排序"
                 >
                   <svg
