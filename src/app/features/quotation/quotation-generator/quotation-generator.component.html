@@ -14,7 +14,7 @@
         <div class="card-body p-2 md:p-4">
           <!-- 標題與工具列 -->
           <div
-            class="flex flex-wrap items-center gap-3 border-b border-base-200 pb-3"
+            class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-200 pb-3"
           >
             <div
               class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-base-200"
@@ -31,99 +31,106 @@
             >
               基本資料
             </h2>
-            <div class="ml-auto flex shrink-0 flex-nowrap items-center gap-2">
-              @if (hasHistory()) {
-                <app-quotation-history
-                  class="mr-2"
-                  [history]="historyData()"
-                  [selectedIndex]="selectedHistoryIndex()"
-                  (load)="onLoadHistory($event)"
-                  (delete)="onDeleteHistory($event)"
-                  (createNew)="onCreateNewForm()"
-                />
-              }
+            @if (hasHistory() || cloudEligible() || hasLocalHistoryToSync()) {
               <div
-                class="flex shrink-0 flex-nowrap items-center gap-2 empty:hidden"
+                class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto"
               >
-                @if (cloudEligible()) {
-                  <div class="flex items-center gap-1.5 whitespace-nowrap">
-                    <span>本機</span>
-                    <div
-                      class="tooltip tooltip-bottom tooltip-end"
-                      [attr.data-tip]="
-                        isCloudStorage()
-                          ? '綠色表示已連結 Google Drive，報價單會同步儲存到雲端'
-                          : '尚未連結 Google Drive，報價單目前未使用雲端'
-                      "
-                    >
-                      <input
-                        id="cloud-sync-toggle"
-                        type="checkbox"
-                        [checked]="isCloudStorage()"
-                        (change)="
-                          onCloudSyncToggle($any($event.target).checked)
-                        "
-                        class="toggle toggle-success toggle-sm"
-                        aria-label="切換本機或雲端儲存"
-                      />
-                    </div>
-                    <span>雲端</span>
-                  </div>
-                  <app-cloud-sync-status
-                    [status]="syncStatus()"
-                    [lastSyncedAt]="lastSyncedAt()"
-                    [errorMessage]="syncError()"
-                    (reconnect)="onDriveConnect()"
+                @if (hasHistory()) {
+                  <app-quotation-history
+                    class="min-w-0 max-w-full"
+                    [history]="historyData()"
+                    [selectedIndex]="selectedHistoryIndex()"
+                    (load)="onLoadHistory($event)"
+                    (delete)="onDeleteHistory($event)"
+                    (createNew)="onCreateNewForm()"
                   />
                 }
-                @if (hasLocalHistoryToSync()) {
-                  <button
-                    type="button"
-                    class="btn btn-ghost h-8 min-h-8 w-8 min-w-8 shrink-0 border-0 bg-transparent p-0 text-base-content/70 shadow-none hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:bg-transparent"
-                    [disabled]="isSyncingLocalHistory()"
-                    [attr.aria-busy]="isSyncingLocalHistory()"
-                    (click)="onSyncLocalHistory()"
-                    title="同步本機資料"
-                    aria-label="同步本機資料"
-                  >
-                    @if (isSyncingLocalHistory()) {
-                      <span
-                        class="loading loading-spinner h-4 w-4"
-                        aria-hidden="true"
-                      ></span>
-                    } @else {
-                      <svg
-                        lucideCloudUpload
-                        width="18"
-                        height="18"
-                        aria-hidden="true"
-                      />
-                    }
-                  </button>
-                }
+                <div
+                  class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 empty:hidden lg:w-auto"
+                >
+                  @if (cloudEligible()) {
+                    <div
+                      class="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
+                    >
+                      <span>本機</span>
+                      <div
+                        class="tooltip tooltip-bottom tooltip-end"
+                        [attr.data-tip]="
+                          isCloudStorage()
+                            ? '綠色表示已連結 Google Drive，報價單會同步儲存到雲端'
+                            : '尚未連結 Google Drive，報價單目前未使用雲端'
+                        "
+                      >
+                        <input
+                          id="cloud-sync-toggle"
+                          type="checkbox"
+                          [checked]="isCloudStorage()"
+                          (change)="
+                            onCloudSyncToggle($any($event.target).checked)
+                          "
+                          class="toggle toggle-success toggle-sm"
+                          aria-label="切換本機或雲端儲存"
+                        />
+                      </div>
+                      <span>雲端</span>
+                    </div>
+                    <app-cloud-sync-status
+                      class="min-w-0 max-w-full flex-1"
+                      [status]="syncStatus()"
+                      [lastSyncedAt]="lastSyncedAt()"
+                      [errorMessage]="syncError()"
+                      (reconnect)="onDriveConnect()"
+                    />
+                  }
+                  @if (hasLocalHistoryToSync()) {
+                    <button
+                      type="button"
+                      class="btn btn-ghost h-8 min-h-8 w-8 min-w-8 shrink-0 border-0 bg-transparent p-0 text-base-content/70 shadow-none hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:bg-transparent"
+                      [disabled]="isSyncingLocalHistory()"
+                      [attr.aria-busy]="isSyncingLocalHistory()"
+                      (click)="onSyncLocalHistory()"
+                      title="同步本機資料"
+                      aria-label="同步本機資料"
+                    >
+                      @if (isSyncingLocalHistory()) {
+                        <span
+                          class="loading loading-spinner h-4 w-4"
+                          aria-hidden="true"
+                        ></span>
+                      } @else {
+                        <svg
+                          lucideCloudUpload
+                          width="18"
+                          height="18"
+                          aria-hidden="true"
+                        />
+                      }
+                    </button>
+                  }
+                </div>
               </div>
-              @if (!showPreview()) {
-                <button
-                  type="button"
-                  class="btn btn-sm btn-ghost hidden gap-2 lg:flex"
-                  (click)="showPreview.set(true)"
-                  title="顯示預覽"
-                >
-                  <svg lucidePanelLeftClose width="16" height="16" />
-                  <span>顯示預覽</span>
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  class="btn btn-sm btn-ghost hidden gap-2 lg:flex"
-                  (click)="showPreview.set(false)"
-                  title="隱藏預覽"
-                >
-                  <svg lucidePanelLeftOpen width="16" height="16" />
-                  <span>隱藏預覽</span>
-                </button>
-              }
-            </div>
+            }
+            @if (!showPreview()) {
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
+                (click)="showPreview.set(true)"
+                title="顯示預覽"
+              >
+                <svg lucidePanelLeftClose width="16" height="16" />
+                <span>顯示預覽</span>
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
+                (click)="showPreview.set(false)"
+                title="隱藏預覽"
+              >
+                <svg lucidePanelLeftOpen width="16" height="16" />
+                <span>隱藏預覽</span>
+              </button>
+            }
           </div>
           <!-- 客戶基本資料 -->
           <app-customer-info-section
@@ -168,7 +175,9 @@
       <app-other-info-section [form]="form" />
       <!-- Action Buttons -->
       <div class="card bg-base-100 shadow-sm sticky bottom-0 z-10 lg:relative">
-        <div class="card-body p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:p-4">
+        <div
+          class="card-body p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:p-4"
+        >
           <div class="flex flex-row justify-end gap-3">
             <button
               type="button"

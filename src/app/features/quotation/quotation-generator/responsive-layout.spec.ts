@@ -52,9 +52,7 @@ describe('報價單窄螢幕版面結構', () => {
     );
     expect(template).not.toContain('grid-cols-2');
     expect(
-      template.match(
-        /class="fieldset min-w-0 flex-1 max-w-16"/g
-      )
+      template.match(/class="fieldset min-w-0 flex-1 max-w-16"/g)
     ).toHaveLength(2);
     expect(template.match(/flex-\[2_1_0%\]/g)).toHaveLength(2);
   });
@@ -95,12 +93,34 @@ describe('報價單窄螢幕版面結構', () => {
     expect(template).toContain('aria-label="關閉預覽"');
   });
 
-  it('基本資料標題列在窄螢幕可換行，避免歷史按鈕造成水平溢出', () => {
+  it('基本資料工具列在窄螢幕分行，避免登入後的同步狀態撐寬頁面', () => {
     const template = readTemplate('./quotation-generator.component.html');
 
     expect(template).toContain(
-      'class="flex flex-wrap items-center gap-3 border-b border-base-200 pb-3"'
+      'class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-200 pb-3"'
     );
+    expect(template).toContain(
+      'hasHistory() || cloudEligible() || hasLocalHistoryToSync()'
+    );
+    expect(template).toContain(
+      'class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto"'
+    );
+    expect(template).toContain(
+      'class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 empty:hidden lg:w-auto"'
+    );
+    expect(template).toContain('class="min-w-0 max-w-full flex-1"');
+    expect(template).not.toContain('sm:shrink-0 sm:flex-nowrap');
+  });
+
+  it('雲端同步狀態本身允許縮小與換行', () => {
+    const template = readTemplate(
+      '../cloud/cloud-sync-status/cloud-sync-status.component.html'
+    );
+
+    expect(template).toContain(
+      'flex min-w-0 max-w-full flex-wrap items-center'
+    );
+    expect(template).toContain('min-w-0 break-words text-xs text-error');
   });
 
   it('promo 浮窗只在桌面顯示，避免覆蓋手機表單', () => {
