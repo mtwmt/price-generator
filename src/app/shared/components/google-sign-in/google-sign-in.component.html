@@ -1,22 +1,63 @@
-@if (idTokenLoginEnabled) {
-  <div #googleButton class="max-w-full" aria-label="使用 Google 帳號登入"></div>
-  @if (loadError()) {
-    <div class="flex items-center gap-2 text-sm text-error" role="alert">
-      <span>無法載入 Google 登入按鈕。</span>
-      <button type="button" class="btn btn-ghost btn-xs" (click)="retryGoogleScript()">
-        重試
-      </button>
-    </div>
-  }
-} @else {
+<div
+  #dropdownRoot
+  class="dropdown inline-block max-w-full"
+  [class.dropdown-end]="dropdownAlign() === 'end'"
+  [class.dropdown-start]="dropdownAlign() === 'start'"
+  [class.dropdown-open]="menuOpen()"
+  (keydown.escape)="closeLoginMenu()"
+>
   <button
+    #loginTrigger
     type="button"
+    tabindex="0"
     [class]="legacyButtonClass()"
-    (click)="loginWithLegacyGoogle()"
+    (click)="onLoginTrigger()"
     title="使用 Google 帳號登入"
     aria-label="使用 Google 帳號登入"
+    [attr.aria-haspopup]="idTokenLoginEnabled ? 'dialog' : null"
+    [attr.aria-expanded]="idTokenLoginEnabled ? menuOpen() : null"
+    [attr.aria-controls]="idTokenLoginEnabled ? pickerId : null"
   >
     <ng-content select="[google-sign-in-icon]" />
     <span [class]="legacyLabelClass()">{{ legacyLabel() }}</span>
   </button>
-}
+
+  @if (idTokenLoginEnabled) {
+    <div
+      #googlePanel
+      [id]="pickerId"
+      tabindex="-1"
+      role="dialog"
+      aria-label="選擇 Google 帳號登入"
+      class="dropdown-content z-50 mt-2 max-w-[calc(100vw-2rem)] rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
+    >
+      <div class="mb-1 flex justify-end">
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs"
+          aria-label="關閉 Google 帳號選擇器"
+          (click)="closeLoginMenu()"
+        >
+          ✕
+        </button>
+      </div>
+      <div
+        #googleButton
+        class="max-w-full"
+        aria-label="選擇 Google 帳號登入"
+      ></div>
+      @if (loadError()) {
+        <div class="flex items-center gap-2 text-sm text-error" role="alert">
+          <span>無法載入 Google 登入按鈕。</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            (click)="retryGoogleScript()"
+          >
+            重試
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

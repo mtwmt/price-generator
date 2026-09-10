@@ -9,6 +9,7 @@ jest.mock('@angular/core', () => ({
   Component: () => (target: unknown) => target,
   Injectable: () => (target: unknown) => target,
   ElementRef: class ElementRef {},
+  HostListener: () => () => undefined,
   InjectionToken: class InjectionToken<T> {
     constructor(readonly description: string) {}
   },
@@ -115,10 +116,34 @@ describe('GoogleSignInComponent', () => {
     const component = createComponent(false);
 
     expect(component.idTokenLoginEnabled).toBe(false);
-    component.loginWithLegacyGoogle();
+    component.onLoginTrigger();
     await Promise.resolve();
 
     expect(codeClientCalls).toBe(1);
+  });
+
+  it('旗標開啟時原樣式按鈕只展開官方帳號選擇器，不呼叫舊 OAuth', () => {
+    const component = createComponent(true);
+    const legacyLogin = jest.spyOn(component, 'loginWithLegacyGoogle');
+
+    component.onLoginTrigger();
+
+    expect(legacyLogin).not.toHaveBeenCalled();
+    expect(component.menuOpen()).toBe(true);
+  });
+
+  it('可用 Escape 關閉帳號選擇器並把焦點還給原登入按鈕', () => {
+    const component = createComponent(true);
+    const focus = jest.fn();
+    Object.defineProperty(component, 'loginTrigger', {
+      value: () => ({ nativeElement: { focus } }),
+    });
+    component.menuOpen.set(true);
+
+    component.closeLoginMenu();
+
+    expect(component.menuOpen()).toBe(false);
+    expect(focus).toHaveBeenCalledTimes(1);
   });
 
   it('旗標開啟時使用 service 渲染 GIS 官方按鈕', async () => {
