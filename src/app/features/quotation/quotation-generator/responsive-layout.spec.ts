@@ -79,6 +79,22 @@ describe('報價單窄螢幕版面結構', () => {
     );
   });
 
+  it('手機預覽的關閉列固定在安全區內，預覽內容獨立捲動', () => {
+    const template = readTemplate('./quotation-generator.component.html');
+
+    expect(template).toContain('h-[100dvh] max-h-[100dvh]');
+    expect(template).toContain(
+      'sticky top-0 z-50 flex shrink-0 items-center justify-between'
+    );
+    expect(template).toContain(
+      'pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2'
+    );
+    expect(template).toContain(
+      'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+    );
+    expect(template).toContain('aria-label="關閉預覽"');
+  });
+
   it('基本資料標題列在窄螢幕可換行，避免歷史按鈕造成水平溢出', () => {
     const template = readTemplate('./quotation-generator.component.html');
 

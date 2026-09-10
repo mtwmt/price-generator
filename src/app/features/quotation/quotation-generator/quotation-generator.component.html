@@ -231,11 +231,26 @@
 
 <!-- 預覽 Modal (手機版) -->
 <dialog #preview_modal id="preview_modal" class="modal">
-  <div class="modal-box w-full max-w-[210mm] p-2">
-    <form method="dialog">
-      <button class="btn btn-circle btn-ghost absolute right-2 top-2">✕</button>
+  <div
+    class="modal-box flex h-[100dvh] max-h-[100dvh] w-full max-w-[210mm] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-box"
+  >
+    <form
+      method="dialog"
+      class="sticky top-0 z-50 flex shrink-0 items-center justify-between border-b border-base-200 bg-base-100 px-3 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2"
+    >
+      <span class="font-semibold">預覽報價單</span>
+      <button
+        type="submit"
+        class="btn btn-circle btn-ghost btn-md"
+        aria-label="關閉預覽"
+        title="關閉預覽"
+      >
+        ✕
+      </button>
     </form>
-    <div class="mt-8">
+    <div
+      class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+    >
       <app-quotation-preview
         [form]="form"
         [customerLogo]="customerLogo()"
