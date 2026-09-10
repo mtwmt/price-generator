@@ -38,13 +38,13 @@
         <div class="flex items-start gap-3">
           <!-- 使用者頭像 -->
           @if (userPhotoURL()) {
-            <div class="avatar">
+            <div class="avatar self-start shrink-0">
               <div class="w-10 h-10 rounded-full">
                 <img [src]="userPhotoURL()!" [alt]="userDisplayName()" />
               </div>
             </div>
           } @else {
-            <div class="avatar placeholder">
+            <div class="avatar placeholder self-start shrink-0">
               <div
                 class="bg-neutral text-neutral-content w-10 h-10 rounded-full"
               >
@@ -109,7 +109,7 @@
               <div class="flex items-start gap-3">
                 <!-- 頭像 -->
                 @if (comment.authorAvatarUrl) {
-                  <div class="avatar flex-shrink-0">
+                  <div class="avatar self-start flex-shrink-0">
                     <div class="w-10 h-10 rounded-full">
                       <img
                         [src]="comment.authorAvatarUrl"
@@ -118,7 +118,7 @@
                     </div>
                   </div>
                 } @else {
-                  <div class="avatar placeholder flex-shrink-0">
+                  <div class="avatar placeholder self-start flex-shrink-0">
                     <div
                       class="bg-neutral text-neutral-content w-10 h-10 rounded-full"
                     >
@@ -141,7 +141,7 @@
                         class="badge badge-sm badge-soft badge-info gap-1"
                         title="置頂留言"
                       >
-                        <svg lucidePin width="10" height="10" />
+                        <svg lucidePin width="10" height="10" class="size-2.5 shrink-0" />
                         置頂
                       </span>
                     }
@@ -220,7 +220,7 @@
                       @for (reply of comment.replies; track reply.id) {
                         <div class="flex gap-3 pl-4 border-l-2 border-base-300">
                           @if (reply.authorAvatarUrl) {
-                            <div class="avatar flex-shrink-0">
+                            <div class="avatar self-start flex-shrink-0">
                               <div class="w-8 h-8 rounded-full">
                                 <img
                                   [src]="reply.authorAvatarUrl"
@@ -229,7 +229,7 @@
                               </div>
                             </div>
                           } @else {
-                            <div class="avatar placeholder flex-shrink-0">
+                            <div class="avatar placeholder self-start flex-shrink-0">
                               <div
                                 class="bg-neutral text-neutral-content w-8 h-8 rounded-full"
                               >
