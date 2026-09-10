@@ -18,7 +18,7 @@
 
   <!-- Tabs -->
   <nav aria-label="主導航">
-    <div class="flex items-center justify-between mb-4 bg-base-100 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-y-2 mb-4 bg-base-100 shadow-sm">
       <div role="tablist" class="tabs">
         <a
           role="tab"
@@ -126,16 +126,14 @@
             </button>
           </div>
         } @else {
-          <button
-            type="button"
-            class="btn btn-primary gap-1"
-            (click)="loginWithGoogle()"
-            title="使用 Google 帳號登入"
-            aria-label="使用 Google 帳號登入"
+          <app-google-sign-in
+            class="max-w-full"
+            legacyButtonClass="btn btn-primary gap-1"
+            legacyLabel="登入"
+            legacyLabelClass="hidden sm:inline"
           >
-            <svg lucideLogIn width="16" height="16" />
-            <span class="hidden sm:inline">登入</span>
-          </button>
+            <svg google-sign-in-icon lucideLogIn width="16" height="16" />
+          </app-google-sign-in>
         }
       </div>
     </div>

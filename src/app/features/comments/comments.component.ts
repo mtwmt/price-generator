@@ -33,6 +33,7 @@ import {
 import { TimeAgoPipe } from '@app/shared/pipes/time-ago.pipe';
 import { SafeHtmlPipe } from '@app/shared/pipes/safe-html.pipe';
 import { PaginationComponent } from '@app/shared/components/pagination/pagination.component';
+import { GoogleSignInComponent } from '@app/shared/components/google-sign-in/google-sign-in.component';
 
 @Component({
   selector: 'app-comments',
@@ -45,6 +46,7 @@ import { PaginationComponent } from '@app/shared/components/pagination/paginatio
     TimeAgoPipe,
     SafeHtmlPipe,
     PaginationComponent,
+    GoogleSignInComponent,
   ],
   templateUrl: './comments.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -77,7 +79,6 @@ export class CommentsComponent
   currentPage = signal(1);
   readonly pageSize = 10;
 
-  loginWithGoogle = () => this.authService.loginWithGoogle();
   isAuthenticated = this.authService.isAuthenticated;
   userDisplayName = this.authService.userDisplayName;
   userPhotoURL = this.authService.userPhotoURL;

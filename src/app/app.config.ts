@@ -14,6 +14,7 @@ import { authInterceptor } from '@app/core/interceptors/auth.interceptor';
 import { routes } from './app.routes';
 import { AuthService } from '@app/core/services/auth.service';
 import { GlobalErrorHandler } from '@app/core/services/error-handler.service';
+import { GOOGLE_ID_TOKEN_LOGIN_ENABLED } from '@app/core/config/auth.config';
 
 /**
  * Auth 初始化工廠函數
@@ -26,6 +27,8 @@ async function initializeAuthApp(): Promise<void> {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // 後端 /api/auth/google/login 已發布；改回 false 可回退舊登入入口。
+    { provide: GOOGLE_ID_TOKEN_LOGIN_ENABLED, useValue: true },
     provideRouter(routes),
     // Angular 22 保留 XHR backend，維持既有檔案上傳流程的相容性。
     provideHttpClient(withXhr(), withInterceptors([authInterceptor])),

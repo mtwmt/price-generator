@@ -1,50 +1,84 @@
 @if (history().length > 0) {
-  <div class="dropdown dropdown-end">
+  <div class="dropdown dropdown-start sm:dropdown-end">
     <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2">
       <svg lucideHistory width="16" height="16" />
       <span>載入歷史記錄</span>
       <svg lucideChevronDown width="16" height="16" />
     </div>
-    <ul
+    <div
       tabindex="-1"
-      class="dropdown-content menu bg-base-100 rounded-box z-50 border border-base-300 p-2 shadow-lg"
+      class="dropdown-content bg-base-100 rounded-box z-50 w-72 max-w-[calc(100vw-3rem)] border border-base-300 p-2 shadow-lg"
     >
-      <li>
-        <a class="flex items-center gap-2" (click)="onCreateNew()">
-          <svg lucideFilePlus width="16" height="16" />
-          <span class="font-semibold">空白表單</span>
-        </a>
-      </li>
-      @if (history().length > 0) {
-        <li>
-          <span class="text-xs divider my-1">歷史記錄</span>
-        </li>
-      }
-      @for (
-        item of history();
-        track item.startDate + '-' + item.customerCompany
-      ) {
-        <li>
-          <div class="flex items-center justify-between gap-2 py-2 px-2">
-            <a
-              class="flex-1 min-w-0 p-0 hover:bg-transparent w-full"
-              (click)="onLoad($index)"
+      <button
+        type="button"
+        class="btn btn-ghost w-full justify-start gap-2"
+        (click)="onCreateNew()"
+      >
+        <svg lucideFilePlus width="16" height="16" />
+        <span class="font-semibold">空白表單</span>
+      </button>
+      <div class="text-xs divider my-2">歷史記錄</div>
+      <label class="input input-sm mb-2 flex w-full min-w-0 items-center gap-2">
+        <svg lucideSearch width="16" height="16" class="shrink-0 opacity-50" />
+        <input
+          type="search"
+          class="min-w-0 grow"
+          placeholder="搜尋客戶名稱"
+          aria-label="搜尋客戶名稱"
+          autocomplete="off"
+          [value]="searchQuery()"
+          (input)="onSearch($event)"
+          (keydown.enter)="$event.preventDefault()"
+        />
+      </label>
+      <ul
+        class="menu block max-h-64 w-full overflow-y-auto overscroll-contain p-0"
+        aria-label="報價單歷史記錄"
+      >
+        @for (entry of filteredHistory(); track entry.originalIndex) {
+          <li>
+            <div
+              class="flex w-full min-w-0 items-center justify-between gap-2 py-2 px-2"
             >
-              <span class="truncate font-semibold">
-                {{ item.startDate }} - {{ item.customerCompany }}
-              </span>
-            </a>
-            <button
-              type="button"
-              class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
-              (click)="onDelete($index, $event)"
-              title="刪除此筆記錄"
+              <button
+                type="button"
+                class="min-w-0 flex-1 text-left"
+                (click)="onLoad(entry.originalIndex)"
+                [title]="
+                  entry.data.startDate + ' - ' + entry.data.customerCompany
+                "
+              >
+                <span class="block truncate font-semibold">
+                  {{ entry.data.startDate }} - {{ entry.data.customerCompany }}
+                </span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-xs btn-ghost btn-circle flex-shrink-0"
+                (click)="onDelete(entry.originalIndex, $event)"
+                title="刪除此筆記錄"
+                [attr.aria-label]="
+                  '刪除 ' +
+                  entry.data.startDate +
+                  ' - ' +
+                  entry.data.customerCompany
+                "
+              >
+                <svg lucideX width="14" height="14" class="text-error" />
+              </button>
+            </div>
+          </li>
+        } @empty {
+          <li>
+            <p
+              role="status"
+              class="pointer-events-none px-3 py-5 text-center text-sm text-base-content/60"
             >
-              <svg lucideX width="14" height="14" class="text-error" />
-            </button>
-          </div>
-        </li>
-      }
-    </ul>
+              沒有符合的歷史記錄
+            </p>
+          </li>
+        }
+      </ul>
+    </div>
   </div>
 }

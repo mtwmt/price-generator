@@ -28,6 +28,7 @@ import {
 import { AuthService } from '@app/core/services/auth.service';
 import { CloudQuotationSyncService } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
 import { ToastService } from '@app/shared/services/toast.service';
+import { GoogleSignInComponent } from '@app/shared/components/google-sign-in/google-sign-in.component';
 
 @Component({
   selector: 'app-root',
@@ -47,6 +48,7 @@ import { ToastService } from '@app/shared/services/toast.service';
     LucideMessageSquareQuote,
     LucideX,
     ConfirmDialogComponent,
+    GoogleSignInComponent,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './app.component.html',
@@ -65,13 +67,6 @@ export class AppComponent {
       this.cloudQuotationSync.disconnect();
     }
   });
-
-  /**
-   * 登入
-   */
-  loginWithGoogle(): void {
-    this.authService.loginWithGoogle();
-  }
 
   /**
    * 導航至指定分頁

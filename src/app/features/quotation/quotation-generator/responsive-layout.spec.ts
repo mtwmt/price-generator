@@ -96,4 +96,19 @@ describe('報價單窄螢幕版面結構', () => {
       'fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 animate-slide-up lg:block'
     );
   });
+
+  it('歷史記錄列限制在清單寬度內，讓長名稱截斷並保留刪除按鈕', () => {
+    const template = readTemplate(
+      './quotation-history/quotation-history.component.html'
+    );
+    const row = classTokensAfter(template, '@for (entry');
+
+    expect([...row]).toEqual(
+      expect.arrayContaining(['flex', 'w-full', 'min-w-0'])
+    );
+    expect(template).toContain('class="min-w-0 flex-1 text-left"');
+    expect(template).toContain('class="block truncate font-semibold"');
+    expect(template).toContain('btn-circle flex-shrink-0');
+    expect(template).toContain('[title]');
+  });
 });

@@ -1,0 +1,22 @@
+@if (idTokenLoginEnabled) {
+  <div #googleButton class="max-w-full" aria-label="使用 Google 帳號登入"></div>
+  @if (loadError()) {
+    <div class="flex items-center gap-2 text-sm text-error" role="alert">
+      <span>無法載入 Google 登入按鈕。</span>
+      <button type="button" class="btn btn-ghost btn-xs" (click)="retryGoogleScript()">
+        重試
+      </button>
+    </div>
+  }
+} @else {
+  <button
+    type="button"
+    [class]="legacyButtonClass()"
+    (click)="loginWithLegacyGoogle()"
+    title="使用 Google 帳號登入"
+    aria-label="使用 Google 帳號登入"
+  >
+    <ng-content select="[google-sign-in-icon]" />
+    <span [class]="legacyLabelClass()">{{ legacyLabel() }}</span>
+  </button>
+}
