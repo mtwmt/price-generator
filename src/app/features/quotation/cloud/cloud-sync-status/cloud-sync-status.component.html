@@ -1,0 +1,23 @@
+<div class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+  <span
+    role="status"
+    aria-live="polite"
+    class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-base-content/70"
+  >
+    <span>{{ presentation().text }}</span>
+    @if (errorMessage() && (status() === 'error' || status() === 'reconnect')) {
+      <span class="min-w-0 break-words text-xs text-error">
+        {{ errorMessage() }}
+      </span>
+    }
+  </span>
+  @if (presentation().canReconnect) {
+    <button
+      type="button"
+      class="btn btn-xs btn-outline shrink-0"
+      (click)="requestReconnect()"
+    >
+      重新連線
+    </button>
+  }
+</div>

@@ -69,6 +69,12 @@
                     </div>
                     <span>雲端</span>
                   </div>
+                  <app-cloud-sync-status
+                    [status]="syncStatus()"
+                    [lastSyncedAt]="lastSyncedAt()"
+                    [errorMessage]="syncError()"
+                    (reconnect)="onDriveConnect()"
+                  />
                 }
                 @if (hasLocalHistoryToSync()) {
                   <button
@@ -180,7 +186,7 @@
                 title="以目前內容另外新增一筆，不覆蓋原紀錄"
               >
                 <svg lucideCopy width="16" height="16" />
-                另存新檔
+                複製為新報價
               </button>
             }
             <button

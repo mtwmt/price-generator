@@ -1,6 +1,9 @@
 <!-- 表單驗證提示 -->
 @if (!form().valid) {
-  <div class="alert alert-warning alert-soft my-2 px-4 py-2">
+  <div
+    id="export-form-requirements"
+    class="alert alert-warning alert-soft my-2 px-4 py-2"
+  >
     <svg lucideInfo width="16" height="16" />
     <span>請先完成必填欄位後才能匯出報價單</span>
   </div>
@@ -10,8 +13,10 @@
 <div class="flex justify-end gap-2 mb-4">
   <button
     type="button"
-    class="btn btn-sm btn-outline gap-2 disabled:cursor-not-allowed"
-    [disabled]="!form().valid"
+    class="btn btn-sm btn-outline gap-2"
+    [attr.aria-describedby]="
+      !form().valid ? 'export-form-requirements' : null
+    "
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 PDF'"
     (click)="onExportPDF()"
   >
@@ -20,8 +25,10 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-outline gap-2 disabled:cursor-not-allowed"
-    [disabled]="!form().valid"
+    class="btn btn-sm btn-outline gap-2"
+    [attr.aria-describedby]="
+      !form().valid ? 'export-form-requirements' : null
+    "
     [title]="!form().valid ? '請先完成必填欄位' : '匯出圖片'"
     (click)="onExportImage()"
   >
@@ -30,8 +37,10 @@
   </button>
   <button
     type="button"
-    class="btn btn-sm btn-success btn-outline gap-2 disabled:cursor-not-allowed"
-    [disabled]="!form().valid"
+    class="btn btn-sm btn-success btn-outline gap-2"
+    [attr.aria-describedby]="
+      !form().valid ? 'export-form-requirements' : null
+    "
     [title]="!form().valid ? '請先完成必填欄位' : '匯出 Excel'"
     (click)="onExportExcel()"
   >

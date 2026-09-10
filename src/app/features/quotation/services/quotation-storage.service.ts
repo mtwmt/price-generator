@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { StorageService } from '@app/shared/services/storage.service';
 import { LoggerService } from '@app/shared/services/logger.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
+import { prependHistoryCopy } from './quotation-history-copy';
 
 /**
  * 報價單歷史記錄管理服務
@@ -42,6 +43,25 @@ export class QuotationStorageService {
     const limitedHistory = this.limitHistorySize(newHistory);
 
     return this.storage.set(this.STORAGE_KEY, limitedHistory);
+  }
+
+  /**
+   * 複製既有報價為新紀錄。當本機歷史已滿時，保留被複製的原紀錄。
+   */
+  saveCopyToHistory(
+    quotation: QuotationData,
+    sourceIndex: number
+  ): boolean {
+    const history = this.getHistory();
+    return this.storage.set(
+      this.STORAGE_KEY,
+      prependHistoryCopy(
+        history,
+        quotation,
+        sourceIndex,
+        this.MAX_HISTORY_ITEMS
+      )
+    );
   }
 
   /**

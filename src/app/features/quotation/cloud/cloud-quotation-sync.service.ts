@@ -29,6 +29,15 @@ import {
 } from './cloud-sync-preference';
 import { canonicalizeJsonValue } from './cloud-json';
 import { createLocalMigrationOperation } from './cloud-local-migration';
+import { classifyDriveFailure } from './cloud-failures';
+
+export type CloudSyncStatus =
+  | 'local'
+  | 'connecting'
+  | 'syncing'
+  | 'synced'
+  | 'error'
+  | 'reconnect';
 
 function newIdentifier(): string {
   return crypto.randomUUID().replace(/-/g, '');
@@ -117,6 +126,7 @@ export class CloudQuotationSyncService {
   private readonly hashProvider = new WebCryptoSha256HashProvider();
   private ownerSub: string | null = null;
   private operationVersion = 0;
+  private statusOperationVersion = 0;
   private revisionMetadata: readonly DriveRevisionMetadata[] = [];
 
   readonly route = signal<QuotationStorageRoute>(
@@ -136,6 +146,9 @@ export class CloudQuotationSyncService {
   readonly isCloudStorage = computed(
     () => this.route().repository === 'cloud-sync'
   );
+  readonly syncStatus = signal<CloudSyncStatus>('local');
+  readonly lastSyncedAt = signal<number | null>(null);
+  readonly syncError = signal<string | null>(null);
 
   async initialize(): Promise<void> {
     const operationVersion = ++this.operationVersion;
@@ -150,14 +163,18 @@ export class CloudQuotationSyncService {
     ) {
       this.api.disconnect();
       this.setNotConnectedRoute();
+      this.setLocalStatus();
       return;
     }
 
     if (!this.api.isConfigured()) {
       this.isAvailable.set(false);
       this.setNotConnectedRoute();
+      this.setLocalStatus();
       return;
     }
+
+    const statusOperationVersion = this.beginStatus('connecting');
 
     // 先保留本機模式；若 Google 仍保留既有授權，則無提示恢復 Drive token。
     this.setNotConnectedRoute();
@@ -166,7 +183,13 @@ export class CloudQuotationSyncService {
       const restored = await this.api.restoreConnection(
         this.requireAuthenticatedEmail()
       );
-      if (!restored || !this.isCurrentOperation(operationVersion)) return;
+      if (!this.isCurrentOperation(operationVersion)) return;
+
+      if (!restored) {
+        this.setNotConnectedRoute();
+        this.setLocalStatus(statusOperationVersion);
+        return;
+      }
 
       this.ownerSub = this.requireAuthenticatedOwner();
       this.route.set(
@@ -177,12 +200,14 @@ export class CloudQuotationSyncService {
           driveConnection: 'connected',
         })
       );
-      await this.reloadHistory(operationVersion);
+      await this.reloadHistoryForOperation(operationVersion);
     } catch (error) {
       if (!this.isCurrentOperation(operationVersion)) return;
+      if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
 
       // 自動恢復失敗不阻斷網站登入；使用者仍可按「連結 Google Drive」完成互動授權。
-      this.setNotConnectedRoute();
+      this.handleDriveError(error, statusOperationVersion);
+      if (this.syncStatus() !== 'reconnect') this.setNotConnectedRoute();
     }
   }
 
@@ -191,6 +216,7 @@ export class CloudQuotationSyncService {
 
     this.setSyncEnabledPreference(true);
     const operationVersion = ++this.operationVersion;
+    const statusOperationVersion = this.beginStatus('connecting');
     this.ownerSub = this.requireAuthenticatedOwner();
     try {
       await this.api.beginConnect(this.requireAuthenticatedEmail());
@@ -203,10 +229,10 @@ export class CloudQuotationSyncService {
           driveConnection: 'connected',
         })
       );
-      await this.reloadHistory(operationVersion);
+      await this.reloadHistoryForOperation(operationVersion);
     } catch (error) {
       if (!this.isCurrentOperation(operationVersion)) return;
-      this.handleDriveError(error);
+      this.handleDriveError(error, statusOperationVersion);
       throw error;
     }
   }
@@ -217,6 +243,7 @@ export class CloudQuotationSyncService {
     this.ownerSub = null;
     this.history.set([]);
     this.route.set(this.notConnectedRoute());
+    this.setLocalStatus();
   }
 
   async setSyncEnabled(enabled: boolean): Promise<void> {
@@ -234,7 +261,15 @@ export class CloudQuotationSyncService {
     await this.initialize();
   }
 
-  async reloadHistory(operationVersion = this.operationVersion): Promise<void> {
+  async reloadHistory(): Promise<void> {
+    await this.reloadHistoryForOperation(this.operationVersion);
+  }
+
+  private async reloadHistoryForOperation(
+    operationVersion: number,
+    statusOperationVersion = this.beginStatus('syncing'),
+    completeOnSuccess = true
+  ): Promise<void> {
     try {
       const ownerSub = this.requireConnectedOwner();
       const revisions: DriveRevisionMetadata[] = [];
@@ -243,6 +278,7 @@ export class CloudQuotationSyncService {
       do {
         const page = await this.api.listRevisions(ownerSub, pageToken);
         if (!this.isCurrentOperation(operationVersion)) return;
+        if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
         for (const value of page.files) {
           const metadata = readMetadata(value);
           if (metadata) revisions.push(metadata);
@@ -255,6 +291,7 @@ export class CloudQuotationSyncService {
         pageToken = next ?? undefined;
       } while (pageToken);
       if (!this.isCurrentOperation(operationVersion)) return;
+      if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
       if (
         this.requireConnectedOwner() !== ownerSub ||
         this.requireAuthenticatedOwner() !== ownerSub
@@ -263,15 +300,28 @@ export class CloudQuotationSyncService {
       }
       this.revisionMetadata = revisions;
       this.history.set(buildCloudHistoryEntries(revisions));
+      if (completeOnSuccess) this.completeStatus(statusOperationVersion);
     } catch (error) {
       if (!this.isCurrentOperation(operationVersion)) return;
-      this.handleDriveError(error);
+      this.handleDriveError(error, statusOperationVersion);
       throw error;
     }
   }
 
   async load(entry: CloudQuotationHistoryEntry): Promise<QuotationData> {
-    const operationVersion = this.operationVersion;
+    return this.loadForOperation(
+      entry,
+      this.operationVersion,
+      this.beginStatus('syncing')
+    );
+  }
+
+  private async loadForOperation(
+    entry: CloudQuotationHistoryEntry,
+    operationVersion: number,
+    statusOperationVersion: number,
+    completeOnSuccess = true
+  ): Promise<QuotationData> {
     try {
       const ownerSub = this.requireConnectedOwner();
       const revision = await verifyCloudQuotationEnvelope(
@@ -293,10 +343,11 @@ export class CloudQuotationSyncService {
           item.revisionId === entry.revisionId ? { ...item, data } : item
         )
       );
+      if (completeOnSuccess) this.completeStatus(statusOperationVersion);
       return data;
     } catch (error) {
       if (this.isCurrentOperation(operationVersion)) {
-        this.handleDriveError(error);
+        this.handleDriveError(error, statusOperationVersion);
       }
       throw error;
     }
@@ -307,6 +358,7 @@ export class CloudQuotationSyncService {
     existing?: CloudQuotationHistoryEntry
   ): Promise<CloudQuotationHistoryEntry> {
     const operationVersion = this.operationVersion;
+    const statusOperationVersion = this.beginStatus('syncing');
     try {
       const ownerSub = this.requireConnectedOwner();
       const quotationId = existing?.quotationId ?? newIdentifier();
@@ -346,10 +398,11 @@ export class CloudQuotationSyncService {
             )
           : [entry, ...entries]
       );
+      this.completeStatus(statusOperationVersion);
       return entry;
     } catch (error) {
       if (this.isCurrentOperation(operationVersion)) {
-        this.handleDriveError(error);
+        this.handleDriveError(error, statusOperationVersion);
       }
       throw error;
     }
@@ -360,6 +413,7 @@ export class CloudQuotationSyncService {
     localHistory: readonly QuotationData[]
   ): Promise<LocalHistorySyncResult> {
     const operationVersion = this.operationVersion;
+    const statusOperationVersion = this.beginStatus('syncing');
     try {
       const ownerSub = this.requireConnectedOwner();
       const assertCurrent = () => {
@@ -372,7 +426,11 @@ export class CloudQuotationSyncService {
         }
       };
       assertCurrent();
-      await this.reloadHistory(operationVersion);
+      await this.reloadHistoryForOperation(
+        operationVersion,
+        statusOperationVersion,
+        false
+      );
       assertCurrent();
       const revisions = this.revisionMetadata;
       const uniqueHistory = new Map<string, QuotationData>();
@@ -402,15 +460,20 @@ export class CloudQuotationSyncService {
         if (receipt.status === 'accepted') uploaded += 1;
       }
 
-      await this.reloadHistory(operationVersion);
+      await this.reloadHistoryForOperation(
+        operationVersion,
+        statusOperationVersion,
+        false
+      );
       assertCurrent();
+      this.completeStatus(statusOperationVersion);
       return {
         uploaded,
         skipped: localHistory.length - uploaded,
       };
     } catch (error) {
       if (this.isCurrentOperation(operationVersion)) {
-        this.handleDriveError(error);
+        this.handleDriveError(error, statusOperationVersion);
       }
       throw error;
     }
@@ -418,9 +481,15 @@ export class CloudQuotationSyncService {
 
   async delete(entry: CloudQuotationHistoryEntry): Promise<void> {
     const operationVersion = this.operationVersion;
+    const statusOperationVersion = this.beginStatus('syncing');
     try {
       const ownerSub = this.requireConnectedOwner();
-      const data = await this.load(entry);
+      const data = await this.loadForOperation(
+        entry,
+        operationVersion,
+        statusOperationVersion,
+        false
+      );
       const revision = await createCloudQuotationRevision(
         {
           schemaVersion: CLOUD_SCHEMA_VERSION,
@@ -443,9 +512,10 @@ export class CloudQuotationSyncService {
       this.history.update((entries) =>
         entries.filter((item) => item.quotationId !== entry.quotationId)
       );
+      this.completeStatus(statusOperationVersion);
     } catch (error) {
       if (this.isCurrentOperation(operationVersion)) {
-        this.handleDriveError(error);
+        this.handleDriveError(error, statusOperationVersion);
       }
       throw error;
     }
@@ -467,18 +537,72 @@ export class CloudQuotationSyncService {
     this.route.set(this.notConnectedRoute());
   }
 
-  private handleDriveError(error: unknown): void {
-    if (!(error instanceof DriveAuthorizationRequiredError)) return;
-    this.ownerSub = null;
-    this.history.set([]);
-    this.route.set(
-      decideQuotationStorageRoute({
-        isPremium: this.auth.isPremium(),
-        isAdmin: this.auth.isAdmin(),
-        isCloudSyncEnabled: this.isSyncEnabled(),
-        driveConnection: 'reconnect-required',
-      })
+  private handleDriveError(
+    error: unknown,
+    statusOperationVersion: number
+  ): void {
+    if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
+
+    const classification = classifyDriveFailure(error);
+    const requiresReconnect =
+      error instanceof DriveAuthorizationRequiredError ||
+      classification.requiresReconnect;
+
+    if (requiresReconnect) {
+      this.ownerSub = null;
+      this.history.set([]);
+      this.route.set(
+        decideQuotationStorageRoute({
+          isPremium: this.auth.isPremium(),
+          isAdmin: this.auth.isAdmin(),
+          isCloudSyncEnabled: this.isSyncEnabled(),
+          driveConnection: 'reconnect-required',
+        })
+      );
+    }
+
+    if (requiresReconnect) {
+      this.syncStatus.set('reconnect');
+      this.syncError.set('Google Drive 授權已失效，請重新連線');
+      return;
+    }
+
+    this.syncStatus.set('error');
+    this.syncError.set(
+      classification.category === 'membership'
+        ? '目前帳號無法使用雲端同步'
+        : classification.retryable
+          ? '雲端同步暫時無法完成，請稍後重試'
+          : '雲端同步失敗，請稍後再試'
     );
+  }
+
+  private beginStatus(status: 'connecting' | 'syncing'): number {
+    const statusOperationVersion = ++this.statusOperationVersion;
+    this.syncStatus.set(status);
+    this.syncError.set(null);
+    return statusOperationVersion;
+  }
+
+  private completeStatus(statusOperationVersion: number): void {
+    if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
+    this.syncStatus.set('synced');
+    this.syncError.set(null);
+    this.lastSyncedAt.set(Date.now());
+  }
+
+  private setLocalStatus(statusOperationVersion?: number): void {
+    if (statusOperationVersion === undefined) {
+      ++this.statusOperationVersion;
+    } else if (!this.isCurrentStatusOperation(statusOperationVersion)) {
+      return;
+    }
+    this.syncStatus.set('local');
+    this.syncError.set(null);
+  }
+
+  private isCurrentStatusOperation(statusOperationVersion: number): boolean {
+    return statusOperationVersion === this.statusOperationVersion;
   }
 
   private requireConnectedOwner(): string {

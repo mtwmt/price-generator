@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@app/core/guards/auth.guard';
 import { adminGuard } from '@app/core/guards/admin.guard';
+import { pendingQuotationChangesGuard } from '@app/features/quotation/quotation-generator/pending-quotation-changes.guard';
 
 export const routes: Routes = [
   {
@@ -9,6 +10,7 @@ export const routes: Routes = [
       import(
         '@app/features/quotation/quotation-generator/quotation-generator.component'
       ).then((m) => m.QuotationGeneratorComponent),
+    canDeactivate: [pendingQuotationChangesGuard],
   },
   {
     path: 'changelog',

@@ -1,5 +1,6 @@
 import {
   Component,
+  DOCUMENT,
   input,
   output,
   inject,
@@ -19,6 +20,7 @@ import { ToastService } from '@app/shared/services/toast.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { QuotationTemplate } from '@app/features/templates/models/quotation-template.model';
 import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
+import { ensureExportFormIsValid } from './export-validation';
 
 /**
  * 報價單匯出控制元件
@@ -42,6 +44,7 @@ export class ExportControls {
   // Services
   private exportService = inject(ExportService);
   private toastService = inject(ToastService);
+  private document = inject(DOCUMENT);
 
   // Inputs
   form = input.required<FormGroup>();
@@ -82,9 +85,21 @@ export class ExportControls {
   }
 
   /**
+   * 匯出按鈕保留可操作性，讓使用者能立即得知缺少哪些欄位。
+   * 以原生事件通知外層表單處理焦點與捲動，避免預覽元件成為耦合點。
+   */
+  private validateBeforeExport(): boolean {
+    return ensureExportFormIsValid(this.form(), () => {
+      this.toastService.error('請先完成必填欄位後才能匯出報價單');
+      this.document.dispatchEvent(new CustomEvent('quotation-export-invalid'));
+    });
+  }
+
+  /**
    * 匯出 PDF
    */
   async onExportPDF() {
+    if (!this.validateBeforeExport()) return;
     try {
       const contentId = this.selectedTemplate();
       const quotationData = this.getQuotationData();
@@ -104,6 +119,7 @@ export class ExportControls {
    * 匯出圖片
    */
   async onExportImage() {
+    if (!this.validateBeforeExport()) return;
     try {
       const contentId = this.selectedTemplate();
       const customerName = this.form().get('customerCompany')?.value || '';
@@ -125,6 +141,7 @@ export class ExportControls {
    * 匯出 Excel
    */
   async onExportExcel() {
+    if (!this.validateBeforeExport()) return;
     try {
       const data = this.getQuotationData();
 
