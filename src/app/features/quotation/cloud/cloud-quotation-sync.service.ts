@@ -151,7 +151,7 @@ export class CloudQuotationSyncService {
   readonly syncError = signal<string | null>(null);
 
   async initialize(): Promise<void> {
-    const operationVersion = ++this.operationVersion;
+    ++this.operationVersion;
     this.history.set([]);
     this.ownerSub = null;
     if (
@@ -174,41 +174,13 @@ export class CloudQuotationSyncService {
       return;
     }
 
-    const statusOperationVersion = this.beginStatus('connecting');
-
-    // 先保留本機模式；若 Google 仍保留既有授權，則無提示恢復 Drive token。
-    this.setNotConnectedRoute();
-
-    try {
-      const restored = await this.api.restoreConnection(
-        this.requireAuthenticatedEmail()
-      );
-      if (!this.isCurrentOperation(operationVersion)) return;
-
-      if (!restored) {
-        this.setNotConnectedRoute();
-        this.setLocalStatus(statusOperationVersion);
-        return;
-      }
-
-      this.ownerSub = this.requireAuthenticatedOwner();
-      this.route.set(
-        decideQuotationStorageRoute({
-          isPremium: this.auth.isPremium(),
-          isAdmin: this.auth.isAdmin(),
-          isCloudSyncEnabled: this.isSyncEnabled(),
-          driveConnection: 'connected',
-        })
-      );
-      await this.reloadHistoryForOperation(operationVersion);
-    } catch (error) {
-      if (!this.isCurrentOperation(operationVersion)) return;
-      if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
-
-      // 自動恢復失敗不阻斷網站登入；使用者仍可按「連結 Google Drive」完成互動授權。
-      this.handleDriveError(error, statusOperationVersion);
-      if (this.syncStatus() !== 'reconnect') this.setNotConnectedRoute();
-    }
+    // OAuth token 取得可能開啟視窗；頁面初始化沒有使用者手勢，因此絕不在此
+    // 嘗試恢復 Drive 授權。保留本機資料，等待使用者明確點擊重新連線。
+    this.api.disconnect();
+    this.setReconnectRequiredRoute();
+    ++this.statusOperationVersion;
+    this.syncStatus.set('reconnect');
+    this.syncError.set(null);
   }
 
   async beginConnect(): Promise<void> {
@@ -258,7 +230,8 @@ export class CloudQuotationSyncService {
       return;
     }
 
-    await this.initialize();
+    // 開啟切換鈕是明確的使用者操作，互動式授權只能由這條路徑啟動。
+    await this.beginConnect();
   }
 
   async reloadHistory(): Promise<void> {
@@ -537,6 +510,19 @@ export class CloudQuotationSyncService {
     this.route.set(this.notConnectedRoute());
   }
 
+  private setReconnectRequiredRoute(): void {
+    this.ownerSub = null;
+    this.history.set([]);
+    this.route.set(
+      decideQuotationStorageRoute({
+        isPremium: this.auth.isPremium(),
+        isAdmin: this.auth.isAdmin(),
+        isCloudSyncEnabled: this.isSyncEnabled(),
+        driveConnection: 'reconnect-required',
+      })
+    );
+  }
+
   private handleDriveError(
     error: unknown,
     statusOperationVersion: number
@@ -549,16 +535,7 @@ export class CloudQuotationSyncService {
       classification.requiresReconnect;
 
     if (requiresReconnect) {
-      this.ownerSub = null;
-      this.history.set([]);
-      this.route.set(
-        decideQuotationStorageRoute({
-          isPremium: this.auth.isPremium(),
-          isAdmin: this.auth.isAdmin(),
-          isCloudSyncEnabled: this.isSyncEnabled(),
-          driveConnection: 'reconnect-required',
-        })
-      );
+      this.setReconnectRequiredRoute();
     }
 
     if (requiresReconnect) {

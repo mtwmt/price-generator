@@ -12,7 +12,7 @@ export interface CloudSyncInitializationInput {
   readonly isSyncEnabled: boolean;
 }
 
-export type CloudSyncInitializationAction = 'disconnect' | 'restore';
+export type CloudSyncInitializationAction = 'disconnect' | 'reconnect';
 
 function getLocalStorage(): KeyValueStorage | null {
   try {
@@ -47,6 +47,6 @@ export function decideCloudSyncInitialization(
   input: CloudSyncInitializationInput
 ): CloudSyncInitializationAction {
   return input.isAuthenticated && input.isEligible && input.isSyncEnabled
-    ? 'restore'
+    ? 'reconnect'
     : 'disconnect';
 }

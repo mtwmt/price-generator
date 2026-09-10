@@ -38,14 +38,14 @@ describe('雲端同步偏好', () => {
     expect(readCloudSyncEnabledPreference(storage)).toBe(false);
   });
 
-  it('只有已登入且符合資格、並開啟偏好的會員才自動恢復 Drive 授權', () => {
+  it('已登入且符合資格、並開啟偏好的會員在初始化時等待明確重新連線', () => {
     expect(
       decideCloudSyncInitialization({
         isAuthenticated: true,
         isEligible: true,
         isSyncEnabled: true,
       })
-    ).toBe('restore');
+    ).toBe('reconnect');
 
     expect(
       decideCloudSyncInitialization({
@@ -66,13 +66,13 @@ describe('雲端同步偏好', () => {
     ).toBe('disconnect');
   });
 
-  it('首次授權不是初始化流程的一部分，初始化只會決定恢復或中斷連線', () => {
+  it('初始化不會啟動互動式授權，只會決定等待重新連線或中斷連線', () => {
     expect(
       decideCloudSyncInitialization({
         isAuthenticated: true,
         isEligible: true,
         isSyncEnabled: true,
       })
-    ).not.toBe('disconnect');
+    ).toBe('reconnect');
   });
 });
