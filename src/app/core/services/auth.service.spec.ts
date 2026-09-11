@@ -94,17 +94,19 @@ const loginResponse = {
 interface PendingHttpRequest {
   readonly url: string;
   readonly body: unknown;
+  readonly options: unknown;
   resolve(value: unknown): void;
 }
 
 class HttpClientBoundary {
   readonly requests: PendingHttpRequest[] = [];
 
-  post<T>(url: string, body: unknown): Observable<T> {
+  post<T>(url: string, body: unknown, options?: unknown): Observable<T> {
     return new Observable<T>((subscriber) => {
       this.requests.push({
         url,
         body,
+        options,
         resolve: (value: unknown): void => {
           subscriber.next(value as T);
           subscriber.complete();
@@ -145,12 +147,26 @@ describe('AuthService Google 授權碼登入', () => {
 
   it('僅在使用者登入時載入 GIS，並以授權碼交換既有 session', async () => {
     let callback: ((response: { code?: string; error?: string }) => void) | undefined;
+    let clientConfig:
+      | {
+          readonly scope: string;
+          readonly include_granted_scopes?: boolean;
+          readonly enable_granular_consent?: boolean;
+          readonly callback: typeof callback;
+        }
+      | undefined;
     const requestCode = jest.fn();
     const google: GoogleIdentityApi = {
       accounts: {
         oauth2: {
-          initCodeClient(config: { callback: typeof callback }): { requestCode(): void } {
+          initCodeClient(config: {
+            callback: typeof callback;
+            scope: string;
+            include_granted_scopes?: boolean;
+            enable_granular_consent?: boolean;
+          }): { requestCode(): void } {
             callback = config.callback;
+            clientConfig = config;
             return { requestCode };
           },
         },
@@ -161,10 +177,23 @@ describe('AuthService Google 授權碼登入', () => {
     expect(document.querySelector('script[src="https://accounts.google.com/gsi/client"]')).toBeNull();
     await authService.loginWithGoogle();
     expect(requestCode).toHaveBeenCalledTimes(1);
+    expect(clientConfig).toMatchObject({
+      include_granted_scopes: true,
+      enable_granular_consent: true,
+    });
+    expect(clientConfig?.scope).toContain(
+      'https://www.googleapis.com/auth/drive.appdata'
+    );
 
     callback?.({ code: 'authorization-code' });
     const request = http.expectOne(`${authUrl}/google/exchange`);
-    expect(request.body).toEqual({ code: 'authorization-code' });
+    expect(request.body).toEqual({
+      code: 'authorization-code',
+      driveAuthorization: true,
+    });
+    expect(request.options).toEqual({
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
     request.resolve(loginResponse);
     await Promise.resolve();
 
@@ -194,5 +223,30 @@ describe('AuthService Google 授權碼登入', () => {
 
     expect(authService.isAuthenticated()).toBe(false);
     expect(toast.error).toHaveBeenCalledWith('登入已取消');
+  });
+
+  it('GIS 載入期間登入 epoch 已失效時不再開啟 popup', async () => {
+    const requestCode = jest.fn();
+    const login = authService.loginWithGoogle();
+    const script = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+    expect(script).not.toBeNull();
+
+    await authService.logout();
+    Object.defineProperty(window, 'google', {
+      configurable: true,
+      value: {
+        accounts: {
+          oauth2: {
+            initCodeClient: () => ({ requestCode }),
+          },
+        },
+      } satisfies GoogleIdentityApi,
+    });
+    script?.dispatchEvent(new Event('load'));
+    await login;
+
+    expect(requestCode).not.toHaveBeenCalled();
   });
 });

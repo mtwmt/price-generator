@@ -18,9 +18,10 @@
         <span class="font-semibold">空白表單</span>
       </button>
       <div class="text-xs divider my-2">歷史記錄</div>
-      <label class="input input-sm mb-2 flex w-full min-w-0 items-center gap-2">
+      <label class="input input-sm mb-2 flex h-11 w-full min-w-0 items-center gap-2 sm:h-8">
         <svg lucideSearch width="16" height="16" class="shrink-0 opacity-50" />
         <input
+          #searchInput
           type="search"
           class="min-w-0 grow"
           placeholder="搜尋客戶名稱"
@@ -30,6 +31,17 @@
           (input)="onSearch($event)"
           (keydown.enter)="$event.preventDefault()"
         />
+        @if (searchQuery()) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-circle btn-sm -mr-1 min-h-11 min-w-11 sm:min-h-8 sm:min-w-8"
+            aria-label="清空搜尋"
+            (mousedown)="$event.preventDefault()"
+            (click)="clearSearch(searchInput, $event)"
+          >
+            <svg lucideX width="16" height="16" />
+          </button>
+        }
       </label>
       <ul
         class="menu block max-h-64 w-full overflow-y-auto overscroll-contain p-0"

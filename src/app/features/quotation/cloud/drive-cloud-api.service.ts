@@ -1,6 +1,13 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { AuthService } from '@app/core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 import type { CloudQuotationRevision } from './cloud-contracts';
+import {
+  DriveAuthorizationApiService,
+  DriveAuthorizationBrokerError,
+  type DriveAuthorizationBrokerFailure,
+  type DriveAuthorizationGrant,
+} from './drive-authorization-api.service';
 
 export type DriveConnectionState =
   'connected' | 'disconnected' | 'reauthorization_required';
@@ -19,28 +26,27 @@ export interface DriveOperationResponse {
   readonly idempotent: boolean;
 }
 
-interface GoogleTokenResponse {
-  readonly access_token?: string;
+interface GoogleCodeResponse {
+  readonly code?: string;
   readonly error?: string;
-  readonly error_description?: string;
-  readonly expires_in?: number;
 }
 
-interface GoogleTokenClient {
-  callback: (response: GoogleTokenResponse) => void;
-  requestAccessToken(config?: { readonly prompt?: string }): void;
+interface GoogleCodeClient {
+  requestCode(): void;
 }
 
 interface GoogleIdentityApi {
   readonly accounts: {
     readonly oauth2: {
-      initTokenClient(config: {
+      initCodeClient(config: {
         readonly client_id: string;
         readonly scope: string;
-        readonly login_hint?: string;
-        callback: (response: GoogleTokenResponse) => void;
+        readonly ux_mode: 'popup';
+        readonly hint?: string;
+        readonly include_granted_scopes?: boolean;
+        callback: (response: GoogleCodeResponse) => void;
         error_callback?: (error: { readonly type?: string }) => void;
-      }): GoogleTokenClient;
+      }): GoogleCodeClient;
     };
   };
 }
@@ -52,20 +58,33 @@ declare global {
 }
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_SCOPE = 'openid email https://www.googleapis.com/auth/drive.appdata';
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const DRIVE_APP_PROPERTY = 'price-quotation';
 const MAX_REVISION_BYTES = 8 * 1024 * 1024;
 const MULTIPART_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const TOKEN_EARLY_REFRESH_MS = 30_000;
-const SILENT_TOKEN_TIMEOUT_MS = 4_000;
-const INTERACTIVE_TOKEN_TIMEOUT_MS = 60_000;
+const INTERACTIVE_AUTHORIZATION_TIMEOUT_MS = 60_000;
+const GIS_LOAD_TIMEOUT_MS = 15_000;
 
 export class DriveAuthorizationRequiredError extends Error {
   constructor(message = 'Google Drive 授權已失效，請重新連結') {
     super(message);
     this.name = 'DriveAuthorizationRequiredError';
+  }
+}
+
+/** 可由同步協調層依 code 顯示安全且具體的雲端服務錯誤。 */
+export class DriveServiceUnavailableError extends Error {
+  constructor(
+    readonly code:
+      | Extract<DriveAuthorizationBrokerFailure, 'configuration' | 'temporarily_unavailable' | 'forbidden' | 'network' | 'invalid_response'>,
+    readonly status: number | null,
+    readonly safeMessage: string
+  ) {
+    super(safeMessage);
+    this.name = 'DriveServiceUnavailableError';
   }
 }
 
@@ -238,16 +257,20 @@ function isSameOperation(
 }
 
 /**
- * 瀏覽器直接透過 Google Identity Services 與 Drive REST API 存取 appDataFolder。
- * access token 僅保留在記憶體；Cloudflare 不會接收報價單內容或 Drive 憑證。
+ * 瀏覽器直接透過 Drive REST API 存取 appDataFolder。短效 access token 只保留在
+ * 記憶體；後端只保存加密的續期憑證，broker 完全不接收報價單內容。
  */
 @Injectable({ providedIn: 'root' })
 export class DriveCloudApiService {
+  private readonly authorizationApi = inject(DriveAuthorizationApiService);
+  private readonly auth = inject(AuthService);
   private gisPromise: Promise<void> | null = null;
-  private tokenRequest: Promise<void> | null = null;
+  private interactiveRequest: Promise<void> | null = null;
+  private refreshRequest: Promise<string> | null = null;
   private accessToken: string | null = null;
   private tokenExpiresAt = 0;
   private connectedEmail: string | null = null;
+  private connectedOwnerId: string | null = null;
   private authorizationVersion = 0;
 
   isConfigured(): boolean {
@@ -256,30 +279,69 @@ export class DriveCloudApiService {
 
   async beginConnect(expectedEmail: string): Promise<void> {
     const email = this.normalizeExpectedEmail(expectedEmail);
-    await this.requestAccessToken('consent', email);
-    await this.verifyConnectedAccount(email);
+    // GIS 一次只能安全管理一個 popup；重複點擊沿用同一個流程。
+    if (this.interactiveRequest) return this.interactiveRequest;
+    this.disconnect();
+    const authorizationVersion = this.authorizationVersion;
+    const ownerId = this.currentOwnerId();
+    const request = this.requestAuthorizationCode(
+      email,
+      ownerId,
+      authorizationVersion
+    );
+    this.interactiveRequest = request;
+    void request.finally(() => {
+      if (this.interactiveRequest === request) this.interactiveRequest = null;
+    }).catch(() => undefined);
+    return request;
   }
 
   /**
-   * 已曾授權的帳號可在重新開頁時無提示地取得短效 token。瀏覽器封鎖
-   * 第三方登入狀態或授權失效時，回傳 false 交由 UI 顯示重新連結入口。
+   * token 僅存在記憶體。重新整理後向受保護的 broker 取短效 token，
+   * 不會呼叫 GIS 或開啟授權視窗。
    */
   async restoreConnection(expectedEmail: string): Promise<boolean> {
     const email = this.normalizeExpectedEmail(expectedEmail);
+    const ownerId = this.currentOwnerId();
+    if (
+      this.connectedEmail === email &&
+      this.connectedOwnerId === ownerId &&
+      this.hasValidAccessToken()
+    ) {
+      return true;
+    }
+    const authorizationVersion = this.authorizationVersion;
     try {
-      await this.requestAccessToken('none', email);
-      await this.verifyConnectedAccount(email);
+      const grant = await this.authorizationApi.token();
+      this.acceptGrant(grant, email, ownerId, authorizationVersion);
       return true;
     } catch (error) {
-      if (error instanceof DriveAuthorizationRequiredError) return false;
-      throw error;
+      if (this.isReauthorizationError(error)) {
+        this.assertCurrentSession(ownerId, authorizationVersion);
+        this.clearConnection();
+        if (
+          error instanceof DriveAuthorizationBrokerError &&
+          error.failure === 'scope_not_granted'
+        ) {
+          throw new DriveAuthorizationRequiredError(error.safeMessage);
+        }
+        return false;
+      }
+      if (
+        error instanceof DriveAuthorizationBrokerError &&
+        error.failure === 'forbidden'
+      ) {
+        this.assertCurrentSession(ownerId, authorizationVersion);
+        this.clearAccessToken();
+      }
+      throw this.toSafeBrokerError(error);
     }
   }
 
   disconnect(): void {
     ++this.authorizationVersion;
-    this.connectedEmail = null;
-    this.clearAccessToken();
+    this.refreshRequest = null;
+    this.clearConnection();
   }
 
   async listRevisions(
@@ -424,7 +486,8 @@ export class DriveCloudApiService {
   private async resumableUpload(
     metadata: ReturnType<typeof createMetadata>,
     content: string,
-    byteLength: number
+    byteLength: number,
+    retryAttempt = 0
   ): Promise<DriveFile> {
     const url = new URL(DRIVE_UPLOAD_URL);
     url.searchParams.set('uploadType', 'resumable');
@@ -448,6 +511,12 @@ export class DriveCloudApiService {
     });
     if (response.status === 401) {
       this.clearAccessToken();
+      if (retryAttempt === 0) {
+        await this.getAccessToken();
+        // 401 的續傳工作階段不會寫入檔案；重新建立階段後才重送內容。
+        return this.resumableUpload(metadata, content, byteLength, 1);
+      }
+      this.clearConnection();
       throw new DriveAuthorizationRequiredError();
     }
     if (!response.ok) {
@@ -495,13 +564,32 @@ export class DriveCloudApiService {
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> {
+    const authorizationVersion = this.authorizationVersion;
     const token = await this.getAccessToken();
+    this.assertCurrentAuthorization(authorizationVersion);
     const headers = new Headers(init?.headers);
     headers.set('Authorization', `Bearer ${token}`);
     const response = await fetch(input, { ...init, headers });
+    this.assertCurrentAuthorization(authorizationVersion);
     if (response.status === 401) {
       this.clearAccessToken();
-      throw new DriveAuthorizationRequiredError();
+      const refreshedToken = await this.getAccessToken();
+      this.assertCurrentAuthorization(authorizationVersion);
+      const retryHeaders = new Headers(init?.headers);
+      retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+      const retry = await fetch(input, { ...init, headers: retryHeaders });
+      this.assertCurrentAuthorization(authorizationVersion);
+      if (retry.status === 401) {
+        this.clearConnection();
+        throw new DriveAuthorizationRequiredError();
+      }
+      if (!retry.ok) {
+        throw new DriveApiError(
+          retry.status,
+          await this.readApiErrorMessage(retry)
+        );
+      }
+      return retry;
     }
     if (!response.ok) {
       throw new DriveApiError(
@@ -530,50 +618,69 @@ export class DriveCloudApiService {
   }
 
   private async getAccessToken(): Promise<string> {
-    if (
-      this.accessToken &&
-      Date.now() + TOKEN_EARLY_REFRESH_MS < this.tokenExpiresAt
-    ) {
-      return this.accessToken;
+    if (this.hasValidAccessToken()) {
+      return this.accessToken!;
     }
-    const expectedEmail = this.connectedEmail;
-    await this.requestAccessToken('none', expectedEmail ?? undefined);
-    if (!this.accessToken) throw new DriveAuthorizationRequiredError();
-    if (expectedEmail) await this.verifyConnectedAccount(expectedEmail);
-    return this.accessToken;
+    this.clearAccessToken();
+    return this.refreshAccessToken();
   }
 
-  private requestAccessToken(
-    prompt: 'none' | 'consent',
-    loginHint?: string
-  ): Promise<void> {
+  private refreshAccessToken(): Promise<string> {
+    if (this.refreshRequest) return this.refreshRequest;
     const authorizationVersion = this.authorizationVersion;
-    const pendingRequest = this.tokenRequest;
-    const request = (
-      pendingRequest ? pendingRequest.catch(() => undefined) : Promise.resolve()
-    ).then(() => {
-      if (authorizationVersion !== this.authorizationVersion) {
-        throw new DriveAuthorizationRequiredError('Google Drive 連線已取消');
+    const expectedEmail = this.connectedEmail;
+    const expectedOwnerId = this.connectedOwnerId;
+    if (!expectedEmail || !expectedOwnerId) {
+      throw new DriveAuthorizationRequiredError();
+    }
+    const request = this.authorizationApi.token().then(
+      (grant) => {
+        this.acceptGrant(
+          grant,
+          expectedEmail,
+          expectedOwnerId,
+          authorizationVersion
+        );
+        return this.accessToken!;
+      },
+      (error) => {
+        if (this.isReauthorizationError(error)) {
+          this.assertCurrentSession(expectedOwnerId, authorizationVersion);
+          this.clearConnection();
+          throw new DriveAuthorizationRequiredError();
+        }
+        if (
+          error instanceof DriveAuthorizationBrokerError &&
+          error.failure === 'forbidden'
+        ) {
+          this.assertCurrentSession(expectedOwnerId, authorizationVersion);
+          this.clearAccessToken();
+        }
+        throw this.toSafeBrokerError(error);
       }
-      return this.startTokenRequest(prompt, loginHint, authorizationVersion);
-    });
-    this.tokenRequest = request;
-    void request.then(
-      () => this.clearFinishedTokenRequest(request),
-      () => this.clearFinishedTokenRequest(request)
     );
+    this.refreshRequest = request;
+    void request.finally(() => {
+      if (this.refreshRequest === request) this.refreshRequest = null;
+    }).catch(() => undefined);
     return request;
   }
 
-  private async startTokenRequest(
-    prompt: 'none' | 'consent',
-    loginHint: string | undefined,
+  private hasValidAccessToken(): boolean {
+    return !!this.accessToken &&
+      Date.now() + TOKEN_EARLY_REFRESH_MS < this.tokenExpiresAt;
+  }
+
+  private async requestAuthorizationCode(
+    expectedEmail: string,
+    expectedOwnerId: string,
     authorizationVersion: number
   ): Promise<void> {
     if (!this.isConfigured()) {
       throw new Error('Google Drive Client ID 尚未設定');
     }
     await this.loadGis();
+    this.assertCurrentSession(expectedOwnerId, authorizationVersion);
     const google = window.google;
     if (!google?.accounts.oauth2) {
       throw new Error('Google Identity Services 未正確載入');
@@ -593,10 +700,12 @@ export class DriveCloudApiService {
         if (timeoutId) clearTimeout(timeoutId);
         resolve();
       };
-      const client = google.accounts.oauth2.initTokenClient({
+      const client = google.accounts.oauth2.initCodeClient({
         client_id: environment.googleClientId,
         scope: DRIVE_SCOPE,
-        ...(loginHint ? { login_hint: loginHint } : {}),
+        ux_mode: 'popup',
+        hint: expectedEmail,
+        include_granted_scopes: true,
         callback: (response) => {
           if (settled) return;
           if (authorizationVersion !== this.authorizationVersion) {
@@ -605,20 +714,30 @@ export class DriveCloudApiService {
             );
             return;
           }
-          if (!response.access_token) {
-            this.clearAccessToken();
+          if (!response.code) {
             fail(
               new DriveAuthorizationRequiredError(
-                response.error_description || 'Google Drive 授權遭拒絕'
+                'Google Drive 授權已取消，請重新連結'
               )
             );
             return;
           }
-          const expiresIn = Number(response.expires_in);
-          this.accessToken = response.access_token;
-          this.tokenExpiresAt =
-            Date.now() + (Number.isFinite(expiresIn) ? expiresIn : 3600) * 1000;
-          succeed();
+          void this.authorizationApi.connect(response.code).then(
+            (grant) => {
+              try {
+                this.acceptGrant(
+                  grant,
+                  expectedEmail,
+                  expectedOwnerId,
+                  authorizationVersion
+                );
+                succeed();
+              } catch (error) {
+                fail(error instanceof Error ? error : new Error('Google Drive 授權流程失敗'));
+              }
+            },
+            (error) => fail(this.toSafeBrokerError(error))
+          );
         },
         error_callback: (error) => {
           if (authorizationVersion !== this.authorizationVersion) {
@@ -627,7 +746,6 @@ export class DriveCloudApiService {
             );
             return;
           }
-          this.clearAccessToken();
           fail(
             new DriveAuthorizationRequiredError(
               error.type === 'popup_failed_to_open'
@@ -643,19 +761,13 @@ export class DriveCloudApiService {
         () =>
           fail(
             new DriveAuthorizationRequiredError(
-              prompt === 'none'
-                ? 'Google Drive 尚未完成無提示授權'
-                : 'Google Drive 授權逾時'
+              'Google Drive 授權逾時'
             )
           ),
-        prompt === 'none' ? SILENT_TOKEN_TIMEOUT_MS : INTERACTIVE_TOKEN_TIMEOUT_MS
+        INTERACTIVE_AUTHORIZATION_TIMEOUT_MS
       );
-      client.requestAccessToken({ prompt });
+      client.requestCode();
     });
-  }
-
-  private clearFinishedTokenRequest(request: Promise<void>): void {
-    if (this.tokenRequest === request) this.tokenRequest = null;
   }
 
   private loadGis(): Promise<void> {
@@ -663,13 +775,25 @@ export class DriveCloudApiService {
     if (this.gisPromise) return this.gisPromise;
     this.gisPromise = new Promise<void>((resolve, reject) => {
       const script = document.createElement('script');
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const finish = (callback: () => void): void => {
+        if (timeoutId) clearTimeout(timeoutId);
+        callback();
+      };
       script.src = GIS_SRC;
       script.async = true;
       script.defer = true;
-      script.onload = () => resolve();
+      script.onload = () => finish(resolve);
       script.onerror = () =>
-        reject(new Error('Google Identity Services 載入失敗'));
+        finish(() => reject(new Error('Google Identity Services 載入失敗')));
+      timeoutId = setTimeout(
+        () => finish(() => reject(new Error('Google Identity Services 載入逾時'))),
+        GIS_LOAD_TIMEOUT_MS
+      );
       document.head.appendChild(script);
+    });
+    void this.gisPromise.catch(() => {
+      this.gisPromise = null;
     });
     return this.gisPromise;
   }
@@ -677,6 +801,71 @@ export class DriveCloudApiService {
   private clearAccessToken(): void {
     this.accessToken = null;
     this.tokenExpiresAt = 0;
+  }
+
+  private clearConnection(): void {
+    this.connectedEmail = null;
+    this.connectedOwnerId = null;
+    this.clearAccessToken();
+  }
+
+  private currentOwnerId(): string {
+    const ownerId = this.auth.userId();
+    if (!ownerId) {
+      throw new DriveAuthorizationRequiredError('會員登入狀態已失效');
+    }
+    return ownerId;
+  }
+
+  private acceptGrant(
+    grant: DriveAuthorizationGrant,
+    expectedEmail: string,
+    expectedOwnerId: string,
+    authorizationVersion: number
+  ): void {
+    this.assertCurrentAuthorization(authorizationVersion);
+    if (this.currentOwnerId() !== expectedOwnerId) {
+      throw new DriveAuthorizationRequiredError('會員帳號已變更');
+    }
+    // email 是 GIS 帳號選擇的 hint；會員 uid 才是後端已驗證的安全主鍵。
+    // 使用者更換 Google 帳號信箱時，舊授權仍可由同一 uid 安全地續期。
+    this.normalizeExpectedEmail(grant.email);
+    if (grant.ownerId !== expectedOwnerId) {
+      this.clearConnection();
+      throw new DriveAuthorizationRequiredError(
+        'Google Drive 授權與目前會員不一致，請重新連結'
+      );
+    }
+    this.accessToken = grant.accessToken;
+    this.tokenExpiresAt = Date.now() + grant.expiresIn * 1000;
+    this.connectedEmail = expectedEmail;
+    this.connectedOwnerId = expectedOwnerId;
+  }
+
+  private isReauthorizationError(error: unknown): boolean {
+    return (
+      error instanceof DriveAuthorizationBrokerError &&
+      error.requiresReauthorization
+    );
+  }
+
+  private toSafeBrokerError(error: unknown): Error {
+    if (error instanceof DriveAuthorizationRequiredError) return error;
+    if (error instanceof DriveAuthorizationBrokerError) {
+      if (error.requiresReauthorization) {
+        return new DriveAuthorizationRequiredError(error.safeMessage);
+      }
+      return new DriveServiceUnavailableError(
+        error.failure as DriveServiceUnavailableError['code'],
+        error.status,
+        error.safeMessage
+      );
+    }
+    return new DriveServiceUnavailableError(
+      'network',
+      null,
+      '雲端授權服務暫時無法連線，請稍後再試'
+    );
   }
 
   private normalizeExpectedEmail(email: string): string {
@@ -687,29 +876,20 @@ export class DriveCloudApiService {
     return normalized;
   }
 
-  private async verifyConnectedAccount(expectedEmail: string): Promise<void> {
-    const url = new URL(`${DRIVE_API_BASE}/about`);
-    url.searchParams.set('fields', 'user(emailAddress)');
-    const response = await this.fetchAuthorized(url);
-    const body = await this.readJson(response);
-    const actualEmail =
-      isRecord(body) &&
-      isRecord(body['user']) &&
-      typeof body['user']['emailAddress'] === 'string'
-        ? body['user']['emailAddress'].trim().toLowerCase()
-        : null;
+  private assertCurrentAuthorization(authorizationVersion: number): void {
+    if (authorizationVersion !== this.authorizationVersion) {
+      throw new DriveAuthorizationRequiredError('Google Drive 連線已取消');
+    }
+  }
 
-    if (!actualEmail) {
-      this.disconnect();
-      throw new DriveAuthorizationRequiredError('無法確認 Google Drive 帳號');
+  private assertCurrentSession(
+    expectedOwnerId: string,
+    authorizationVersion: number
+  ): void {
+    this.assertCurrentAuthorization(authorizationVersion);
+    if (this.currentOwnerId() !== expectedOwnerId) {
+      throw new DriveAuthorizationRequiredError('會員帳號已變更');
     }
-    if (actualEmail !== expectedEmail) {
-      this.disconnect();
-      throw new DriveAuthorizationRequiredError(
-        `Google Drive 帳號不一致，請使用 ${expectedEmail} 連結`
-      );
-    }
-    this.connectedEmail = expectedEmail;
   }
 
   private async readJson(response: Response): Promise<unknown> {

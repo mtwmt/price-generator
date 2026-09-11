@@ -25,15 +25,17 @@ jest.mock('@app/core/services/auth.service', () => ({
 }), { virtual: true });
 jest.mock('./drive-cloud-api.service', () => {
   class DriveAuthorizationRequiredError extends Error {}
+  class DriveServiceUnavailableError extends Error {}
   return {
     DriveCloudApiService: class DriveCloudApiService {},
     DriveAuthorizationRequiredError,
+    DriveServiceUnavailableError,
   };
 });
 jest.mock('./cloud-sync-preference', () => ({
-  readCloudSyncEnabledPreference: () => true,
+  ...jest.requireActual('./cloud-sync-preference'),
+  readSavedCloudSyncPreference: jest.fn(() => true),
   writeCloudSyncEnabledPreference: jest.fn(),
-  decideCloudSyncInitialization: () => 'reconnect',
 }));
 jest.mock('./cloud-history', () => ({
   buildCloudHistoryEntries: (revisions: Array<Record<string, unknown>>) =>
@@ -68,12 +70,14 @@ jest.mock('./index', () => ({
 }));
 
 import { AuthService } from '@app/core/services/auth.service';
+import { readSavedCloudSyncPreference } from './cloud-sync-preference';
 import {
   CloudQuotationSyncService,
   type CloudSyncStatus,
 } from './cloud-quotation-sync.service';
 import {
   DriveAuthorizationRequiredError,
+  DriveServiceUnavailableError,
   DriveCloudApiService,
 } from './drive-cloud-api.service';
 
@@ -114,26 +118,45 @@ function pageWithRevision(id: string) {
   };
 }
 
-function createService(apiOverrides: Record<string, unknown> = {}) {
+function createService(apiOverrides: Record<string, unknown> = {}, savedPreference: boolean | null = true) {
   dependencies.clear();
+  jest.mocked(readSavedCloudSyncPreference).mockReturnValue(savedPreference);
+  let authenticated = true;
+  let premium = true;
+  let admin = false;
+  let userId = 'member-1';
+  let userEmail = 'member@example.test';
   const auth = {
-    isAuthenticated: () => true,
-    isPremium: () => true,
-    isAdmin: () => false,
-    userId: () => 'member-1',
-    userEmail: () => 'member@example.test',
+    isAuthenticated: () => authenticated,
+    isPremium: () => premium,
+    isAdmin: () => admin,
+    userId: () => userId,
+    userEmail: () => userEmail,
+    setAccount: (next: {
+      authenticated?: boolean;
+      premium?: boolean;
+      admin?: boolean;
+      userId?: string;
+      userEmail?: string;
+    }) => {
+      authenticated = next.authenticated ?? authenticated;
+      premium = next.premium ?? premium;
+      admin = next.admin ?? admin;
+      userId = next.userId ?? userId;
+      userEmail = next.userEmail ?? userEmail;
+    },
   };
   const api = {
     disconnect: jest.fn(),
     isConfigured: () => true,
     restoreConnection: jest.fn(() => Promise.resolve(true)),
-    beginConnect: () => Promise.resolve(),
+    beginConnect: jest.fn(() => Promise.resolve()),
     listRevisions: jest.fn(() => Promise.resolve(page())),
     ...apiOverrides,
   };
   dependencies.set(AuthService, auth);
   dependencies.set(DriveCloudApiService, api);
-  return { service: new CloudQuotationSyncService(), api };
+  return { service: new CloudQuotationSyncService(), api, auth };
 }
 
 async function connect(service: CloudQuotationSyncService): Promise<void> {
@@ -142,13 +165,105 @@ async function connect(service: CloudQuotationSyncService): Promise<void> {
 }
 
 describe('CloudQuotationSyncService 同步狀態', () => {
-  it('頁面初始化不要求 Drive token，保持本機並等待使用者重新連線', async () => {
+  it('後端設定未完成時呈現服務問題，不要求使用者重複授權', async () => {
+    const error = Object.assign(Object.create(DriveServiceUnavailableError.prototype), {
+      code: 'configuration', safeMessage: '雲端服務尚未設定完成，請稍後再試',
+    });
+    const { service } = createService({ restoreConnection: jest.fn(async () => { throw error; }) });
+    await service.initialize();
+    expect(service.syncStatus()).toBe('error');
+    expect(service.syncError()).toBe('雲端服務尚未設定完成，請稍後再試');
+    expect(service.isCloudStorage()).toBe(false);
+  });
+
+  it('會員權限失效時離開雲端路由，避免繼續使用舊連線儲存', async () => {
+    const error = Object.assign(Object.create(DriveServiceUnavailableError.prototype), {
+      code: 'forbidden', safeMessage: '目前帳號無法使用雲端同步',
+    });
+    const { service, api } = createService();
+    await service.initialize();
+    expect(service.isCloudStorage()).toBe(true);
+    api.listRevisions.mockRejectedValueOnce(error);
+    await expect(service.reloadHistory()).rejects.toBe(error);
+    expect(service.syncStatus()).toBe('error');
+    expect(service.isCloudStorage()).toBe(false);
+    expect(api.disconnect).toHaveBeenCalled();
+  });
+  it('新瀏覽器登入後可找回既有授權並載入雲端歷史', async () => {
+    const { service, api } = createService({}, null);
+    expect(service.isSyncEnabled()).toBe(false);
+    await service.initialize();
+    expect(api.restoreConnection).toHaveBeenCalledTimes(1);
+    expect(service.isSyncEnabled()).toBe(true);
+    expect(service.isCloudStorage()).toBe(true);
+    expect(api.listRevisions).toHaveBeenCalledTimes(1);
+  });
+
+  it('首次使用且尚無雲端授權時保持本機，不要求重新連線', async () => {
+    const { service, api } = createService({
+      restoreConnection: jest.fn(async () => false),
+    }, null);
+    await service.initialize();
+    expect(service.isSyncEnabled()).toBe(false);
+    expect(service.syncStatus()).toBe('local');
+    expect(api.listRevisions).not.toHaveBeenCalled();
+  });
+
+  it('明確關閉同步時登入也不會自動探測雲端', async () => {
+    const { service, api } = createService({}, false);
+    await service.initialize();
+    expect(api.restoreConnection).not.toHaveBeenCalled();
+    expect(service.syncStatus()).toBe('local');
+  });
+
+  it('停用只暫停本頁連線，重新啟用先無提示恢復而不開 popup', async () => {
+    const { service, api } = createService();
+    await service.initialize();
+    api.restoreConnection.mockClear();
+
+    await service.setSyncEnabled(false);
+    expect(api.disconnect).toHaveBeenCalled();
+    expect(service.syncStatus()).toBe('local');
+
+    await service.setSyncEnabled(true);
+    expect(api.restoreConnection).toHaveBeenCalledWith('member@example.test');
+    expect(api.beginConnect).not.toHaveBeenCalled();
+    expect(service.isCloudStorage()).toBe(true);
+  });
+
+  it('重新啟用但尚無授權時只呈現重新連線，不自行開啟授權視窗', async () => {
+    const { service, api } = createService({
+      restoreConnection: jest.fn(async () => false),
+    });
+    await service.setSyncEnabled(true);
+
+    expect(api.beginConnect).not.toHaveBeenCalled();
+    expect(service.syncStatus()).toBe('reconnect');
+    expect(service.isCloudStorage()).toBe(false);
+  });
+
+  it('頁面初始化會無提示恢復既有 Drive 授權並載入雲端歷史', async () => {
     const { service, api } = createService();
 
     await service.initialize();
 
-    expect(api.disconnect).toHaveBeenCalledTimes(1);
-    expect(api.restoreConnection).not.toHaveBeenCalled();
+    expect(api.disconnect).not.toHaveBeenCalled();
+    expect(api.restoreConnection).toHaveBeenCalledWith('member@example.test');
+    expect(api.listRevisions).toHaveBeenCalledTimes(1);
+    expect(service.isCloudStorage()).toBe(true);
+    expect(service.history()).toEqual([]);
+    expect(service.syncStatus()).toBe('synced');
+    expect(service.syncError()).toBeNull();
+  });
+
+  it('無法無提示恢復時保留本機歷史路由，並要求使用者重新連線', async () => {
+    const { service, api } = createService({
+      restoreConnection: jest.fn(() => Promise.resolve(false)),
+    });
+
+    await service.initialize();
+
+    expect(api.disconnect).not.toHaveBeenCalled();
     expect(api.listRevisions).not.toHaveBeenCalled();
     expect(service.isCloudStorage()).toBe(false);
     expect(service.history()).toEqual([]);
@@ -156,19 +271,28 @@ describe('CloudQuotationSyncService 同步狀態', () => {
     expect(service.syncError()).toBeNull();
   });
 
-  it('只有使用者開啟雲端切換後才執行互動式 Drive 連線', async () => {
-    const beginConnect = jest.fn(() => Promise.resolve());
-    const { service, api } = createService({ beginConnect });
+  it('初始化恢復發生授權錯誤時顯示重新連線，且不阻斷本機模式', async () => {
+    const { service } = createService({
+      restoreConnection: () =>
+        Promise.reject(new DriveAuthorizationRequiredError('access_token=secret')),
+    });
 
     await service.initialize();
-    expect(beginConnect).not.toHaveBeenCalled();
 
-    await service.setSyncEnabled(true);
+    expect(service.isCloudStorage()).toBe(false);
+    expect(service.syncStatus()).toBe('reconnect');
+    expect(service.syncError()).toBe('Google Drive 授權已失效，請重新連線');
+  });
 
-    expect(beginConnect).toHaveBeenCalledTimes(1);
-    expect(api.listRevisions).toHaveBeenCalledTimes(1);
-    expect(service.isCloudStorage()).toBe(true);
-    expect(service.syncStatus()).toBe('synced');
+  it('缺少 Drive scope 時保留使用者可採取動作的安全訊息', async () => {
+    const { service } = createService({
+      restoreConnection: () => Promise.reject(
+        new DriveAuthorizationRequiredError('請允許 Google Drive 存取權限後重新連線')
+      ),
+    });
+    await service.initialize();
+    expect(service.syncStatus()).toBe('reconnect');
+    expect(service.syncError()).toBe('請允許 Google Drive 存取權限後重新連線');
   });
 
   it('本機預設為 local，連線、同步成功後更新最後同步時間', async () => {
@@ -260,16 +384,71 @@ describe('CloudQuotationSyncService 同步狀態', () => {
     expect(service.syncStatus()).toBe('synced');
   });
 
-  it('初始化等待重新連線時不會讀取或覆蓋任何雲端歷史', async () => {
-    const listRevisions = jest.fn(() =>
-      Promise.resolve(pageWithRevision('unexpected'))
-    );
-    const { service } = createService({ listRevisions });
+  it('登出後舊的初始化恢復晚到，不會重設為雲端模式', async () => {
+    const restoreGate = deferred<boolean>();
+    const { service, api } = createService({
+      restoreConnection: () => restoreGate.promise,
+    });
 
-    await service.initialize();
+    const initializing = service.initialize();
+    await Promise.resolve();
+    service.disconnect();
+    restoreGate.resolve(true);
+    await initializing;
 
-    expect(listRevisions).not.toHaveBeenCalled();
+    expect(api.listRevisions).not.toHaveBeenCalled();
     expect(service.history()).toEqual([]);
     expect(service.isCloudStorage()).toBe(false);
+    expect(service.syncStatus()).toBe('local');
+  });
+
+  it('帳號切換後舊恢復晚到，不會覆蓋新帳號的雲端資料', async () => {
+    const firstRestore = deferred<boolean>();
+    const secondRestore = deferred<boolean>();
+    const { service, api, auth } = createService({
+      restoreConnection: jest
+        .fn()
+        .mockReturnValueOnce(firstRestore.promise)
+        .mockReturnValueOnce(secondRestore.promise),
+      listRevisions: jest.fn(() => Promise.resolve(pageWithRevision('member-2'))),
+    });
+
+    const firstInitialization = service.initialize();
+    await Promise.resolve();
+    auth.setAccount({
+      userId: 'member-2',
+      userEmail: 'member-2@example.test',
+    });
+    const secondInitialization = service.initialize();
+    await Promise.resolve();
+    secondRestore.resolve(true);
+    await secondInitialization;
+    firstRestore.resolve(true);
+    await firstInitialization;
+
+    expect(api.restoreConnection).toHaveBeenNthCalledWith(
+      1,
+      'member@example.test'
+    );
+    expect(api.restoreConnection).toHaveBeenNthCalledWith(
+      2,
+      'member-2@example.test'
+    );
+    expect(service.history()[0]?.quotationId).toBe('member-2');
+    expect(service.isCloudStorage()).toBe(true);
+    expect(service.syncStatus()).toBe('synced');
+  });
+
+  it('A 關閉同步不會使 B 登入後略過 silent restore', async () => {
+    const { service, api, auth } = createService();
+    jest.mocked(readSavedCloudSyncPreference).mockImplementation((ownerId) =>
+      ownerId === 'member-1' ? false : null
+    );
+    await service.initialize();
+    expect(api.restoreConnection).not.toHaveBeenCalled();
+
+    auth.setAccount({ userId: 'member-2', userEmail: 'member-2@example.test' });
+    await service.initialize();
+    expect(api.restoreConnection).toHaveBeenCalledWith('member-2@example.test');
   });
 });

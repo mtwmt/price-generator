@@ -1,7 +1,9 @@
 import {
   CLOUD_SYNC_ENABLED_PREFERENCE_KEY,
+  cloudSyncEnabledPreferenceKeyForOwner,
   decideCloudSyncInitialization,
   readCloudSyncEnabledPreference,
+  readSavedCloudSyncPreference,
   writeCloudSyncEnabledPreference,
 } from './cloud-sync-preference';
 
@@ -20,10 +22,22 @@ function createStorage(): Storage {
 }
 
 describe('雲端同步偏好', () => {
+  it('區分未設定與明確關閉，僅未設定時允許查詢既有授權', () => {
+    const storage = createStorage();
+    expect(readSavedCloudSyncPreference(undefined, storage)).toBeNull();
+    expect(decideCloudSyncInitialization({
+      isAuthenticated: true, isEligible: true, isSyncEnabled: null,
+    })).toBe('restore');
+    writeCloudSyncEnabledPreference(false, undefined, storage);
+    expect(readSavedCloudSyncPreference(undefined, storage)).toBe(false);
+    expect(decideCloudSyncInitialization({
+      isAuthenticated: true, isEligible: true, isSyncEnabled: false,
+    })).toBe('disconnect');
+  });
   it('預設關閉並使用獨立於報價資料的 localStorage key', () => {
     const storage = createStorage();
 
-    expect(readCloudSyncEnabledPreference(storage)).toBe(false);
+    expect(readCloudSyncEnabledPreference(undefined, storage)).toBe(false);
     expect(CLOUD_SYNC_ENABLED_PREFERENCE_KEY).toBe(
       'price-generator:cloud-sync-enabled'
     );
@@ -32,20 +46,40 @@ describe('雲端同步偏好', () => {
   it('切換開啟與關閉時保存偏好', () => {
     const storage = createStorage();
 
-    writeCloudSyncEnabledPreference(true, storage);
-    expect(readCloudSyncEnabledPreference(storage)).toBe(true);
-    writeCloudSyncEnabledPreference(false, storage);
-    expect(readCloudSyncEnabledPreference(storage)).toBe(false);
+    writeCloudSyncEnabledPreference(true, undefined, storage);
+    expect(readCloudSyncEnabledPreference(undefined, storage)).toBe(true);
+    writeCloudSyncEnabledPreference(false, undefined, storage);
+    expect(readCloudSyncEnabledPreference(undefined, storage)).toBe(false);
   });
 
-  it('已登入且符合資格、並開啟偏好的會員在初始化時等待明確重新連線', () => {
+  it('以會員 uid 隔離偏好，A 的 false 不會阻止 B 探測既有授權', () => {
+    const storage = createStorage();
+    writeCloudSyncEnabledPreference(false, 'member-a', storage);
+
+    expect(readSavedCloudSyncPreference('member-a', storage)).toBe(false);
+    expect(readSavedCloudSyncPreference('member-b', storage)).toBeNull();
+    expect(cloudSyncEnabledPreferenceKeyForOwner('member-a')).not.toBe(
+      cloudSyncEnabledPreferenceKeyForOwner('member-b')
+    );
+  });
+
+  it('舊版 true 保持相容，舊版 false 不套用到未知會員', () => {
+    const storage = createStorage();
+    writeCloudSyncEnabledPreference(true, undefined, storage);
+    expect(readSavedCloudSyncPreference('member-a', storage)).toBe(true);
+
+    writeCloudSyncEnabledPreference(false, undefined, storage);
+    expect(readSavedCloudSyncPreference('member-b', storage)).toBeNull();
+  });
+
+  it('已登入且符合資格、並開啟偏好的會員在初始化時嘗試恢復既有授權', () => {
     expect(
       decideCloudSyncInitialization({
         isAuthenticated: true,
         isEligible: true,
         isSyncEnabled: true,
       })
-    ).toBe('reconnect');
+    ).toBe('restore');
 
     expect(
       decideCloudSyncInitialization({
@@ -66,13 +100,13 @@ describe('雲端同步偏好', () => {
     ).toBe('disconnect');
   });
 
-  it('初始化不會啟動互動式授權，只會決定等待重新連線或中斷連線', () => {
+  it('初始化不會啟動互動式授權，只會決定恢復或中斷連線', () => {
     expect(
       decideCloudSyncInitialization({
         isAuthenticated: true,
         isEligible: true,
         isSyncEnabled: true,
       })
-    ).toBe('reconnect');
+    ).toBe('restore');
   });
 });

@@ -33,6 +33,7 @@ type GoogleLoginResponse = TokenPair & D1UserResponseDTO;
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
+const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 /**
  * 認證服務（永久登入版）
@@ -98,6 +99,7 @@ export class AuthService {
       this.toastService.error('無法載入 Google 登入元件，請檢查網路');
       return;
     }
+    if (loginEpoch !== this.authEpoch) return;
 
     const google = getGoogleIdentityApi();
     const oauth2 = google?.accounts?.oauth2 as
@@ -106,6 +108,9 @@ export class AuthService {
             readonly client_id: string;
             readonly scope: string;
             readonly ux_mode: 'popup';
+            readonly include_granted_scopes?: boolean;
+            /** GIS 接受此相容選項；新版 client ID 已固定採細緻授權。 */
+            readonly enable_granular_consent?: boolean;
             callback: (response: { readonly code?: string; readonly error?: string }) => void;
           }): { requestCode(): void };
         }
@@ -116,9 +121,12 @@ export class AuthService {
     }
     const codeClient = oauth2.initCodeClient({
       client_id: environment.googleClientId,
-      scope: 'openid email profile',
+      scope: `openid email profile ${DRIVE_APPDATA_SCOPE}`,
       ux_mode: 'popup',
+      include_granted_scopes: true,
+      enable_granular_consent: true,
       callback: (response: { code?: string; error?: string }) => {
+        if (loginEpoch !== this.authEpoch) return;
         if (response.code) {
           void this.exchangeCode(response.code, loginEpoch);
         } else {
@@ -135,7 +143,8 @@ export class AuthService {
       const res = await firstValueFrom(
         this.http.post<GoogleLoginResponse>(
           `${this.authBase}/google/exchange`,
-          { code },
+          { code, driveAuthorization: true },
+          { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
         ),
       );
       if (!this.startNewSession(res, loginEpoch)) return;

@@ -19,12 +19,13 @@ import {
 } from './cloud-history';
 import {
   DriveAuthorizationRequiredError,
+  DriveServiceUnavailableError,
   DriveCloudApiService,
   type DriveOperationResponse,
 } from './drive-cloud-api.service';
 import {
   decideCloudSyncInitialization,
-  readCloudSyncEnabledPreference,
+  readSavedCloudSyncPreference,
   writeCloudSyncEnabledPreference,
 } from './cloud-sync-preference';
 import { canonicalizeJsonValue } from './cloud-json';
@@ -142,7 +143,8 @@ export class CloudQuotationSyncService {
   readonly isEligible = computed(
     () => this.auth.isPremium() || this.auth.isAdmin()
   );
-  readonly isSyncEnabled = signal(readCloudSyncEnabledPreference());
+  private syncEnabledPreference: boolean | null = null;
+  readonly isSyncEnabled = signal(this.syncEnabledPreference === true);
   readonly isCloudStorage = computed(
     () => this.route().repository === 'cloud-sync'
   );
@@ -151,14 +153,17 @@ export class CloudQuotationSyncService {
   readonly syncError = signal<string | null>(null);
 
   async initialize(): Promise<void> {
-    ++this.operationVersion;
+    const operationVersion = ++this.operationVersion;
     this.history.set([]);
     this.ownerSub = null;
+    if (this.auth.isAuthenticated() && this.isEligible()) {
+      this.readSyncEnabledPreferenceForCurrentOwner();
+    }
     if (
       decideCloudSyncInitialization({
         isAuthenticated: this.auth.isAuthenticated(),
         isEligible: this.isEligible(),
-        isSyncEnabled: this.isSyncEnabled(),
+        isSyncEnabled: this.syncEnabledPreference,
       }) === 'disconnect'
     ) {
       this.api.disconnect();
@@ -174,13 +179,49 @@ export class CloudQuotationSyncService {
       return;
     }
 
-    // OAuth token 取得可能開啟視窗；頁面初始化沒有使用者手勢，因此絕不在此
-    // 嘗試恢復 Drive 授權。保留本機資料，等待使用者明確點擊重新連線。
-    this.api.disconnect();
-    this.setReconnectRequiredRoute();
-    ++this.statusOperationVersion;
-    this.syncStatus.set('reconnect');
-    this.syncError.set(null);
+    // 只嘗試無提示恢復既有授權；首次授權仍須由使用者點擊連線按鈕啟動。
+    // 不可先 disconnect，否則會清除同一頁面仍有效的記憶體 token。
+    const statusOperationVersion = this.beginStatus('connecting');
+    this.setNotConnectedRoute();
+
+    try {
+      const restored = await this.api.restoreConnection(
+        this.requireAuthenticatedEmail()
+      );
+      if (
+        !this.isCurrentOperation(operationVersion) ||
+        !this.isCurrentStatusOperation(statusOperationVersion)
+      ) {
+        return;
+      }
+
+      if (!restored) {
+        if (!this.isSyncEnabled()) {
+          this.setNotConnectedRoute();
+          this.setLocalStatus(statusOperationVersion);
+          return;
+        }
+        this.setReconnectRequiredRoute();
+        this.syncStatus.set('reconnect');
+        this.syncError.set(null);
+        return;
+      }
+
+      this.ownerSub = this.requireAuthenticatedOwner();
+      this.setSyncEnabledPreference(true);
+      this.route.set(
+        decideQuotationStorageRoute({
+          isPremium: this.auth.isPremium(),
+          isAdmin: this.auth.isAdmin(),
+          isCloudSyncEnabled: this.isSyncEnabled(),
+          driveConnection: 'connected',
+        })
+      );
+      await this.reloadHistoryForOperation(operationVersion);
+    } catch (error) {
+      if (!this.isCurrentOperation(operationVersion)) return;
+      this.handleDriveError(error, statusOperationVersion);
+    }
   }
 
   async beginConnect(): Promise<void> {
@@ -230,8 +271,9 @@ export class CloudQuotationSyncService {
       return;
     }
 
-    // 開啟切換鈕是明確的使用者操作，互動式授權只能由這條路徑啟動。
-    await this.beginConnect();
+    // 切換鈕只恢復既有授權；popup 必須由畫面上的「連結」按鈕同步觸發，
+    // 避免 await 後被瀏覽器視為非使用者手勢而封鎖。
+    await this.initialize();
   }
 
   async reloadHistory(): Promise<void> {
@@ -529,6 +571,18 @@ export class CloudQuotationSyncService {
   ): void {
     if (!this.isCurrentStatusOperation(statusOperationVersion)) return;
 
+    if (error instanceof DriveServiceUnavailableError) {
+      if (error.code === 'forbidden') {
+        this.api.disconnect();
+        this.ownerSub = null;
+        this.history.set([]);
+        this.setNotConnectedRoute();
+      }
+      this.syncStatus.set('error');
+      this.syncError.set(error.safeMessage);
+      return;
+    }
+
     const classification = classifyDriveFailure(error);
     const requiresReconnect =
       error instanceof DriveAuthorizationRequiredError ||
@@ -540,7 +594,12 @@ export class CloudQuotationSyncService {
 
     if (requiresReconnect) {
       this.syncStatus.set('reconnect');
-      this.syncError.set('Google Drive 授權已失效，請重新連線');
+      this.syncError.set(
+        error instanceof DriveAuthorizationRequiredError &&
+        error.message === '請允許 Google Drive 存取權限後重新連線'
+          ? error.message
+          : 'Google Drive 授權已失效，請重新連線'
+      );
       return;
     }
 
@@ -610,7 +669,15 @@ export class CloudQuotationSyncService {
   }
 
   private setSyncEnabledPreference(enabled: boolean): void {
+    this.syncEnabledPreference = enabled;
     this.isSyncEnabled.set(enabled);
-    writeCloudSyncEnabledPreference(enabled);
+    writeCloudSyncEnabledPreference(enabled, this.auth.userId());
+  }
+
+  private readSyncEnabledPreferenceForCurrentOwner(): void {
+    this.syncEnabledPreference = readSavedCloudSyncPreference(
+      this.requireAuthenticatedOwner()
+    );
+    this.isSyncEnabled.set(this.syncEnabledPreference === true);
   }
 }

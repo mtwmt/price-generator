@@ -53,6 +53,12 @@ export class QuotationHistory {
     this.searchQuery.set((event.target as HTMLInputElement).value);
   }
 
+  clearSearch(searchInput: HTMLInputElement, event: MouseEvent): void {
+    event.preventDefault();
+    this.searchQuery.set('');
+    searchInput.focus();
+  }
+
   /**
    * 載入歷史記錄
    */
