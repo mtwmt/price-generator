@@ -26,8 +26,13 @@
 
   <!-- 錯誤訊息 -->
   @if (store.error()) {
-    <div class="alert alert-error mb-4">
+    <div class="alert alert-error mb-4" role="alert">
       <span>{{ store.error() }}</span>
+      @if (!store.loading()) {
+        <button class="btn btn-sm" type="button" (click)="loadComments()">
+          重試
+        </button>
+      }
     </div>
   }
 

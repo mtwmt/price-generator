@@ -1,9 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, throwError } from 'rxjs';
+import {
+  Observable,
+  TimeoutError,
+  catchError,
+  map,
+  throwError,
+  timeout,
+} from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { AuthService } from '@app/core/services/auth.service';
 import { Comment, CommentResponse, ReactionResponse } from './comments.model';
+
+const COMMENTS_REQUEST_TIMEOUT_MS = 12_000;
 
 @Injectable({
   providedIn: 'root',
@@ -22,6 +31,7 @@ export class CommentsService {
     return this.http
       .get<CommentResponse>(`${this.commentsUrl}?${params.toString()}`)
       .pipe(
+        timeout({ first: COMMENTS_REQUEST_TIMEOUT_MS }),
         map((response) => {
           if (response.success && response.data) {
             return this.organizeComments(response.data as Comment[]);
@@ -32,6 +42,15 @@ export class CommentsService {
           }
 
           throw new Error(response.message || 'Failed to fetch comments');
+        }),
+        catchError((error: unknown) => {
+          if (error instanceof TimeoutError) {
+            return throwError(
+              () => new Error('留言載入逾時，請檢查網路後再重試')
+            );
+          }
+
+          return throwError(() => error);
         })
       );
   }

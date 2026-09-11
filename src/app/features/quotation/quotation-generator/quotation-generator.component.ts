@@ -269,6 +269,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private resizeListener?: () => void;
   private exportInvalidListener?: () => void;
   private beforeUnloadListener?: () => void;
+  private pageHideListener?: () => void;
+  private pageShowListener?: () => void;
 
   startDate!: Litepicker;
   endDate!: Litepicker;
@@ -356,16 +358,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
     this.draftOwnerId = this.authService.userId();
     this.draftOwnerInitialized = true;
-    const draft = this.quotationDraft.load(this.draftOwnerId);
-    if (draft) {
-      this.draftBaseline = this.serializeCurrentFormData();
-      this.loadQuotationData(draft);
-      this.form.markAsPristine();
-      this.draftTrackingEnabled.set(true);
-      this.toastService.success('已恢復未儲存的報價草稿');
-      return;
-    }
-
+    // 草稿只在本次開啟期間暫存；重新進入網站一律從空白報價單開始。
+    this.clearDraftSafely();
     this.markDraftBaseline();
     this.draftTrackingEnabled.set(true);
   }
@@ -382,11 +376,17 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.beforeUnloadListener = this.renderer.listen(
       'window',
       'beforeunload',
-      (event: BeforeUnloadEvent) => {
-        if (!this.hasMeaningfulUnsavedChanges()) return;
-        this.saveDraft();
-        event.preventDefault();
-        event.returnValue = '';
+      () => this.discardDraftOnExit()
+    );
+    // iOS Safari 不保證觸發 beforeunload；pagehide 可涵蓋關閉分頁與重新整理。
+    this.pageHideListener = this.renderer.listen('window', 'pagehide', () =>
+      this.discardDraftOnExit()
+    );
+    this.pageShowListener = this.renderer.listen(
+      'window',
+      'pageshow',
+      (event: PageTransitionEvent) => {
+        if (event.persisted) this.resetDraftAfterPageRestore();
       }
     );
   }
@@ -417,7 +417,9 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private saveDraft(): void {
-    if (!this.hasMeaningfulUnsavedChanges()) return;
+    if (!this.draftTrackingEnabled() || !this.hasMeaningfulUnsavedChanges()) {
+      return;
+    }
     try {
       this.quotationDraft.save(this.collectFormData(), this.draftOwnerId);
     } catch {
@@ -432,6 +434,17 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     );
   }
 
+  private isCurrentDraftSession(
+    ownerId: string | null,
+    generation: number
+  ): boolean {
+    return (
+      this.draftTrackingEnabled() &&
+      ownerId === this.draftOwnerId &&
+      generation === this.draftGeneration
+    );
+  }
+
   private serializeCurrentFormData(): string {
     return JSON.stringify(this.collectFormData());
   }
@@ -441,12 +454,30 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.form.markAsPristine();
   }
 
-  private clearDraftSafely(): void {
+  private clearDraftSafely(ownerId = this.draftOwnerId): void {
     try {
-      this.quotationDraft.clear(this.draftOwnerId);
+      this.quotationDraft.clear(ownerId);
     } catch {
       // 清除失敗不應使切換或儲存流程中斷。
     }
+  }
+
+  private discardDraftOnExit(): void {
+    this.draftTrackingEnabled.set(false);
+    this.draftGeneration += 1;
+    this.clearDraftSafely();
+  }
+
+  /** Safari 從返回快取還原頁面時不會重跑 ngOnInit，需主動回到空白表單。 */
+  private resetDraftAfterPageRestore(): void {
+    this.draftTrackingEnabled.set(false);
+    this.draftGeneration += 1;
+    this.clearDraftSafely();
+    this.selectedHistoryIndex.set(null);
+    this.coordinator.setSelectedStorage(null);
+    this.resetForm();
+    this.markDraftBaseline();
+    this.draftTrackingEnabled.set(true);
   }
 
   private clearDraftAndMarkPristine(): void {
@@ -497,27 +528,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private switchDraftOwner(nextOwnerId: string | null): void {
-    if (this.hasMeaningfulUnsavedChanges()) {
-      this.quotationDraft.save(this.collectFormData(), this.draftOwnerId);
-    }
-
     this.draftTrackingEnabled.set(false);
     this.draftGeneration += 1;
+    this.clearDraftSafely();
     this.draftOwnerId = nextOwnerId;
     this.selectedHistoryIndex.set(null);
     this.coordinator.setSelectedStorage(null);
     this.resetForm();
 
-    const blankBaseline = this.serializeCurrentFormData();
-    const nextDraft = this.quotationDraft.load(nextOwnerId);
-    if (nextDraft) {
-      this.draftBaseline = blankBaseline;
-      this.loadQuotationData(nextDraft);
-      this.form.markAsPristine();
-      this.toastService.success('已恢復未儲存的報價草稿');
-    } else {
-      this.markDraftBaseline();
-    }
+    this.clearDraftSafely(nextOwnerId);
+    this.markDraftBaseline();
     this.draftTrackingEnabled.set(true);
   }
 
@@ -829,7 +849,10 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
    */
   async onSubmit(): Promise<void> {
     const data = this.collectFormData();
+    const draftOwner = this.draftOwnerId;
+    const draftGeneration = this.draftGeneration;
     if (await this.saveQuotation(data)) {
+      if (!this.isCurrentDraftSession(draftOwner, draftGeneration)) return;
       this.finishSuccessfulSave(data);
       this.analytics.trackQuotationGenerated();
     }
@@ -840,7 +863,10 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
    */
   async onSaveAsNew(): Promise<void> {
     const data = this.collectFormData();
+    const draftOwner = this.draftOwnerId;
+    const draftGeneration = this.draftGeneration;
     if (await this.saveQuotation(data, true)) {
+      if (!this.isCurrentDraftSession(draftOwner, draftGeneration)) return;
       this.finishSuccessfulSave(data);
       this.analytics.trackQuotationGenerated();
     }
@@ -855,12 +881,14 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private cleanupResources(): void {
-    this.saveDraft();
+    this.discardDraftOnExit();
     this.datePickerService.destroy(this.startDate);
     this.datePickerService.destroy(this.endDate);
     this.resizeListener?.();
     this.exportInvalidListener?.();
     this.beforeUnloadListener?.();
+    this.pageHideListener?.();
+    this.pageShowListener?.();
   }
 
   private saveLocalStorage(data: QuotationData, forceCreate = false): boolean {
