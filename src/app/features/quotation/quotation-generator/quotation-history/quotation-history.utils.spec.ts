@@ -16,6 +16,31 @@ function quotation(customerCompany: string, startDate: string): QuotationData {
 }
 
 describe('filterQuotationHistory', () => {
+  it.each([undefined, null, 123, false, {}, []])(
+    '歷史客戶名稱為 %p 時仍可開頁，且不修改或丟棄原始記錄',
+    (customerCompany) => {
+      // localStorage 的 JSON 不保證符合目前 TypeScript 型別。
+      const legacy = JSON.parse(JSON.stringify({
+        ...quotation('舊資料', '2026-09-01'),
+        customerCompany,
+      })) as QuotationData;
+      const valid = quotation('可搜尋客戶', '2026-09-02');
+      const history = [legacy, valid];
+      const snapshot = JSON.stringify(history);
+
+      const all = filterQuotationHistory(history, '');
+      expect(all).toEqual([
+        { data: legacy, originalIndex: 0 },
+        { data: valid, originalIndex: 1 },
+      ]);
+      expect(all[0].data).toBe(legacy);
+      expect(filterQuotationHistory(history, '可搜尋')).toEqual([
+        { data: valid, originalIndex: 1 },
+      ]);
+      expect(JSON.stringify(history)).toBe(snapshot);
+    }
+  );
+
   it('以中文名稱子字串篩選，且保留來源順序與原始索引', () => {
     const history = [
       quotation('日光設計', '2026-09-01'),
