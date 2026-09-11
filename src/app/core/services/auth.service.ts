@@ -10,7 +10,6 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
   getGoogleIdentityApi,
-  GoogleCredentialResponse,
 } from './google-identity.types';
 
 /**
@@ -56,9 +55,6 @@ export class AuthService {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private gisPromise: Promise<void> | null = null;
   private refreshInFlight: Promise<boolean> | null = null;
-  private googleIdInitializedEpoch: number | null = null;
-  private googleIdNonce: string | null = null;
-  private googleIdExchangeInFlight: Promise<void> | null = null;
   private authEpoch = 0;
 
   readonly currentUser = signal<GoogleUser | null>(null);
@@ -152,98 +148,6 @@ export class AuthService {
     } catch (error) {
       if (loginEpoch !== this.authEpoch) return;
       this.logGoogleExchangeFailure('登入失敗（code 交換）', error);
-      this.toastService.error('登入失敗，請稍後再試');
-    }
-  }
-
-  /**
-   * 載入並渲染 Google 官方 Sign in with Google 按鈕。
-   * 同一個未登入生命週期內只 initialize 一次，所有入口共用 callback 與 nonce。
-   */
-  async renderGoogleIdSignInButton(host: HTMLElement): Promise<void> {
-    await this.loadGis();
-    const id = getGoogleIdentityApi()?.accounts?.id;
-    if (!id) throw new Error('Google Identity Services 未正確載入');
-
-    if (this.googleIdInitializedEpoch !== this.authEpoch) {
-      const initializationEpoch = this.authEpoch;
-      const nonce = this.createGoogleNonce();
-      this.googleIdNonce = nonce;
-      id.initialize({
-        client_id: environment.googleClientId,
-        callback: (response) =>
-          this.handleGoogleIdCredential(response, initializationEpoch, nonce),
-        nonce,
-        auto_select: false,
-        ux_mode: 'popup',
-      });
-      this.googleIdInitializedEpoch = initializationEpoch;
-    }
-
-    host.replaceChildren();
-    id.renderButton(host, {
-      type: 'standard',
-      theme: 'outline',
-      size: 'large',
-      text: 'signin_with',
-      shape: 'rectangular',
-    });
-  }
-
-  /** GIS callback 的公開入口，便於測試且避免元件直接處理 credential。 */
-  handleGoogleIdCredential(
-    response: GoogleCredentialResponse,
-    callbackEpoch = this.authEpoch,
-    callbackNonce = this.googleIdNonce,
-  ): void {
-    const credential = response.credential;
-    if (
-      !credential ||
-      !callbackNonce ||
-      callbackEpoch !== this.authEpoch ||
-      callbackNonce !== this.googleIdNonce ||
-      this.googleIdInitializedEpoch !== callbackEpoch ||
-      this.isAuthenticated() ||
-      this.googleIdExchangeInFlight
-    ) {
-      return;
-    }
-
-    const exchange = this.exchangeGoogleIdToken(
-      credential,
-      callbackNonce,
-      callbackEpoch,
-    );
-    this.googleIdExchangeInFlight = exchange;
-    void exchange.finally(() => {
-      if (this.googleIdExchangeInFlight === exchange) {
-        this.googleIdExchangeInFlight = null;
-      }
-    });
-  }
-
-  private async exchangeGoogleIdToken(
-    credential: string,
-    nonce: string,
-    exchangeEpoch: number,
-  ): Promise<void> {
-    try {
-      const res = await firstValueFrom(
-        this.http.post<GoogleLoginResponse>(`${this.authBase}/google/login`, {
-          credential,
-          nonce,
-        }),
-      );
-      if (!this.startNewSession(res, exchangeEpoch)) return;
-      this.toastService.success('登入成功');
-      this.analyticsService.trackEvent('user_signed_in', {
-        method: 'google_id_token',
-        user_id: res.user.id,
-        user_role: this.userRole(),
-      });
-    } catch (error) {
-      if (exchangeEpoch !== this.authEpoch) return;
-      this.logGoogleExchangeFailure('登入失敗（ID token 交換）', error);
       this.toastService.error('登入失敗，請稍後再試');
     }
   }
@@ -378,13 +282,6 @@ export class AuthService {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
     this.authEpoch += 1;
     this.refreshInFlight = null;
-    this.googleIdInitializedEpoch = null;
-    this.googleIdNonce = null;
-    this.googleIdExchangeInFlight = null;
-    const googleId = getGoogleIdentityApi()?.accounts?.id as
-      | { disableAutoSelect?: () => void }
-      | undefined;
-    googleId?.disableAutoSelect?.();
     this.clearLocal();
     this.currentUser.set(null);
     this.userData.set(null);
@@ -455,12 +352,6 @@ export class AuthService {
       throw error;
     });
     return this.gisPromise;
-  }
-
-  private createGoogleNonce(): string {
-    const nonce = globalThis.crypto?.randomUUID?.();
-    if (!nonce) throw new Error('瀏覽器不支援安全的 nonce 產生方式');
-    return nonce;
   }
 
   /** 僅留下可安全識別的 HTTP 狀態，避免日誌保留 Google credential 或回應物件。 */

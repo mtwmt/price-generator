@@ -8,11 +8,39 @@
   (templateChange)="onTemplateChange($event)"
 />
 
-<!-- 動態渲染器 -->
-@if (currentRenderer(); as renderer) {
-  <div [id]="selectedTemplate()">
-    <ng-container
-      *ngComponentOutlet="renderer; inputs: rendererInputs()"
-    />
-  </div>
+<!-- 樣板以靜態分支直接掛載，避免動態元件在受限環境中靜默空白。 -->
+@switch (selectedTemplate()) {
+  @case ('full') {
+    <div id="full">
+      <app-template-detail
+        [form]="form()"
+        [customerLogo]="customerLogo()"
+        [quoterLogo]="quoterLogo()"
+        [stamp]="stamp()"
+        [isPremium]="isPremium()"
+      />
+    </div>
+  }
+  @case ('invoice') {
+    <div id="invoice">
+      <app-template-side-by-side
+        [form]="form()"
+        [customerLogo]="customerLogo()"
+        [quoterLogo]="quoterLogo()"
+        [stamp]="stamp()"
+        [isPremium]="isPremium()"
+      />
+    </div>
+  }
+  @default {
+    <div id="classic">
+      <app-template-classic
+        [form]="form()"
+        [customerLogo]="customerLogo()"
+        [quoterLogo]="quoterLogo()"
+        [stamp]="stamp()"
+        [isPremium]="isPremium()"
+      />
+    </div>
+  }
 }

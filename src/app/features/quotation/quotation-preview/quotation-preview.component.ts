@@ -2,14 +2,14 @@ import {
   Component,
   input,
   signal,
-  computed,
   inject,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormGroup } from '@angular/forms';
-import { CommonModule } from '@angular/common';
 import { ExportControls } from '@app/features/quotation/quotation-export-controls/export-controls.component';
-import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
+import { TemplateClassic } from '@app/features/templates/template-classic/template-classic.component';
+import { TemplateDetail } from '@app/features/templates/template-detail/template-detail.component';
+import { TemplateSideBySide } from '@app/features/templates/template-side-by-side/template-side-by-side.component';
 import { AuthService } from '@app/core/services/auth.service';
 
 /**
@@ -19,7 +19,12 @@ import { AuthService } from '@app/core/services/auth.service';
  */
 @Component({
   selector: 'app-quotation-preview',
-  imports: [CommonModule, ExportControls],
+  imports: [
+    ExportControls,
+    TemplateClassic,
+    TemplateDetail,
+    TemplateSideBySide,
+  ],
   templateUrl: './quotation-preview.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
@@ -30,6 +35,7 @@ export class QuotationPreview {
 
   // Services
   private readonly authService = inject(AuthService);
+  readonly isPremium = this.authService.isPremium;
 
   // Inputs
   form = input.required<FormGroup>();
@@ -39,27 +45,6 @@ export class QuotationPreview {
 
   // State
   selectedTemplate = signal<string>(this.DEFAULT_TEMPLATE);
-
-  /**
-   * 根據選擇的樣式 ID 動態取得對應的渲染器元件
-   */
-  currentRenderer = computed(() => {
-    const template = QUOTATION_TEMPLATES.find(
-      (t) => t.id === this.selectedTemplate()
-    );
-    return template?.component;
-  });
-
-  /**
-   * 準備傳入渲染器的 inputs
-   */
-  rendererInputs = computed(() => ({
-    form: this.form(),
-    customerLogo: this.customerLogo(),
-    quoterLogo: this.quoterLogo(),
-    stamp: this.stamp(),
-    isPremium: this.authService.isPremium(),
-  }));
 
   /**
    * 處理樣式切換

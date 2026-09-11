@@ -14,7 +14,6 @@ import { authInterceptor } from '@app/core/interceptors/auth.interceptor';
 import { routes } from './app.routes';
 import { AuthService } from '@app/core/services/auth.service';
 import { GlobalErrorHandler } from '@app/core/services/error-handler.service';
-import { GOOGLE_ID_TOKEN_LOGIN_ENABLED } from '@app/core/config/auth.config';
 
 /**
  * Auth 初始化工廠函數
@@ -27,9 +26,6 @@ async function initializeAuthApp(): Promise<void> {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    // 維持原本的按鈕與授權碼登入：只有使用者按下登入才載入 Google 元件。
-    // 這避免未登入首頁在載入時引入 Google Identity 的外部樣式與 CSP 相依。
-    { provide: GOOGLE_ID_TOKEN_LOGIN_ENABLED, useValue: false },
     provideRouter(routes),
     // Angular 22 保留 XHR backend，維持既有檔案上傳流程的相容性。
     provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
