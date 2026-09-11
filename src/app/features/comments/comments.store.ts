@@ -9,7 +9,6 @@ import {
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import {
   EMPTY,
-  finalize,
   firstValueFrom,
   pipe,
   switchMap,
@@ -67,47 +66,29 @@ export const CommentsStore = signalStore(
       commentsService = inject(CommentsService),
       authService = inject(AuthService)
     ) => {
-      // `switchMap` 會取消舊請求；用版本號避免舊請求的 finally/error
-      // 在新請求進行中覆寫 loading、錯誤或留言結果。
-      let latestLoadOperation = 0;
-
       return {
         loadComments: rxMethod<string>(
           pipe(
             tap((pagePath) => {
-              latestLoadOperation += 1;
               patchState(store, {
                 loading: true,
                 error: null,
                 currentPagePath: pagePath,
               });
             }),
-            switchMap((pagePath) => {
-              const operation = latestLoadOperation;
-
-              return commentsService.fetchComments(pagePath).pipe(
+            switchMap((pagePath) =>
+              commentsService.fetchComments(pagePath).pipe(
                 tapResponse({
-                  next: (comments) => {
-                    if (operation !== latestLoadOperation) return;
-                    patchState(store, { comments, loading: false });
-                  },
-                  error: (error: Error) => {
-                    if (operation !== latestLoadOperation) return;
+                  next: (comments) =>
+                    patchState(store, { comments, loading: false }),
+                  error: (error: Error) =>
                     patchState(store, {
                       error: error.message || '載入留言失敗',
                       loading: false,
-                    });
-                  },
-                }),
-                // 取消、完成或例外都必須結束目前這筆請求的 loading。
-                // 舊請求被 switchMap 取消時，版本不同，因此不影響新請求。
-                finalize(() => {
-                  if (operation === latestLoadOperation && store.loading()) {
-                    patchState(store, { loading: false });
-                  }
+                    }),
                 })
-              );
-            })
+              )
+            )
           )
         ),
 
