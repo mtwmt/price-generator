@@ -172,4 +172,16 @@ describe('GoogleSignInComponent', () => {
     expect(renderCalls).toBe(1);
     expect(host.querySelector('iframe')).not.toBeNull();
   });
+
+  it('旗標關閉時初始化不載入 GIS，維持使用者點擊後才登入', () => {
+    const component = createComponent(false);
+    const renderOfficialButton = jest.spyOn(
+      component as unknown as { renderOfficialButton(): Promise<void> },
+      'renderOfficialButton',
+    );
+
+    component.ngAfterViewInit();
+
+    expect(renderOfficialButton).not.toHaveBeenCalled();
+  });
 });
