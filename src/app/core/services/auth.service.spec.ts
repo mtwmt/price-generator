@@ -1,57 +1,46 @@
-/**
- * @jest-environment jsdom
- */
-const mockDependencies = new Map<unknown, unknown>();
+/** @jest-environment jsdom */
+const dependencies = new Map<unknown, unknown>();
 
 jest.mock('@angular/core', () => ({
   Injectable: () => (target: unknown) => target,
   computed: <T>(compute: () => T) => compute,
-  inject: (token: unknown) => mockDependencies.get(token),
+  inject: (token: unknown) => dependencies.get(token),
   signal: <T>(initial: T) => {
     let value = initial;
     const state = (() => value) as (() => T) & { set(next: T): void };
-    state.set = (next: T): void => {
-      value = next;
-    };
+    state.set = (next: T): void => { value = next; };
     return state;
   },
 }));
-
 jest.mock('@angular/common/http', () => ({ HttpClient: class HttpClient {} }));
-jest.mock('@app/core/services/analytics.service', () => ({
-  AnalyticsService: class AnalyticsService {},
-}), { virtual: true });
-jest.mock('@app/core/services/auth-api.service', () => ({
-  AuthApiService: class AuthApiService {},
-}), { virtual: true });
-jest.mock('@app/shared/services/logger.service', () => ({
-  LoggerService: class LoggerService {},
-}), { virtual: true });
-jest.mock('@app/shared/services/toast.service', () => ({
-  ToastService: class ToastService {},
-}), { virtual: true });
+jest.mock('@app/core/services/analytics.service', () => ({ AnalyticsService: class AnalyticsService {} }), { virtual: true });
+jest.mock('@app/core/services/auth-api.service', () => ({ AuthApiService: class AuthApiService {} }), { virtual: true });
+jest.mock('@app/shared/services/logger.service', () => ({ LoggerService: class LoggerService {} }), { virtual: true });
+jest.mock('@app/shared/services/toast.service', () => ({ ToastService: class ToastService {} }), { virtual: true });
 jest.mock('@app/core/mappers/user-api.mapper', () => ({
   UserApiMapper: {
     mapD1ToUserData: (dto: typeof loginResponse) => ({
-      uid: dto.user.id,
-      email: dto.user.email,
-      displayName: dto.user.displayName,
-      photoURL: dto.user.photoURL,
-      platforms: {
-        quotation: dto.profiles.quotation
-          ? { role: dto.profiles.quotation.role }
-          : undefined,
-      },
+      uid: dto.user.id, email: dto.user.email, displayName: dto.user.displayName,
+      photoURL: dto.user.photoURL, platforms: { quotation: { role: 'free' } },
     }),
   },
 }), { virtual: true });
 jest.mock('@app/features/user/user.model', () => ({}), { virtual: true });
 jest.mock('src/environments/environment', () => ({
-  environment: {
-    portalApiUrl: 'https://portal.test',
-    googleClientId: 'google-client-id.test',
-  },
+  environment: { portalApiUrl: 'https://portal.test', googleClientId: 'google-client-id.test' },
 }), { virtual: true });
+
+const authorize = jest.fn();
+const cancel = jest.fn();
+jest.mock('./google-oauth-popup', () => {
+  class GoogleOAuthPopupError extends Error {
+    constructor(readonly code: string) { super(code); }
+  }
+  return {
+    GoogleOAuthPopup: jest.fn(() => ({ authorize, cancel })),
+    GoogleOAuthPopupError,
+  };
+});
 
 import { HttpClient } from '@angular/common/http';
 import { AnalyticsService } from '@app/core/services/analytics.service';
@@ -59,194 +48,126 @@ import { AuthApiService } from '@app/core/services/auth-api.service';
 import { LoggerService } from '@app/shared/services/logger.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { Observable } from 'rxjs';
-import { environment } from 'src/environments/environment';
 import { AuthService } from './auth.service';
-import { GoogleIdentityApi } from './google-identity.types';
-
-const authUrl = `${environment.portalApiUrl}/api/auth`;
+import { GoogleOAuthPopupError } from './google-oauth-popup';
 
 const loginResponse = {
-  accessToken: 'access-token',
-  refreshToken: 'refresh-token',
-  expiresIn: 1800,
-  user: {
-    id: 'user-1',
-    email: 'member@example.com',
-    displayName: '會員',
-    photoURL: null,
-    createdAt: 1,
-    updatedAt: 1,
-  },
-  profiles: {
-    quotation: {
-      uid: 'user-1',
-      role: 'free' as const,
-      premiumUntil: null,
-      firstAccessTime: 1,
-      lastAccessTime: 1,
-      createdAt: 1,
-      updatedAt: 1,
-    },
-  },
-  timestamp: 1,
+  accessToken: 'access-token', refreshToken: 'refresh-token', expiresIn: 1800,
+  user: { id: 'user-1', email: 'member@example.com', displayName: '會員', photoURL: null },
+  profiles: { quotation: { role: 'free' } }, timestamp: 1,
 };
 
-interface PendingHttpRequest {
+interface PendingRequest {
   readonly url: string;
   readonly body: unknown;
   readonly options: unknown;
   resolve(value: unknown): void;
+  reject(error: unknown): void;
 }
 
-class HttpClientBoundary {
-  readonly requests: PendingHttpRequest[] = [];
+class HttpBoundary {
+  readonly requests: PendingRequest[] = [];
 
   post<T>(url: string, body: unknown, options?: unknown): Observable<T> {
     return new Observable<T>((subscriber) => {
       this.requests.push({
-        url,
-        body,
-        options,
-        resolve: (value: unknown): void => {
-          subscriber.next(value as T);
-          subscriber.complete();
-        },
+        url, body, options,
+        resolve: (value) => { subscriber.next(value as T); subscriber.complete(); },
+        reject: (error) => subscriber.error(error),
       });
     });
   }
-
-  expectOne(url: string): PendingHttpRequest {
-    const matching = this.requests.filter((request) => request.url === url);
-    expect(matching).toHaveLength(1);
-    return matching[0];
-  }
 }
 
-describe('AuthService Google 授權碼登入', () => {
-  let authService: AuthService;
-  let http: HttpClientBoundary;
+function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => { resolve = next; });
+  return { promise, resolve };
+}
+
+describe('AuthService 原生 OAuth PKCE 登入', () => {
+  let auth: AuthService;
+  let http: HttpBoundary;
   let toast: { success: jest.Mock; error: jest.Mock };
 
   beforeEach(() => {
     localStorage.clear();
-    mockDependencies.clear();
-    http = new HttpClientBoundary();
+    dependencies.clear();
+    authorize.mockReset();
+    cancel.mockReset();
+    http = new HttpBoundary();
     toast = { success: jest.fn(), error: jest.fn() };
-    mockDependencies.set(HttpClient, http);
-    mockDependencies.set(AnalyticsService, { trackEvent: jest.fn() });
-    mockDependencies.set(ToastService, toast);
-    mockDependencies.set(LoggerService, { error: jest.fn(), warn: jest.fn() });
-    mockDependencies.set(AuthApiService, { getUserMe: (): Observable<never> => new Observable() });
-    authService = new AuthService();
+    dependencies.set(HttpClient, http);
+    dependencies.set(AnalyticsService, { trackEvent: jest.fn() });
+    dependencies.set(ToastService, toast);
+    dependencies.set(LoggerService, { error: jest.fn(), warn: jest.fn() });
+    dependencies.set(AuthApiService, { getUserMe: (): Observable<never> => new Observable() });
+    auth = new AuthService();
   });
 
-  afterEach(() => {
-    Reflect.deleteProperty(window, 'google');
-    document.querySelector('script[src="https://accounts.google.com/gsi/client"]')?.remove();
-  });
+  it('並行點擊只開一個 OAuth popup，成功後帶 PKCE 與 nonce 交換 session', async () => {
+    const pending = deferred<{
+      code: string; codeVerifier: string; nonce: string; redirectUri: string;
+    }>();
+    authorize.mockReturnValue(pending.promise);
 
-  it('僅在使用者登入時載入 GIS，並以授權碼交換既有 session', async () => {
-    let callback: ((response: { code?: string; error?: string }) => void) | undefined;
-    let clientConfig:
-      | {
-          readonly scope: string;
-          readonly include_granted_scopes?: boolean;
-          readonly enable_granular_consent?: boolean;
-          readonly callback: typeof callback;
-        }
-      | undefined;
-    const requestCode = jest.fn();
-    const google: GoogleIdentityApi = {
-      accounts: {
-        oauth2: {
-          initCodeClient(config: {
-            callback: typeof callback;
-            scope: string;
-            include_granted_scopes?: boolean;
-            enable_granular_consent?: boolean;
-          }): { requestCode(): void } {
-            callback = config.callback;
-            clientConfig = config;
-            return { requestCode };
-          },
-        },
+    auth.loginWithGoogle();
+    auth.loginWithGoogle();
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(authorize).toHaveBeenCalledWith('google-client-id.test');
+
+    pending.resolve({
+      code: 'oauth-code', codeVerifier: 'pkce-verifier', nonce: 'nonce-value',
+      redirectUri: 'https://mtwmt.com/price-generator/assets/google-auth-callback.html',
+    });
+    await Promise.resolve();
+    expect(http.requests).toHaveLength(1);
+    expect(http.requests[0]).toMatchObject({
+      url: 'https://portal.test/api/auth/google/exchange',
+      body: {
+        code: 'oauth-code', driveAuthorization: true, flow: 'web',
+        codeVerifier: 'pkce-verifier', nonce: 'nonce-value',
+        redirectUri: 'https://mtwmt.com/price-generator/assets/google-auth-callback.html',
       },
-    };
-    Object.defineProperty(window, 'google', { configurable: true, value: google });
+      options: { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+    });
+    http.requests[0].resolve(loginResponse);
+    await Promise.resolve();
+    expect(auth.currentUser()?.email).toBe('member@example.com');
+  });
 
-    expect(document.querySelector('script[src="https://accounts.google.com/gsi/client"]')).toBeNull();
-    await authService.loginWithGoogle();
-    expect(requestCode).toHaveBeenCalledTimes(1);
-    expect(clientConfig).toMatchObject({
-      include_granted_scopes: true,
-      enable_granular_consent: true,
-    });
-    expect(clientConfig?.scope).toContain(
-      'https://www.googleapis.com/auth/drive.appdata'
-    );
+  it('登出會取消 OAuth 視窗，且晚到授權碼不可交換或還原 session', async () => {
+    const pending = deferred<{
+      code: string; codeVerifier: string; nonce: string; redirectUri: string;
+    }>();
+    authorize.mockReturnValue(pending.promise);
 
-    callback?.({ code: 'authorization-code' });
-    const request = http.expectOne(`${authUrl}/google/exchange`);
-    expect(request.body).toEqual({
-      code: 'authorization-code',
-      driveAuthorization: true,
+    auth.loginWithGoogle();
+    await auth.logout();
+    expect(cancel).toHaveBeenCalledTimes(1);
+    pending.resolve({
+      code: 'late-code', codeVerifier: 'pkce-verifier', nonce: 'nonce-value',
+      redirectUri: 'https://mtwmt.com/price-generator/assets/google-auth-callback.html',
     });
-    expect(request.options).toEqual({
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    });
-    request.resolve(loginResponse);
     await Promise.resolve();
 
-    expect(authService.currentUser()?.email).toBe('member@example.com');
-    expect(localStorage.getItem('refresh_token')).toBe('refresh-token');
-    expect(toast.success).toHaveBeenCalledWith('登入成功');
+    expect(http.requests).toHaveLength(0);
+    expect(auth.isAuthenticated()).toBe(false);
   });
 
-  it('授權被取消時不建立登入狀態', async () => {
-    let callback: ((response: { code?: string; error?: string }) => void) | undefined;
-    Object.defineProperty(window, 'google', {
-      configurable: true,
-      value: {
-        accounts: {
-          oauth2: {
-            initCodeClient(config: { callback: typeof callback }): { requestCode(): void } {
-              callback = config.callback;
-              return { requestCode(): void {} };
-            },
-          },
-        },
-      } satisfies GoogleIdentityApi,
-    });
+  it('popup 被封鎖時顯示可操作的安全訊息，並釋放下一次重試', async () => {
+    authorize.mockRejectedValue(new GoogleOAuthPopupError('popup_blocked'));
 
-    await authService.loginWithGoogle();
-    callback?.({ error: 'access_denied' });
+    auth.loginWithGoogle();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(toast.error).toHaveBeenCalledWith('瀏覽器封鎖登入視窗，請允許彈出視窗後重試');
 
-    expect(authService.isAuthenticated()).toBe(false);
-    expect(toast.error).toHaveBeenCalledWith('登入已取消');
-  });
-
-  it('GIS 載入期間登入 epoch 已失效時不再開啟 popup', async () => {
-    const requestCode = jest.fn();
-    const login = authService.loginWithGoogle();
-    const script = document.querySelector<HTMLScriptElement>(
-      'script[src="https://accounts.google.com/gsi/client"]'
-    );
-    expect(script).not.toBeNull();
-
-    await authService.logout();
-    Object.defineProperty(window, 'google', {
-      configurable: true,
-      value: {
-        accounts: {
-          oauth2: {
-            initCodeClient: () => ({ requestCode }),
-          },
-        },
-      } satisfies GoogleIdentityApi,
-    });
-    script?.dispatchEvent(new Event('load'));
-    await login;
-
-    expect(requestCode).not.toHaveBeenCalled();
+    const retry = deferred<{
+      code: string; codeVerifier: string; nonce: string; redirectUri: string;
+    }>();
+    authorize.mockReturnValue(retry.promise);
+    auth.loginWithGoogle();
+    expect(authorize).toHaveBeenCalledTimes(2);
   });
 });

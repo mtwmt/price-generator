@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Google 登入</title>
+  </head>
+  <body>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const state = params.get('state') || '';
+        const code = params.get('code');
+        const error = params.get('error') || 'missing_response';
+        const payload = code
+          ? { type: 'price-google-oauth', state, code }
+          : { type: 'price-google-oauth', state, error };
+
+        window.history.replaceState(null, '', window.location.pathname);
+        if (window.opener && window.opener !== window) {
+          window.opener.postMessage(payload, window.location.origin);
+        }
+        window.close();
+      })();
+    </script>
+  </body>
+</html>

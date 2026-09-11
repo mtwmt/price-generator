@@ -34,7 +34,7 @@ export function presentCloudSyncStatus(
     case 'error':
       return { text: '同步失敗', canReconnect: false };
     case 'reconnect':
-      return { text: '需要重新連線', canReconnect: true };
+      return { text: '需要 Google Drive 授權', canReconnect: true };
     default:
       return { text: '本機儲存', canReconnect: false };
   }

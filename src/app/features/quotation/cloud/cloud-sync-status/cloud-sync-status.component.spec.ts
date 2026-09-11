@@ -23,7 +23,7 @@ describe('CloudSyncStatusComponent 顯示規則', () => {
     ['connecting', '連線中', false],
     ['syncing', '同步中', false],
     ['error', '同步失敗', false],
-    ['reconnect', '需要重新連線', true],
+    ['reconnect', '需要 Google Drive 授權', true],
   ] as const)('狀態 %s 顯示安全短文', (status, text, canReconnect) => {
     expect(presentCloudSyncStatus(status, null)).toEqual({ text, canReconnect });
   });
