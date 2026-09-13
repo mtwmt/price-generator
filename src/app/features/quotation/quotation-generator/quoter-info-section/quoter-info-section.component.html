@@ -1,9 +1,8 @@
 <!-- 報價人員基本資料 -->
 <div class="mb-2 bg-base-200 p-4 rounded-sm" [formGroup]="form()">
   <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
-    <svg lucideMessageSquareQuote
-      width="18"
-      height="18"
+    <svg
+      lucideMessageSquareQuote
       class="text-base-content/70"
     />
     報價人員資料
@@ -24,7 +23,7 @@
             : ''
         "
       >
-        <svg lucideUserRound width="16" height="16" class="opacity-70" />
+        <svg lucideUserRound class="opacity-70" />
         <input
           formControlName="quoterName"
           type="text"
@@ -51,7 +50,7 @@
             : ''
         "
       >
-        <svg lucideReceiptText width="16" height="16" class="opacity-70" />
+        <svg lucideReceiptText class="opacity-70" />
         <input
           formControlName="quoterTaxID"
           type="text"
@@ -83,7 +82,7 @@
             : ''
         "
       >
-        <svg lucideMail width="16" height="16" class="opacity-70" />
+        <svg lucideMail class="opacity-70" />
         <input
           formControlName="quoterEmail"
           type="email"
@@ -116,7 +115,7 @@
               : ''
           "
         >
-          <svg lucidePhone width="16" height="16" class="opacity-70" />
+          <svg lucidePhone class="opacity-70" />
           <input
             formControlName="quoterPhone"
             type="tel"
@@ -180,7 +179,7 @@
         <fieldset class="fieldset col-span-2">
           <legend class="fieldset-legend whitespace-nowrap">公司地址</legend>
           <label class="input w-full">
-            <svg lucideMapPin width="16" height="16" class="opacity-70" />
+            <svg lucideMapPin class="opacity-70" />
             <input
               formControlName="quoterAddress"
               type="text"
@@ -190,37 +189,5 @@
         </fieldset>
       </div>
     </div>
-  </div>
-
-  <div class="grid grid-cols-2 gap-x-3">
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend whitespace-nowrap">報價日期</legend>
-      <label class="input w-full">
-        <svg lucideCalendar1 width="16" height="16" class="opacity-70" />
-        <input
-          #startDate
-          id="startDate"
-          formControlName="startDate"
-          type="text"
-          placeholder="報價日期"
-          autocomplete="off"
-        />
-      </label>
-    </fieldset>
-
-    <fieldset class="fieldset">
-      <legend class="fieldset-legend whitespace-nowrap">有效日期</legend>
-      <label class="input w-full">
-        <svg lucideCalendar1 width="16" height="16" class="opacity-70" />
-        <input
-          #endDate
-          id="endDate"
-          formControlName="endDate"
-          type="text"
-          placeholder="------"
-          autocomplete="off"
-        />
-      </label>
-    </fieldset>
   </div>
 </div>

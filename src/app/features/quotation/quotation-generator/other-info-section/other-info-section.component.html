@@ -1,18 +1,14 @@
 <!-- 其他資訊 -->
 <div class="card bg-base-100 shadow-sm mb-4" [formGroup]="form()">
   <div class="card-body p-4 md:p-4">
-    <div class="flex items-center gap-3 mb-3">
-      <div
-        class="flex items-center justify-center w-12 h-12 rounded-full bg-base-200"
-      >
-        <svg lucideFileCheck
-          width="20"
-          height="20"
-          class="text-base-content/70"
-        />
-      </div>
-      <h2 class="text-lg font-semibold text-base-content">其他資訊</h2>
-    </div>
+    <h2 class="text-lg font-semibold text-base-content flex items-center gap-2 mb-3">
+      <svg
+        lucideFileCheck
+        [size]="24"
+        class="text-base-content/70"
+      />
+      其他資訊
+    </h2>
 
     <!-- 付款條件 -->
     <fieldset class="fieldset mb-4">

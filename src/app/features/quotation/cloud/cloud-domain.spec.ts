@@ -34,6 +34,7 @@ class DeterministicFakeHashProvider implements ContentHashProvider {
 
 function sampleQuotation(): QuotationData {
   return {
+    quotationId: 'quotation-1',
     customerCompany: '測試客戶',
     quoterName: '測試報價者',
     quoterEmail: 'quote@example.com',
@@ -57,16 +58,20 @@ function sampleInput(
   overrides: Partial<CloudQuotationRevisionInput<QuotationData>> = {}
 ): CloudQuotationRevisionInput<QuotationData> {
   const quotation = sampleQuotation();
+  const schemaVersion = overrides.schemaVersion ?? CLOUD_SCHEMA_VERSION;
+  const payload = schemaVersion === 1
+    ? (() => { const { quotationId: _quotationId, ...v1 } = quotation; return v1; })()
+    : quotation;
   return {
-    schemaVersion: CLOUD_SCHEMA_VERSION,
+    schemaVersion,
     quotationId: 'quotation-1',
     revisionId: 'revision-1',
     parentRevisionIds: ['parent-b', 'parent-a'],
     operationId: 'operation-1',
     ownerSub: 'google-sub-1',
     kind: 'create',
-    payload: quotation,
-    summary: createQuotationCloudSummary(quotation),
+    payload,
+    summary: createQuotationCloudSummary(payload),
     createdAt: '2026-09-06T00:00:00.000Z',
     ...overrides,
   };
@@ -80,6 +85,36 @@ async function createSampleRevision(
 }
 
 describe('雲端報價單領域封套', () => {
+  it('v1 payload/hash 可 round-trip，且 v1 不接受 v2 業務欄位', async () => {
+    const provider = new DeterministicFakeHashProvider();
+    const v1 = await createSampleRevision(provider, { schemaVersion: 1 });
+    // Fixed v1 SHA-256 vector is asserted below with the production provider.
+    const decoded = JSON.parse(JSON.stringify(v1));
+    await expect(verifyCloudQuotationEnvelope(decoded, provider)).resolves.toEqual(v1);
+    expect(() => validateCloudQuotationEnvelope({
+      ...decoded,
+      payload: { ...decoded.payload, quotationNumber: 'Q-v2' },
+    })).toThrow(expect.objectContaining({ code: 'INVALID_ENVELOPE' }));
+  });
+  it('固定 v1 canonical content 的 SHA-256 向量可跨端重現', async () => {
+    const { WebCryptoSha256HashProvider } = await import('./cloud-hash');
+    const provider = new WebCryptoSha256HashProvider();
+    const v1 = sampleInput({ schemaVersion: 1 });
+    const canonical = canonicalizeCloudRevisionContent(v1);
+    expect(canonical).toBe('{"createdAt":"2026-09-06T00:00:00.000Z","kind":"create","operationId":"operation-1","ownerSub":"google-sub-1","parentRevisionIds":["parent-a","parent-b"],"payload":{"customerCompany":"測試客戶","excludingTax":0,"includingTax":0,"isSign":false,"quoterEmail":"quote@example.com","quoterName":"測試報價者","serviceItems":[{"amount":0,"count":0,"item":"折抵項目","price":-500}],"startDate":"2026-09-06","tax":0},"quotationId":"quotation-1","revisionId":"revision-1","schemaVersion":1,"summary":{"customerCompany":"測試客戶","excludingTax":0,"includingTax":0,"quoterName":"測試報價者","serviceItemCount":1,"startDate":"2026-09-06"}}');
+    expect(await provider.hash(canonical)).toBe('391d3fdf08f73fd5485be8cd6a68ca9a1bc0c6695b1ea9a9924153b061d2d8a5');
+  });
+  it('v2 payload 的 quotationId 必須存在且與封套 ID 相同', async () => {
+    const provider = new DeterministicFakeHashProvider();
+    const revision = await createSampleRevision(provider);
+    const { quotationId: _quotationId, ...missingId } = revision.payload;
+    expect(() => validateCloudQuotationEnvelope({ ...revision, payload: missingId }))
+      .toThrow(expect.objectContaining({ code: 'INVALID_ENVELOPE' }));
+    expect(() => validateCloudQuotationEnvelope({
+      ...revision,
+      payload: { ...revision.payload, quotationId: 'other-quotation' },
+    })).toThrow(expect.objectContaining({ code: 'INVALID_ENVELOPE' }));
+  });
   it('應建立可驗證且不可變的封套，保留數量 0 與負單價', async () => {
     const provider = new DeterministicFakeHashProvider();
     const revision = await createSampleRevision(provider);
@@ -92,7 +127,7 @@ describe('雲端報價單領域封套', () => {
     expect(Object.isFrozen(revision)).toBe(true);
     expect(Object.isFrozen(revision.parentRevisionIds)).toBe(true);
     expect(canonicalizeCloudRevisionContent(revision)).toContain(
-      '"schemaVersion":1'
+      '"schemaVersion":2'
     );
 
     const withDriveFileId = validateCloudQuotationEnvelope({
@@ -173,7 +208,7 @@ describe('雲端報價單領域封套', () => {
     const revision = await createSampleRevision(provider);
 
     expect(() =>
-      validateCloudQuotationEnvelope({ ...revision, schemaVersion: 2 })
+      validateCloudQuotationEnvelope({ ...revision, schemaVersion: 3 })
     ).toThrow(
       expect.objectContaining<Partial<CloudDomainError>>({
         code: 'UNKNOWN_SCHEMA_VERSION',

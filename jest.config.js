@@ -6,6 +6,9 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.spec.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  moduleNameMapper: {
+    '^@app/(.*)$': '<rootDir>/src/app/$1',
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.spec.ts',

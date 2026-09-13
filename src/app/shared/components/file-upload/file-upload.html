@@ -15,18 +15,14 @@
       (click)="fileInput.click()"
       aria-label="上傳檔案"
     >
-      <svg lucideUpload
-        width="24"
-        height="24"
-        class="text-base-content/40"
-      />
+      <svg lucideUpload [size]="24" class="text-base-content/40" />
       <div class="flex flex-col items-center md:items-start">
-        <span class="text-base-content/70 text-sm font-medium"
-          >{{ label() }}</span
-        >
-        <span class="text-base-content/40 text-xs"
-          >{{ supportedFormats() }}</span
-        >
+        <span class="text-base-content/70 text-sm font-medium">{{
+          label()
+        }}</span>
+        <span class="text-base-content/40 text-xs">{{
+          supportedFormats()
+        }}</span>
       </div>
     </button>
   } @else {
@@ -44,11 +40,8 @@
         class="flex-1 w-full flex flex-col md:flex-row items-center md:justify-between gap-2"
       >
         <div class="flex flex-col items-center md:items-start">
-          <span class="text-sm font-medium text-success"
-            >✓ 已上傳圖片</span
-          >
-          <span
-            class="text-xs text-base-content/60 hidden md:inline"
+          <span class="text-sm font-medium text-success">✓ 已上傳圖片</span>
+          <span class="text-xs text-base-content/60 hidden md:inline"
             >點擊右側按鈕可重新上傳或移除</span
           >
         </div>
@@ -59,7 +52,7 @@
             (click)="fileInput.click()"
             title="重新上傳"
           >
-            <svg lucideUpload width="14" height="14" />
+            <svg lucideUpload />
             <span class="md:inline">更換</span>
           </button>
           <button
@@ -68,7 +61,7 @@
             (click)="onRemove(); fileInput.value = ''"
             title="移除 LOGO"
           >
-            <svg lucideX width="14" height="14" />
+            <svg lucideX />
             <span class="md:inline">移除</span>
           </button>
         </div>
@@ -84,11 +77,7 @@
       (click)="fileInput.click()"
       aria-label="上傳檔案"
     >
-      <svg lucideUpload
-        width="20"
-        height="20"
-        class="text-base-content/40"
-      />
+      <svg lucideUpload class="text-base-content/40" />
       <span class="text-base-content/60 text-xs">點擊上傳</span>
     </button>
   } @else {
@@ -114,7 +103,7 @@
           (click)="fileInput.click()"
           title="更換"
         >
-          <svg lucideUpload width="14" height="14" />
+          <svg lucideUpload />
         </button>
         <button
           type="button"
@@ -122,7 +111,7 @@
           (click)="onRemove(); fileInput.value = ''"
           title="移除"
         >
-          <svg lucideX width="14" height="14" />
+          <svg lucideX />
         </button>
       </div>
     </div>

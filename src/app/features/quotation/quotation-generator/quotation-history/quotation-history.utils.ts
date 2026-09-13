@@ -1,4 +1,5 @@
 import type { QuotationData } from '../../models/quotation.model';
+import { quotationStatusLabel } from '../../utils/quotation-lifecycle';
 
 export interface QuotationHistoryMatch {
   readonly data: QuotationData;
@@ -16,9 +17,10 @@ export function filterQuotationHistory(
     .filter(({ data }) => {
       // 舊版或外部載入的 JSON 不保證名稱為字串；搜尋不能中斷整頁渲染。
       // 僅正規化搜尋值，保留原始資料與索引供載入／刪除使用。
-      const name = typeof data.customerCompany === 'string'
-        ? data.customerCompany
-        : '';
-      return name.toLocaleLowerCase().includes(keyword);
+      const searchable = [data.customerCompany, data.quotationNumber, data.status, quotationStatusLabel(data.status)]
+        .filter((value): value is string => typeof value === 'string')
+        .join(' ')
+        .toLocaleLowerCase();
+      return searchable.includes(keyword);
     });
 }

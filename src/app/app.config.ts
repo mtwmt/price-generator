@@ -11,9 +11,11 @@ import {
   withXhr,
 } from '@angular/common/http';
 import { authInterceptor } from '@app/core/interceptors/auth.interceptor';
+import { localApiProxyInterceptor } from '@app/core/interceptors/local-api-proxy.interceptor';
 import { routes } from './app.routes';
 import { AuthService } from '@app/core/services/auth.service';
 import { GlobalErrorHandler } from '@app/core/services/error-handler.service';
+import { provideLucideConfig } from '@lucide/angular';
 
 /**
  * Auth 初始化工廠函數
@@ -28,8 +30,10 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     // Angular 22 保留 XHR backend，維持既有檔案上傳流程的相容性。
-    provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
+    provideHttpClient(withXhr(), withInterceptors([authInterceptor, localApiProxyInterceptor])),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    // 全域 Lucide 圖示預設尺寸統一為 20px
+    provideLucideConfig({ size: 20 }),
     // OAuth 初始化 - 使用 provideAppInitializer (Angular 19+ 推薦方式)
     provideAppInitializer(initializeAuthApp),
   ],

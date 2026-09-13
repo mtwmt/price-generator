@@ -1,3 +1,16 @@
+jest.mock('@angular/core', () => ({
+  signal: <T>(initial: T) => {
+    let value = initial;
+    const state = (() => value) as (() => T) & {
+      set(next: T): void;
+    };
+    state.set = (next) => { value = next; };
+    return state;
+  },
+}));
+
+import { StorageRouteCoordinator } from './storage-route-coordinator';
+
 /**
  * 折扣值正規化邏輯的單元測試
  *
@@ -266,117 +279,6 @@ describe('報價單儲存狀態與路由一致性', () => {
     tax: number;
     includingTax: number;
     isSign: boolean;
-  }
-
-  interface StorageRouteCoordinatorContext<T = MockQuotationData> {
-    isCloudStorage: () => boolean;
-    loadLocalHistory: () => T[];
-    loadCloudHistory: () => T[];
-    setHistoryData: (data: T[]) => void;
-    setLocalHistoryData?: (data: T[]) => void;
-    getSelectedIndex: () => number | null;
-    setSelectedIndex: (index: number | null) => void;
-    getHistoryLength?: () => number;
-  }
-
-  /**
-   * 模擬 QuotationGeneratorComponent 的 StorageRouteCoordinator 狀態協調邏輯
-   * （此邏輯須與 QuotationGeneratorComponent 中的 StorageRouteCoordinator 保持一致）
-   */
-  class StorageRouteCoordinator<T = MockQuotationData> {
-    private operationVersion = 0;
-    private selectedStorage: 'local' | 'cloud' | null = null;
-
-    constructor(private readonly ctx: StorageRouteCoordinatorContext<T>) {}
-
-    nextOperationVersion(): number {
-      return ++this.operationVersion;
-    }
-
-    isCurrentOperation(version: number): boolean {
-      return version === this.operationVersion;
-    }
-
-    setSelectedStorage(storage: 'local' | 'cloud' | null): void {
-      this.selectedStorage = storage;
-    }
-
-    getSelectedStorage(): 'local' | 'cloud' | null {
-      return this.selectedStorage;
-    }
-
-    isEditingExisting(historyLength?: number): boolean {
-      const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
-      const index = this.ctx.getSelectedIndex();
-      if (index === null || index < 0 || index >= length) return false;
-      const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
-      return this.selectedStorage === currentMode;
-    }
-
-    resetInapplicableSelectedIndex(historyLength?: number): void {
-      const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
-      const index = this.ctx.getSelectedIndex();
-      if (index === null) {
-        this.selectedStorage = null;
-        return;
-      }
-      const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
-      if (
-        this.selectedStorage !== currentMode ||
-        index < 0 ||
-        index >= length
-      ) {
-        this.ctx.setSelectedIndex(null);
-        this.selectedStorage = null;
-      }
-    }
-
-    syncHistoryByCurrentRoute(): void {
-      if (this.ctx.isCloudStorage()) {
-        const cloud = this.ctx.loadCloudHistory();
-        this.ctx.setHistoryData(cloud);
-        this.resetInapplicableSelectedIndex(cloud.length);
-      } else {
-        const local = this.ctx.loadLocalHistory();
-        this.ctx.setLocalHistoryData?.(local);
-        this.ctx.setHistoryData(local);
-        this.resetInapplicableSelectedIndex(local.length);
-      }
-    }
-
-    async handleInitialize(initFn: () => Promise<void>): Promise<void> {
-      const version = this.nextOperationVersion();
-      await initFn();
-      if (!this.isCurrentOperation(version)) return;
-      this.syncHistoryByCurrentRoute();
-    }
-
-    async handleToggle(toggleFn: () => Promise<void>): Promise<void> {
-      const version = this.nextOperationVersion();
-      await toggleFn();
-      if (!this.isCurrentOperation(version)) return;
-      this.ctx.setSelectedIndex(null);
-      this.selectedStorage = null;
-      this.syncHistoryByCurrentRoute();
-    }
-
-    async handleConnect(
-      connectFn: () => Promise<void>,
-      onError: (error: unknown) => void
-    ): Promise<void> {
-      const version = this.nextOperationVersion();
-      try {
-        await connectFn();
-        if (!this.isCurrentOperation(version)) return;
-        this.ctx.setSelectedIndex(null);
-        this.selectedStorage = null;
-        this.syncHistoryByCurrentRoute();
-      } catch (error) {
-        if (!this.isCurrentOperation(version)) return;
-        this.syncHistoryByCurrentRoute();
-        onError(error);
-      }
-    }
   }
 
   function createMockQuotation(customerCompany: string): MockQuotationData {

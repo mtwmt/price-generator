@@ -2,6 +2,33 @@ import { Injectable, inject } from '@angular/core';
 import { ToastService } from './toast.service';
 import { LoggerService } from './logger.service';
 
+/** localStorage JSON 讀取結果。呼叫端可據此區分不存在、格式損壞與存取遭拒。 */
+export type StorageReadStatus =
+  | 'ok'
+  | 'missing'
+  | 'parse-failed'
+  | 'access-denied';
+
+export interface StorageReadResult<T> {
+  readonly status: StorageReadStatus;
+  readonly value?: T;
+  /** 未經 JSON 解析的原始內容，供資料復原流程建立備份。 */
+  readonly raw?: string;
+  readonly error?: unknown;
+}
+
+export type StorageWriteFailureReason =
+  | 'quota-exceeded'
+  | 'access-denied'
+  | 'serialization-failed'
+  | 'write-failed';
+
+export interface StorageWriteResult {
+  readonly success: boolean;
+  readonly reason?: StorageWriteFailureReason;
+  readonly error?: unknown;
+}
+
 /**
  * 統一管理 localStorage 的服務
  * 提供型別安全的讀寫、錯誤處理、使用者友善的通知
@@ -20,19 +47,37 @@ export class StorageService {
    * @returns 讀取的資料或預設值
    */
   get<T>(key: string, defaultValue: T): T {
+    const result = this.readJson<T>(key);
+    if (result.status === 'ok') return result.value as T;
+    if (result.status === 'missing') return defaultValue;
+
+    this.reportReadFailure(key, result);
+    return defaultValue;
+  }
+
+  /**
+   * 讀取並解析 JSON，但不把失敗偽裝成預設值。
+   *
+   * 資料擁有者（例如報價歷史）應使用此方法，才能在復原前避免覆寫損壞來源。
+   */
+  readJson<T>(key: string): StorageReadResult<T> {
+    const rawResult = this.readRaw(key);
+    if (rawResult.status !== 'ok') return rawResult as StorageReadResult<T>;
+
+    try {
+      return { status: 'ok', raw: rawResult.raw, value: JSON.parse(rawResult.raw as string) as T };
+    } catch (error) {
+      return { status: 'parse-failed', raw: rawResult.raw, error };
+    }
+  }
+
+  /** 讀取未解析內容，讓復原流程可保留原始資料。 */
+  readRaw(key: string): StorageReadResult<never> {
     try {
       const raw = localStorage.getItem(key);
-
-      if (!raw) {
-        return defaultValue;
-      }
-
-      const parsed = JSON.parse(raw);
-      return parsed as T;
+      return raw === null ? { status: 'missing' } : { status: 'ok', raw };
     } catch (error) {
-      this.logger.error(`Failed to read from localStorage (key: ${key}):`, error);
-      this.toastService.warning('讀取資料失敗，已使用預設值');
-      return defaultValue;
+      return { status: 'access-denied', error };
     }
   }
 
@@ -43,21 +88,40 @@ export class StorageService {
    * @returns 是否成功儲存
    */
   set<T>(key: string, value: T): boolean {
+    return this.setDetailed(key, value).success;
+  }
+
+  /**
+   * 寫入使用者明確選取的復原原文。復原檔可能本來就是無法解析的 JSON，
+   * 因此不可 parse/stringify 後再寫入。
+   */
+  setRawDetailed(key: string, raw: string): StorageWriteResult {
     try {
-      const json = JSON.stringify(value);
-      localStorage.setItem(key, json);
-      return true;
+      localStorage.setItem(key, raw);
+      return { success: true };
     } catch (error) {
-      this.logger.error(`Failed to write to localStorage (key: ${key}):`, error);
+      return this.reportWriteFailure(key, error);
+    }
+  }
 
-      // 檢查是否為容量超出錯誤
-      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        this.toastService.error('儲存空間已滿，請清理瀏覽器資料');
-      } else {
-        this.toastService.error('儲存失敗，請稍後再試');
-      }
+  /**
+   * 寫入 JSON 並回傳可判別的失敗原因；不將容量或權限錯誤誤報為成功。
+   */
+  setDetailed<T>(key: string, value: T): StorageWriteResult {
+    let json: string;
+    try {
+      json = JSON.stringify(value);
+    } catch (error) {
+      this.logger.error(`Failed to serialize localStorage data (key: ${key}):`, error);
+      this.toastService.error('資料無法序列化，未覆寫既有本機資料');
+      return { success: false, reason: 'serialization-failed', error };
+    }
 
-      return false;
+    try {
+      localStorage.setItem(key, json);
+      return { success: true };
+    } catch (error) {
+      return this.reportWriteFailure(key, error);
     }
   }
 
@@ -92,6 +156,44 @@ export class StorageService {
    * @returns 是否存在
    */
   has(key: string): boolean {
-    return localStorage.getItem(key) !== null;
+    try {
+      return localStorage.getItem(key) !== null;
+    } catch (error) {
+      this.logger.error(`Failed to access localStorage (key: ${key}):`, error);
+      return false;
+    }
+  }
+
+  private reportReadFailure<T>(key: string, result: StorageReadResult<T>): void {
+    this.logger.error(`Failed to read from localStorage (key: ${key}):`, result.error);
+    if (result.status === 'parse-failed') {
+      this.toastService.warning('本機資料格式損壞，已保留原始內容供復原');
+    } else {
+      this.toastService.warning('瀏覽器拒絕讀取本機資料，已保留目前表單內容');
+    }
+  }
+
+  private getWriteFailureReason(error: unknown): StorageWriteFailureReason {
+    const name = error instanceof Error ? error.name : '';
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      return 'quota-exceeded';
+    }
+    if (name === 'SecurityError' || name === 'NotAllowedError') {
+      return 'access-denied';
+    }
+    return 'write-failed';
+  }
+
+  private reportWriteFailure(key: string, error: unknown): StorageWriteResult {
+    const reason = this.getWriteFailureReason(error);
+    this.logger.error(`Failed to write to localStorage (key: ${key}):`, error);
+    if (reason === 'quota-exceeded') {
+      this.toastService.error('儲存空間已滿；請先下載備份，再清理不需要的報價紀錄');
+    } else if (reason === 'access-denied') {
+      this.toastService.error('瀏覽器拒絕存取本機儲存空間，未覆寫既有資料');
+    } else {
+      this.toastService.error('儲存失敗，未覆寫既有本機資料，請稍後再試');
+    }
+    return { success: false, reason, error };
   }
 }

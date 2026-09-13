@@ -20,6 +20,16 @@ export interface ServiceItem {
  * 報價單資料介面
  */
 export interface QuotationData {
+  /** 本機與雲端都會保留的文件識別；舊報價讀取時會補上。 */
+  quotationId?: string;
+  /** 對外可讀報價編號，不等同技術修訂識別。 */
+  quotationNumber?: string;
+  /** 業務版本，已送出後建立下一版時遞增。 */
+  businessVersion?: number;
+  /** 使用者管理的業務狀態；匯出不會自動變更它。 */
+  status?: 'draft' | 'sent' | 'won' | 'lost';
+  /** 同一文件較早業務版本的快照，避免覆蓋已送出的內容。 */
+  previousVersions?: readonly QuotationVersionSnapshot[];
   // 客戶資料
   /** 客戶 LOGO（base64） */
   customerLogo?: string;
@@ -93,4 +103,32 @@ export interface QuotationData {
   desc?: string;
   /** 是否顯示簽章區 */
   isSign: boolean;
+}
+
+/** 儲存舊版本內容時的不可變快照；不包含遞迴 previousVersions。 */
+export interface QuotationVersionSnapshot {
+  readonly businessVersion: number;
+  readonly savedAt: string;
+  readonly data: Omit<QuotationData, 'previousVersions'>;
+}
+
+export interface CustomerTemplate {
+  readonly id: string;
+  readonly name: string;
+  readonly customerCompany: string;
+  readonly customerTaxID?: string;
+  readonly customerContact?: string;
+  readonly customerPhone?: string;
+  readonly customerPhoneExt?: string;
+  readonly customerEmail?: string;
+  readonly customerAddress?: string;
+}
+
+export interface ServiceItemTemplate {
+  readonly id: string;
+  readonly name: string;
+  readonly item: string;
+  readonly price: number;
+  readonly unit?: string;
+  readonly category?: string;
 }

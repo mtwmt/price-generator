@@ -1,14 +1,25 @@
 import { Injectable, inject, DestroyRef } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  calculateDiscount,
-  calculateTaxAndTotal,
-  calculateTaxFromIncluding,
+  calculateQuotationTotals,
+  calculateServiceItemAmount,
+  NumericValidationOptions,
+  toFiniteNumber,
+  validateDiscountValue,
+  validateFiniteNumber,
+  validateServiceItem,
 } from '@app/features/quotation/utils/calculator';
 import {
   QuotationData,
-  ServiceItem,
 } from '@app/features/quotation/models/quotation.model';
 import { DEFAULT_FORM_VALUES } from '@app/features/quotation/models/quotation.constants';
 import { taxIdValidator } from '@app/shared/validators/tax-id.validator';
@@ -46,16 +57,23 @@ export class QuotationFormService {
       startDate: [this.getTodayDate()],
       endDate: [''],
 
+      // 業務層 metadata：輸出與雲端 v2 讀取同一份 form snapshot。
+      quotationId: [''],
+      quotationNumber: [''],
+      businessVersion: [1],
+      status: ['draft'],
+      previousVersions: [[]],
+
       // 服務項目與稅率
       serviceItems: this.fb.array([], Validators.required),
       excludingTax: [0],
       discountType: ['amount'], // 折扣類型：amount 或 percentage
-      discountValue: [0], // 折扣值
+      discountValue: [0, discountValueFormValidator], // 折扣值
       discountAmount: [0], // 計算後的折扣金額
       afterDiscount: [0], // 折扣後金額
       taxName: [''],
       customTaxName: [''], // 自訂稅別名稱
-      percentage: [0],
+      percentage: [0, numericValidator({ min: 0, max: 100 })],
       tax: [{ value: 0, disabled: true }],
       includingTax: [0],
 
@@ -66,7 +84,7 @@ export class QuotationFormService {
       paymentTerms: [''],
       desc: [''],
       isSign: [true],
-    });
+    }, { validators: quotationCalculationValidator });
   }
 
   /**
@@ -76,11 +94,11 @@ export class QuotationFormService {
     return this.fb.group({
       category: [''],
       item: ['', Validators.required],
-      price: [null, Validators.required],
-      count: [1],
+      price: [null, numericValidator({ min: 0, max: Number.MAX_SAFE_INTEGER })],
+      count: [1, numericValidator({ min: 0, exclusiveMin: true, max: Number.MAX_SAFE_INTEGER })],
       unit: [''],
       amount: [0],
-    });
+    }, { validators: serviceItemCalculationValidator });
   }
 
   /**
@@ -112,40 +130,34 @@ export class QuotationFormService {
    * 計算所有金額（小計、折扣、稅額、總計）
    */
   calculateTotals(form: FormGroup): void {
-    // 1. 計算小計（服務項目總和）
-    const excludingTax = this.calculateSubtotal(form);
+    const serviceItems = form.get('serviceItems') as FormArray;
+    const result = calculateQuotationTotals({
+      serviceItems: serviceItems.getRawValue(),
+      discountType: form.get('discountType')?.value,
+      discountValue: form.get('discountValue')?.value,
+      taxPercentage: form.get('percentage')?.value,
+      taxMode: form.get('taxMode')?.value,
+    });
 
-    // 2. 計算折扣
-    const discountType = form.get('discountType')?.value || 'amount';
-    const discountValue = Number(form.get('discountValue')?.value) || 0;
-    const { discountAmount, afterDiscount } = calculateDiscount(
-      excludingTax,
-      discountType,
-      discountValue
+    // 不信任歷史資料或既有 amount；一律從單價與數量重新計算。
+    serviceItems.controls.forEach((itemControl, index) => {
+      itemControl.get('amount')?.setValue(result.itemAmounts[index], { emitEvent: false });
+      itemControl.updateValueAndValidity({ emitEvent: false });
+    });
+
+    form.patchValue(
+      {
+        excludingTax: result.excludingTax,
+        discountAmount: result.discountAmount,
+        afterDiscount: result.afterDiscount,
+        tax: result.tax,
+        includingTax: result.includingTax,
+      },
+      { emitEvent: false }
     );
-
-    // 3. 根據稅金模式計算稅額和總計
-    const taxPercentage = Number(form.get('percentage')?.value) || 0;
-    const taxMode = form.get('taxMode')?.value || 'excluding';
-
-    if (taxMode === 'including') {
-      // 含稅模式：價格已含稅，反推稅額
-      const { tax } = calculateTaxFromIncluding(afterDiscount, taxPercentage);
-      form.patchValue(
-        { excludingTax, discountAmount, afterDiscount, tax, includingTax: afterDiscount },
-        { emitEvent: false }
-      );
-    } else {
-      // 未稅模式：稅金另計
-      const { tax, includingTax } = calculateTaxAndTotal(
-        afterDiscount,
-        taxPercentage
-      );
-      form.patchValue(
-        { excludingTax, discountAmount, afterDiscount, tax, includingTax },
-        { emitEvent: false }
-      );
-    }
+    // 讓固定折扣在小計變動後立即重驗，且不改寫使用者原輸入。
+    form.get('discountValue')?.updateValueAndValidity({ emitEvent: false });
+    form.updateValueAndValidity({ emitEvent: false });
   }
 
   /**
@@ -185,6 +197,11 @@ export class QuotationFormService {
     form.reset({
       ...DEFAULT_FORM_VALUES,
       startDate: this.getTodayDate(),
+      quotationId: '',
+      quotationNumber: '',
+      businessVersion: 1,
+      status: 'draft',
+      previousVersions: [],
     });
 
     const serviceItems = form.get('serviceItems') as FormArray;
@@ -196,48 +213,29 @@ export class QuotationFormService {
    * 處理折扣值的正規化
    */
   normalizeDiscountValue(form: FormGroup): void {
-    const discountType = form.get('discountType')?.value;
-    const maxValue =
-      discountType === 'amount'
-        ? form.get('excludingTax')?.value || 0
-        : undefined;
-
-    this.normalizeNumberInput(form, 'discountValue', maxValue);
+    this.normalizeNumberInput(form, 'discountValue');
   }
 
   /**
    * 處理稅率的正規化
    */
   normalizePercentage(form: FormGroup): void {
-    this.normalizeNumberInput(form, 'percentage', 100);
+    this.normalizeNumberInput(form, 'percentage');
   }
 
   // --- 私有輔助方法 ---
 
-  private calculateSubtotal(form: FormGroup): number {
-    const items = form.get('serviceItems')?.value as ServiceItem[];
-    if (!items) return 0;
-    return items.reduce((acc, item) => acc + (item.amount || 0), 0);
-  }
-
   private normalizeNumberInput(
     form: FormGroup,
-    controlName: string,
-    maxValue?: number
+    controlName: string
   ): void {
     const control = form.get(controlName);
     if (!control) return;
 
-    const value = control.value;
-    if (value === null || value === undefined || value === '') return;
+    const numValue = toFiniteNumber(control.value);
+    if (numValue === null) return;
 
-    let numValue = Number(value);
-    if (isNaN(numValue)) return;
-
-    if (maxValue !== undefined && numValue > maxValue) {
-      numValue = maxValue;
-    }
-
+    // 超額輸入必須留在欄位並顯示錯誤，不能截斷。
     control.setValue(numValue);
   }
 
@@ -250,3 +248,54 @@ export class QuotationFormService {
   }
 
 }
+
+/** 將共用數值規則轉為 Angular 欄位錯誤。 */
+function numericValidator(options: NumericValidationOptions): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const validation = validateFiniteNumber(control.value, options);
+    return validation ? { [validation.code]: validation } : null;
+  };
+}
+
+/** 處理價格與數量皆合法、但相乘溢位的跨欄位錯誤。 */
+const serviceItemCalculationValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const validation = validateServiceItem({
+    price: control.get('price')?.value,
+    count: control.get('count')?.value,
+  });
+  return validation.amount ? { unsafeAmount: validation.amount } : null;
+};
+
+/** 固定折扣上限依目前小計重新驗證，絕不將既有輸入截斷。 */
+const discountValueFormValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const form = control.parent;
+  const rawItems = form?.get('serviceItems')?.getRawValue();
+  const amounts = Array.isArray(rawItems)
+    ? rawItems.map((item) => calculateServiceItemAmount(item))
+    : [];
+  const subtotal = amounts.every((amount): amount is number => amount !== null)
+    ? amounts.reduce((sum, amount) => sum + amount, 0)
+    : null;
+  const validation = validateDiscountValue(
+    subtotal !== null && subtotal <= Number.MAX_SAFE_INTEGER ? subtotal : null,
+    form?.get('discountType')?.value,
+    control.value
+  );
+  return validation ? { [validation.code]: validation } : null;
+};
+
+/**
+ * 根表單以同一套 calculator 驗證衍生計算。這同時讓匯出與儲存入口的 form.valid
+ * 能阻擋從 HTML 限制以外注入的無效資料。
+ */
+const quotationCalculationValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const serviceItems = control.get('serviceItems')?.getRawValue();
+  const result = calculateQuotationTotals({
+    serviceItems: Array.isArray(serviceItems) ? serviceItems : [],
+    discountType: control.get('discountType')?.value,
+    discountValue: control.get('discountValue')?.value,
+    taxPercentage: control.get('percentage')?.value,
+    taxMode: control.get('taxMode')?.value,
+  });
+  return result.valid ? null : { invalidCalculation: result.errors };
+};

@@ -18,7 +18,9 @@
 
   <!-- Tabs -->
   <nav aria-label="主導航">
-    <div class="flex flex-wrap items-center justify-between gap-y-2 mb-4 bg-base-100 shadow-sm">
+    <div
+      class="flex flex-wrap items-center justify-between gap-y-2 mb-4 bg-base-100 shadow-sm"
+    >
       <div role="tablist" class="tabs">
         <a
           role="tab"
@@ -121,7 +123,7 @@
               title="登出"
               aria-label="登出帳號"
             >
-              <svg lucideLogOut width="16" height="16" />
+              <svg lucideLogOut />
               <span class="hidden sm:inline">登出</span>
             </button>
           </div>
@@ -132,7 +134,7 @@
             legacyLabel="登入"
             legacyLabelClass="hidden sm:inline"
           >
-            <svg google-sign-in-icon lucideLogIn width="16" height="16" />
+            <svg google-sign-in-icon lucideLogIn />
           </app-google-sign-in>
         }
       </div>
@@ -176,12 +178,7 @@
     @if (toastService.type() === 'success') {
       <div class="alert alert-success shadow-lg">
         <div class="flex items-center gap-2">
-          <svg
-            lucideCheck
-            width="20"
-            height="20"
-            class="text-success-content"
-          />
+          <svg lucideCheck class="text-success-content" />
           <span class="text-success-content font-medium">{{
             toastService.message()
           }}</span>
@@ -191,7 +188,7 @@
     @if (toastService.type() === 'error') {
       <div class="alert alert-error shadow-lg">
         <div class="flex items-center gap-2">
-          <svg lucideX width="20" height="20" class="text-error-content" />
+          <svg lucideX class="text-error-content" />
           <span class="text-error-content font-medium">{{
             toastService.message()
           }}</span>
@@ -203,8 +200,6 @@
         <div class="flex items-center gap-2">
           <svg
             lucideFileText
-            width="20"
-            height="20"
             class="text-info-content"
           />
           <span class="text-info-content font-medium">{{
@@ -218,8 +213,6 @@
         <div class="flex items-center gap-2">
           <svg
             lucideMessageSquareQuote
-            width="20"
-            height="20"
             class="text-warning-content"
           />
           <span class="text-warning-content font-medium">{{

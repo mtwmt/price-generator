@@ -12,11 +12,17 @@ import { LucideClock } from '@lucide/angular';
 export class ChangelogComponent {
   changelog = [
     {
+      date: '2026-09-14',
+      features: [
+        '使用介面調整',
+        '新增贊助會員進階版使用',
+      ],
+    },
+    {
       date: '2026-09-11',
       features: [
         '新增報價單草稿自動儲存、恢復與離開提醒',
         '新增「複製為新報價」，保留原始紀錄',
-        '新增雲端同步狀態與最後同步時間',
         '改善匯出驗證，自動定位第一個未完成的必填欄位',
       ],
     },

@@ -30,6 +30,7 @@ class DeterministicHashProvider implements ContentHashProvider {
 
 function createQuotation(customerCompany = '測試客戶'): QuotationData {
   return {
+    quotationId: 'quotation-1',
     customerCompany,
     quoterName: '測試報價者',
     quoterEmail: 'quote@example.com',

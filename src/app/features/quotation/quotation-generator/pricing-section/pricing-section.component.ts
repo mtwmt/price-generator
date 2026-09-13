@@ -11,6 +11,7 @@ import {
   CUSTOM_TAX_NAME,
   TAX_MODES,
 } from '@app/features/quotation/models/quotation.constants';
+import { getDiscountPaymentPercentage } from '@app/features/quotation/utils/calculator';
 
 /**
  * 計價設定區塊元件
@@ -56,5 +57,24 @@ export class PricingSection {
    */
   normalizeDiscountValue(): void {
     this.normalizeDiscountAmount.emit();
+  }
+
+  getControlError(controlName: string): string | null {
+    const errors = this.form().get(controlName)?.errors;
+    if (!errors) return null;
+    const validation = Object.values(errors).find(
+      (value): value is { message: string } =>
+        typeof value === 'object' && value !== null && 'message' in value
+    );
+    return validation?.message ?? '輸入值無效';
+  }
+
+  getPaymentPercentage(): number | null {
+    return getDiscountPaymentPercentage(this.form().get('discountValue')?.value);
+  }
+
+  getAmountValue(controlName: string): number {
+    const value = this.form().get(controlName)?.value;
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
   }
 }

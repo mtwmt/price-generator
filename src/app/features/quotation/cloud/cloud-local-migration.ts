@@ -17,6 +17,7 @@ export async function createLocalMigrationOperation(
   hashProvider: ContentHashProvider
 ) {
   const quotationId = `local-${dataHash}`;
+  const normalizedData: QuotationData = { ...data, quotationId };
   const matching = revisions.filter((item) => item.quotationId === quotationId);
   const parents = new Set(matching.flatMap((item) => item.parentRevisionIds));
   const heads = matching.filter((item) => !parents.has(item.revisionId));
@@ -44,8 +45,8 @@ export async function createLocalMigrationOperation(
         ownerSub,
         quotationId,
         baseRevisionIds,
-        payload: data,
-        summary: createQuotationCloudSummary(data),
+        payload: normalizedData,
+        summary: createQuotationCloudSummary(normalizedData),
       }),
       operationId: restoring
         ? `local-restore-${restoreHash}`

@@ -18,7 +18,7 @@
       </label>
     </fieldset>
     <!-- 項目 -->
-    <fieldset class="fieldset relative min-w-0 w-2/3 pb-5 md:w-1/2 md:flex-1">
+    <fieldset class="fieldset min-w-0 w-2/3 md:w-1/2 md:flex-1">
       <label class="floating-label">
         <span>項目 <span class="text-error">*</span></span>
         <input
@@ -28,30 +28,24 @@
           [class.input-error]="formGroup().get('item')?.errors?.['required']"
           placeholder="項目"
       /></label>
-      @if (formGroup().get('item')?.errors?.['required']) {
-        <p class="text-error text-xs absolute bottom-0 left-0">
-          項目名稱不得為空
-        </p>
-      }
     </fieldset>
   </div>
   <!-- 第二行：單價 × 數量 / 單位 = 金額 + 操作按鈕 -->
   <div class="flex gap-2 w-full min-w-0 md:w-4/7">
     <!-- 單價 -->
-    <fieldset class="fieldset flex-[2_1_0%] relative min-w-0 pb-5 md:flex-1">
+    <fieldset class="fieldset flex-[2_1_0%] min-w-0 md:flex-1">
       <label class="floating-label">
         <span>單價 <span class="text-error">*</span></span>
         <input
           formControlName="price"
           type="number"
+          min="0"
+          step="1"
           class="input w-full min-w-0"
-          [class.input-error]="formGroup().get('price')?.errors?.['required']"
+          [class.input-error]="formGroup().get('price')?.invalid"
           placeholder="單價"
           (input)="onInput($event, 'price')"
       /></label>
-      @if (formGroup().get('price')?.errors?.['required']) {
-        <p class="text-error text-xs absolute bottom-0 left-0">單價不得為空</p>
-      }
     </fieldset>
     <!-- 數量 -->
     <fieldset class="fieldset min-w-0 flex-1 max-w-16">
@@ -60,7 +54,10 @@
         <input
           formControlName="count"
           type="number"
+          min="0"
+          step="1"
           class="input w-full min-w-0 md:max-w-16"
+          [class.input-error]="formGroup().get('count')?.invalid"
           placeholder="1"
           (input)="onInput($event, 'count')"
       /></label>
@@ -89,23 +86,58 @@
       /></label>
     </fieldset>
     <!-- 操作按鈕 -->
-    <fieldset class="fieldset flex shrink-0 gap-1">
-      <button
-        type="button"
-        class="btn input btn-outline btn-square max-md:hidden! shrink-0 cursor-pointer md:inline-flex"
-        (click)="onCopyField($event)"
-        title="複製"
-      >
-        <svg lucideCopy width="18" height="18" />
-      </button>
-      <button
-        type="button"
-        class="btn input btn-outline btn-square shrink-0 cursor-pointer"
-        (click)="onRemoveField($event)"
-        title="刪除"
-      >
-        <svg lucideTrash2 width="18" height="18" />
-      </button>
+    <fieldset class="fieldset flex shrink-0">
+      <div class="dropdown dropdown-end">
+        <button
+          type="button"
+          tabindex="0"
+          class="btn input btn-outline btn-square shrink-0 cursor-pointer"
+          title="更多操作"
+          aria-label="更多操作"
+        >
+          <svg lucideEllipsis class="shrink-0" />
+        </button>
+        <ul
+          tabindex="0"
+          class="dropdown-content menu menu-sm bg-base-100 rounded-box z-50 w-40 p-1 shadow-lg border border-base-200"
+        >
+          <li>
+            <button
+              type="button"
+              class="flex items-center gap-2 cursor-pointer py-1.5"
+              (click)="onCopyField($event)"
+            >
+              <svg lucideCopy class="shrink-0" />
+              <span>複製項目</span>
+            </button>
+          </li>
+          @if (advancedMode()) {
+            <li>
+              <button
+                type="button"
+                class="flex items-center gap-2 cursor-pointer py-1.5"
+                (click)="onSaveTemplate($event)"
+              >
+                <svg lucideBookmarkPlus class="shrink-0" />
+                <span>儲存為常用項目</span>
+              </button>
+            </li>
+          }
+          <li>
+            <button
+              type="button"
+              class="flex items-center gap-2 cursor-pointer text-error hover:bg-error/10 py-1.5"
+              (click)="onRemoveField($event)"
+            >
+              <svg lucideTrash2 class="shrink-0" />
+              <span>刪除項目</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </fieldset>
   </div>
+  @if (getAmountError(); as error) {
+    <p class="w-full text-error text-xs">{{ error }}</p>
+  }
 </div>

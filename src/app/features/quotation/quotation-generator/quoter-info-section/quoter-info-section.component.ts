@@ -2,16 +2,11 @@ import {
   Component,
   input,
   output,
-  viewChild,
-  ElementRef,
-  AfterViewInit,
-  OnDestroy,
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
-  LucideCalendar1,
   LucideMail,
   LucideMapPin,
   LucideMessageSquareQuote,
@@ -23,7 +18,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
 
 /**
  * 報價人員資料區塊元件
- * 包含報價人員基本資料、進階資料（收合式）、和日期選擇器
+ * 包含報價人員基本資料與進階資料（收合式）
  */
 @Component({
   selector: 'app-quoter-info-section',
@@ -32,7 +27,6 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
     CommonModule,
     ReactiveFormsModule,
     FileUpload,
-    LucideCalendar1,
     LucideMail,
     LucideMapPin,
     LucideMessageSquareQuote,
@@ -43,7 +37,7 @@ import { FileUpload } from '@app/shared/components/file-upload/file-upload';
   templateUrl: './quoter-info-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QuoterInfoSection implements AfterViewInit, OnDestroy {
+export class QuoterInfoSection {
   // Inputs
   readonly form = input.required<FormGroup>();
   readonly quoterLogo = input<string>('');
@@ -54,33 +48,6 @@ export class QuoterInfoSection implements AfterViewInit, OnDestroy {
   readonly quoterLogoRemove = output<void>();
   readonly stampChange = output<FileList>();
   readonly stampRemove = output<void>();
-  readonly datePickersReady = output<{
-    startDateEl: ElementRef<HTMLInputElement>;
-    endDateEl: ElementRef<HTMLInputElement>;
-  }>();
-
-  // View Children
-  readonly startDateInput =
-    viewChild<ElementRef<HTMLInputElement>>('startDate');
-  readonly endDateInput = viewChild<ElementRef<HTMLInputElement>>('endDate');
-
-  ngAfterViewInit(): void {
-    // Emit the date picker elements to parent for Litepicker initialization
-    const startDateEl = this.startDateInput();
-    const endDateEl = this.endDateInput();
-
-    if (startDateEl && endDateEl) {
-      this.datePickersReady.emit({
-        startDateEl,
-        endDateEl,
-      });
-    }
-  }
-
-  ngOnDestroy(): void {
-    // Cleanup will be handled by parent component
-  }
-
   /**
    * 報價人員 LOGO 變更處理
    */

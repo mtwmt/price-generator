@@ -1,5 +1,6 @@
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { CloudQuotationKind } from './cloud-contracts';
+import { readCloudLifecycleMetadata } from './cloud-lifecycle-metadata';
 
 export interface DriveRevisionMetadata {
   readonly fileId: string;
@@ -9,6 +10,8 @@ export interface DriveRevisionMetadata {
   readonly parentRevisionIds: readonly string[];
   readonly kind: CloudQuotationKind;
   readonly createdAt: string;
+  readonly quotationNumber?: string;
+  readonly status?: QuotationData['status'];
 }
 
 export interface CloudQuotationHistoryEntry {
@@ -47,6 +50,8 @@ function parseQuotationFileName(metadata: DriveRevisionMetadata): {
 function placeholderData(metadata: DriveRevisionMetadata): QuotationData {
   const summary = parseQuotationFileName(metadata);
   return {
+    quotationId: metadata.quotationId,
+    ...readCloudLifecycleMetadata(metadata),
     customerCompany: summary.customerCompany,
     quoterName: '',
     quoterEmail: '',

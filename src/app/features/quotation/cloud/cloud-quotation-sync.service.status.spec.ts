@@ -30,6 +30,7 @@ jest.mock('./drive-cloud-api.service', () => {
     DriveCloudApiService: class DriveCloudApiService {},
     DriveAuthorizationRequiredError,
     DriveServiceUnavailableError,
+    DriveOperationNotSentError: class extends Error {},
   };
 });
 jest.mock('./cloud-sync-preference', () => ({

@@ -20,7 +20,10 @@ import { ToastService } from '@app/shared/services/toast.service';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import { QuotationTemplate } from '@app/features/templates/models/quotation-template.model';
 import { QUOTATION_TEMPLATES } from '@app/features/templates/configs/quotation-templates.config';
-import { ensureExportFormIsValid } from './export-validation';
+import {
+  ensureExportFormIsValid,
+  getExportValidationMessage,
+} from './export-validation';
 
 /**
  * 報價單匯出控制元件
@@ -73,6 +76,10 @@ export class ExportControls {
     return this.templates.find((t) => t.id === this.selectedTemplate());
   }
 
+  getValidationMessage(): string {
+    return getExportValidationMessage(this.form());
+  }
+
   /**
    * 取得報價單資料
    */
@@ -89,8 +96,8 @@ export class ExportControls {
    * 以原生事件通知外層表單處理焦點與捲動，避免預覽元件成為耦合點。
    */
   private validateBeforeExport(): boolean {
-    return ensureExportFormIsValid(this.form(), () => {
-      this.toastService.error('請先完成必填欄位後才能匯出報價單');
+    return ensureExportFormIsValid(this.form(), (message) => {
+      this.toastService.error(message);
       this.document.dispatchEvent(new CustomEvent('quotation-export-invalid'));
     });
   }

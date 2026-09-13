@@ -1,3 +1,5 @@
+export {};
+
 declare const require: (moduleName: string) => unknown;
 declare const __dirname: string;
 
@@ -100,16 +102,28 @@ describe('報價單窄螢幕版面結構', () => {
       'class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-200 pb-3"'
     );
     expect(template).toContain(
-      'hasHistory() || cloudEligible() || hasLocalHistoryToSync()'
+      'hasHistory() || recoveryInfo()?.writeProtected || recoveryInfo()?.quarantinedRecordCount || legacyCandidates().length'
     );
     expect(template).toContain(
-      'class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto"'
-    );
-    expect(template).toContain(
-      'class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 empty:hidden lg:w-auto"'
+      'class="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1"'
     );
     expect(template).toContain('class="min-w-0 max-w-full flex-1"');
     expect(template).not.toContain('sm:shrink-0 sm:flex-nowrap');
+  });
+
+  it('常用客戶與服務項目在手機可換行，並保留搜尋、套用、刪除操作入口', () => {
+    const template = readTemplate('./quotation-generator.component.html');
+    const component = readTemplate('./quotation-generator.component.ts');
+
+    expect(template).toContain('placeholder="搜尋常用資料"');
+    expect(template).toContain('class="grid gap-3 md:grid-cols-2"');
+    expect(template).toContain('id="customer-template-select"');
+    expect(template).toContain('id="service-template-select"');
+    expect(template).toContain('(click)="applySelectedCustomerTemplate()"');
+    expect(template).toContain('(click)="applySelectedServiceItemTemplate()"');
+    expect(template).toContain('aria-label="刪除選取的常用客戶"');
+    expect(template).toContain('aria-label="刪除選取的常用服務項目"');
+    expect(component).toContain("window.confirm('套用常用客戶會取代目前客戶資訊，是否繼續？')");
   });
 
   it('雲端同步狀態本身允許縮小與換行', () => {
@@ -146,5 +160,30 @@ describe('報價單窄螢幕版面結構', () => {
     expect(template).toContain('class="block truncate font-semibold"');
     expect(template).toContain('btn-circle flex-shrink-0');
     expect(template).toContain('[title]');
+  });
+
+  it('歷史搜尋只提供給可使用進階功能的會員', () => {
+    const historyTemplate = readTemplate(
+      './quotation-history/quotation-history.component.html'
+    );
+    const generatorTemplate = readTemplate('./quotation-generator.component.html');
+
+    expect(generatorTemplate).toContain('[searchEnabled]="cloudEligible()"');
+    expect(historyTemplate).toContain('@if (searchEnabled()) {');
+    expect(historyTemplate).toContain('placeholder="搜尋客戶、編號或狀態"');
+  });
+
+  it('免費會員保留歷史與儲存入口，但不載入舊資料匯入', () => {
+    const template = readTemplate('./quotation-generator.component.html');
+    const component = readFileSync(
+      resolve(__dirname, './quotation-generator.component.ts'),
+      'utf8'
+    );
+
+    expect(template).toContain('hasHistory() || recoveryInfo()?.writeProtected');
+    expect(template).not.toContain('historyEnabled()');
+    expect(component).toContain('legacyImportEnabled');
+    expect(component).toContain('const legacy = this.legacyImportEnabled()');
+    expect(component).toContain('if (!this.legacyImportEnabled()) return;');
   });
 });

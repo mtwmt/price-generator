@@ -21,6 +21,11 @@ import Litepicker from 'litepicker';
 import { QuotationPreview } from '@app/features/quotation/quotation-preview/quotation-preview.component';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import {
+  CustomerTemplate,
+  ServiceItemTemplate,
+  QuotationVersionSnapshot,
+} from '@app/features/quotation/models/quotation.model';
+import {
   CUSTOM_TAX_NAME,
   getTaxPercentage,
 } from '@app/features/quotation/models/quotation.constants';
@@ -29,10 +34,25 @@ import { AuthService } from '@app/core/services/auth.service';
 import { ToastService } from '@app/shared/services/toast.service';
 import { ConfirmDialogService } from '@app/shared/services/confirm-dialog.service';
 import { QuotationStorageService } from '@app/features/quotation/services/quotation-storage.service';
+import {
+  QuotationStorageRecoveryBackup,
+  QuotationStorageRecoveryInfo,
+} from '@app/features/quotation/services/quotation-storage.service';
 import { ImageUploadService } from '@app/features/quotation/services/image-upload.service';
 import { DatePickerService } from '@app/features/quotation/services/date-picker.service';
 import { QuotationFormService } from '@app/features/quotation/services/quotation-form.service';
-import { CloudQuotationSyncService } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
+import { QuotationTemplatesService } from '@app/features/quotation/services/quotation-templates.service';
+import {
+  cloneAsNewQuotation,
+  createNextBusinessVersion,
+  hasDuplicateQuotationNumber,
+  normalizeQuotationLifecycle,
+  QUOTATION_STATUSES,
+  quotationStatusLabel,
+} from '@app/features/quotation/utils/quotation-lifecycle';
+import { CloudQuotationSyncService, CloudSaveIntent } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
+import { StorageRouteCoordinator } from './storage-route-coordinator';
+import { restoreRecoveryFileForCurrentScope } from './recovery-restore';
 import { CloudSyncStatusComponent } from '@app/features/quotation/cloud/cloud-sync-status/cloud-sync-status.component';
 import { QuotationHistory } from './quotation-history/quotation-history.component';
 import { CustomerInfoSection } from './customer-info-section/customer-info-section.component';
@@ -40,6 +60,7 @@ import { QuoterInfoSection } from './quoter-info-section/quoter-info-section.com
 import { ServiceItemsSection } from './service-items-section/service-items-section.component';
 import { PricingSection } from './pricing-section/pricing-section.component';
 import { OtherInfoSection } from './other-info-section/other-info-section.component';
+import { QuotationInfoSection } from './quotation-info-section/quotation-info-section.component';
 import {
   LucideCheck,
   LucideCloudUpload,
@@ -51,111 +72,17 @@ import {
 } from '@lucide/angular';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
-export interface StorageRouteCoordinatorContext<T = QuotationData> {
-  isCloudStorage: () => boolean;
-  loadLocalHistory: () => T[];
-  loadCloudHistory: () => T[];
-  setHistoryData: (data: T[]) => void;
-  setLocalHistoryData?: (data: T[]) => void;
-  getSelectedIndex: () => number | null;
-  setSelectedIndex: (index: number | null) => void;
-  getHistoryLength?: () => number;
-}
-
-export class StorageRouteCoordinator<T = QuotationData> {
-  private operationVersion = 0;
-  readonly selectedStorage = signal<'local' | 'cloud' | null>(null);
-
-  constructor(private readonly ctx: StorageRouteCoordinatorContext<T>) {}
-
-  nextOperationVersion(): number {
-    return ++this.operationVersion;
-  }
-
-  isCurrentOperation(version: number): boolean {
-    return version === this.operationVersion;
-  }
-
-  setSelectedStorage(storage: 'local' | 'cloud' | null): void {
-    this.selectedStorage.set(storage);
-  }
-
-  getSelectedStorage(): 'local' | 'cloud' | null {
-    return this.selectedStorage();
-  }
-
-  isEditingExisting(historyLength?: number): boolean {
-    const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
-    const index = this.ctx.getSelectedIndex();
-    if (index === null || index < 0 || index >= length) return false;
-    const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
-    return this.selectedStorage() === currentMode;
-  }
-
-  resetInapplicableSelectedIndex(historyLength?: number): void {
-    const length = historyLength ?? this.ctx.getHistoryLength?.() ?? 0;
-    const index = this.ctx.getSelectedIndex();
-    if (index === null) {
-      this.selectedStorage.set(null);
-      return;
-    }
-    const currentMode = this.ctx.isCloudStorage() ? 'cloud' : 'local';
-    if (
-      this.selectedStorage() !== currentMode ||
-      index < 0 ||
-      index >= length
-    ) {
-      this.ctx.setSelectedIndex(null);
-      this.selectedStorage.set(null);
-    }
-  }
-
-  syncHistoryByCurrentRoute(): void {
-    if (this.ctx.isCloudStorage()) {
-      const cloud = this.ctx.loadCloudHistory();
-      this.ctx.setHistoryData(cloud);
-      this.resetInapplicableSelectedIndex(cloud.length);
-    } else {
-      const local = this.ctx.loadLocalHistory();
-      this.ctx.setLocalHistoryData?.(local);
-      this.ctx.setHistoryData(local);
-      this.resetInapplicableSelectedIndex(local.length);
-    }
-  }
-
-  async handleInitialize(initFn: () => Promise<void>): Promise<void> {
-    const version = this.nextOperationVersion();
-    await initFn();
-    if (!this.isCurrentOperation(version)) return;
-    this.syncHistoryByCurrentRoute();
-  }
-
-  async handleToggle(toggleFn: () => Promise<void>): Promise<void> {
-    const version = this.nextOperationVersion();
-    await toggleFn();
-    if (!this.isCurrentOperation(version)) return;
-    this.ctx.setSelectedIndex(null);
-    this.selectedStorage.set(null);
-    this.syncHistoryByCurrentRoute();
-  }
-
-  async handleConnect(
-    connectFn: () => Promise<void>,
-    onError: (error: unknown) => void
-  ): Promise<void> {
-    const version = this.nextOperationVersion();
-    try {
-      await connectFn();
-      if (!this.isCurrentOperation(version)) return;
-      this.ctx.setSelectedIndex(null);
-      this.selectedStorage.set(null);
-      this.syncHistoryByCurrentRoute();
-    } catch (error) {
-      if (!this.isCurrentOperation(version)) return;
-      this.syncHistoryByCurrentRoute();
-      onError(error);
-    }
-  }
+interface QuotationSubmission {
+  readonly epoch: number;
+  readonly scope: string;
+  readonly repository: 'local' | 'cloud';
+  readonly editorFingerprint: string;
+  readonly editorSource: QuotationData;
+  readonly payload: QuotationData;
+  readonly forceCreate: boolean;
+  readonly cloudIntent?: CloudSaveIntent;
+  readonly duplicateNumber: boolean;
+  duplicateConfirmed: boolean;
 }
 
 @Component({
@@ -182,6 +109,7 @@ export class StorageRouteCoordinator<T = QuotationData> {
     QuotationPreview,
     QuotationHistory,
     CustomerInfoSection,
+    QuotationInfoSection,
     QuoterInfoSection,
     ServiceItemsSection,
     PricingSection,
@@ -209,6 +137,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   readonly toastService = inject(ToastService);
   private confirmDialog = inject(ConfirmDialogService);
   private quotationStorage = inject(QuotationStorageService);
+  private quotationTemplates = inject(QuotationTemplatesService);
   private imageUploadService = inject(ImageUploadService);
   private datePickerService = inject(DatePickerService);
   private cloudQuotationSync = inject(CloudQuotationSyncService);
@@ -218,6 +147,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private document = inject(DOCUMENT);
   private initializedStorageRouteKey: string | null = null;
   private activeUserId: string | null | undefined;
+  private documentEpoch = 0;
+  private documentScope: string | null = null;
+  private viewingBusinessSnapshot = false;
+  private snapshotViewRequest = 0;
+  private historyLoadRequest = 0;
+  private cloudToggleRequest = 0;
+  private pendingSubmission: QuotationSubmission | null = null;
+  private submissionFlight: Promise<void> | null = null;
+  readonly isSubmitting = signal(false);
+  readonly submissionUncertain = signal(false);
   private storageRouteEffect = effect(() => {
     const user = this.authService.currentUser();
     const userData = this.authService.userData();
@@ -227,9 +166,12 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       this.activeUserId !== undefined &&
       nextUserId !== this.activeUserId
     ) {
-      this.resetFormForNewQuotation();
+      this.detachDocumentIdentity();
     }
     this.activeUserId = nextUserId;
+    this.quotationTemplates.setScope(nextUserId ? `user:${nextUserId}` : 'visitor');
+    this.clearTemplateSelections();
+    this.refreshTemplates();
     if (!user || !userData) {
       this.initializedStorageRouteKey = null;
       this.coordinator.nextOperationVersion();
@@ -242,8 +184,22 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     const routeKey = `${user.uid}:${role}`;
     if (this.initializedStorageRouteKey === routeKey) return;
     this.initializedStorageRouteKey = routeKey;
+    this.refreshLegacyCandidates();
     void this.initializeStorageRoute();
   });
+  private observedRepository: boolean | undefined;
+  private repositoryEffect = effect(() => {
+    this.reconcileRepositoryIdentity();
+  });
+
+  /** Commit identity changes only when the actual logical repository changed. */
+  private reconcileRepositoryIdentity(): void {
+    const cloud = this.isCloudStorage();
+    if (this.form && this.observedRepository !== undefined && this.observedRepository !== cloud) {
+      this.detachDocumentIdentity();
+    }
+    this.observedRepository = cloud;
+  }
 
   // View Children
   private startDateInput = viewChild<ElementRef>('startDate');
@@ -267,10 +223,39 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   stamp = signal<string>('');
   quoterLogo = signal<string>('');
   selectedHistoryIndex = signal<number | null>(null);
+  /** 索引會因排序／刪除改變；資料操作一律以這個穩定 ID 找回目前索引。 */
+  selectedHistoryId = signal<string | null>(null);
+  /** 載入或成功儲存後的不可變版本，供「建立下一版」保存真正舊內容。 */
+  savedBusinessVersion = signal<QuotationData | null>(null);
+  readonly legacyHistoryCount = signal(0);
+  readonly recoveryInfo = signal<QuotationStorageRecoveryInfo | null>(null);
+  readonly recoveryBackup = signal<QuotationStorageRecoveryBackup | null>(null);
+  readonly legacyCandidates = signal<QuotationData[]>([]);
+  readonly templateSearch = signal('');
+  readonly templateRevision = signal(0);
+  readonly selectedCustomerTemplateId = signal('');
+  readonly selectedServiceItemTemplateId = signal('');
+  readonly quotationNumber = signal('');
+  readonly quotationStatus = signal<'draft' | 'sent' | 'won' | 'lost'>('draft');
+  readonly quotationBusinessVersion = signal(1);
+  readonly quotationStatuses = QUOTATION_STATUSES;
+  readonly statusLabel = quotationStatusLabel;
+  readonly historyMetadataIncomplete = computed(() =>
+    this.isCloudStorage() && this.cloudQuotationSync.hasIncompleteHistoryMetadata()
+  );
   showPreview = signal<boolean>(true);
   readonly cloudRoute = this.cloudQuotationSync.route;
   readonly cloudAvailable = this.cloudQuotationSync.isAvailable;
   readonly cloudEligible = this.cloudQuotationSync.isEligible;
+  /** 舊資料匯入只對匿名訪客與具資格會員保留；免費會員仍可使用一般歷史記錄。 */
+  readonly legacyImportEnabled = computed(
+    () => !this.authService.isAuthenticated() || this.cloudEligible()
+  );
+  /** 贊助會員預設進階版；此狀態只決定介面可見性，不會寫入報價表單。 */
+  readonly advancedMode = signal(true);
+  readonly showAdvancedFeatures = computed(
+    () => this.cloudEligible() && this.advancedMode()
+  );
   readonly cloudSyncEnabled = this.cloudQuotationSync.isSyncEnabled;
   readonly syncStatus = this.cloudQuotationSync.syncStatus;
   readonly lastSyncedAt = this.cloudQuotationSync.lastSyncedAt;
@@ -278,19 +263,58 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
+  customerTemplates = computed(() => {
+    this.templateRevision();
+    return this.quotationTemplates.getCustomers(this.templateSearch());
+  });
+  serviceItemTemplates = computed(() => {
+    this.templateRevision();
+    return this.quotationTemplates.getServiceItems(this.templateSearch());
+  });
+  readonly selectedCustomerTemplate = computed(() => {
+    const id = this.selectedCustomerTemplateId();
+    return id
+      ? this.customerTemplates().find((template) => template.id === id) ?? null
+      : null;
+  });
+  readonly selectedServiceItemTemplate = computed(() => {
+    const id = this.selectedServiceItemTemplateId();
+    return id
+      ? this.serviceItemTemplates().find((template) => template.id === id) ?? null
+      : null;
+  });
   hasLocalHistoryToSync = computed(
     () => this.isCloudStorage() && this.localHistoryData().length > 0
   );
   isSyncingLocalHistory = signal(false);
-  isCloudStorage = this.cloudQuotationSync.isCloudStorage;
+  isCloudStorage = this.cloudQuotationSync.isCloudRepository;
   driveAction = computed(() => this.cloudRoute().cloudAction);
   storageModeLabel = computed(() =>
     this.isCloudStorage() ? '雲端同步' : '本機儲存'
   );
+  private previousAdvancedEligibility = false;
+  private advancedModeOwner: string | null | undefined;
+  private readonly advancedModeEligibilityEffect = effect(() => {
+    const eligible = this.cloudEligible();
+    const owner = this.authService.userId();
+
+    if (!eligible) {
+      this.advancedMode.set(false);
+    } else if (!this.previousAdvancedEligibility) {
+      // 首次取得贊助資格（含升級）預設為進階版。
+      this.advancedMode.set(true);
+    } else if (owner !== this.advancedModeOwner) {
+      // 切換贊助帳號時不沿用上一位使用者的介面偏好。
+      this.advancedMode.set(false);
+    }
+
+    this.previousAdvancedEligibility = eligible;
+    this.advancedModeOwner = owner;
+  });
 
   readonly coordinator = new StorageRouteCoordinator({
     isCloudStorage: () => this.isCloudStorage(),
-    loadLocalHistory: () => this.quotationStorage.getHistory(),
+    loadLocalHistory: () => this.quotationStorage.getHistory(this.localStorageScope()),
     loadCloudHistory: () =>
       this.cloudQuotationSync.history().map((entry) => entry.data),
     setHistoryData: (data) => this.historyData.set(data),
@@ -307,6 +331,33 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
   get serviceItems() {
     return this.form?.get('serviceItems') as FormArray;
+  }
+
+  readonly showAdvancedPromoModal = signal(false);
+
+  setAdvancedMode(enabled: boolean): void {
+    if (!this.cloudEligible()) return;
+    this.advancedMode.set(enabled);
+  }
+
+  openAdvancedPromoModal(): void {
+    this.showAdvancedPromoModal.set(true);
+  }
+
+  closeAdvancedPromoModal(): void {
+    this.showAdvancedPromoModal.set(false);
+  }
+
+  goToDonation(): void {
+    this.closeAdvancedPromoModal();
+    if (this.authService.isAuthenticated()) {
+      const navTarget = this.document?.defaultView ?? (typeof window !== 'undefined' ? window : null);
+      if (navTarget) {
+        navTarget.location.href = '/member';
+      }
+    } else {
+      this.authService.loginWithGoogle();
+    }
   }
 
   ngOnInit() {
@@ -351,7 +402,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private serializeCurrentFormData(): string {
-    return JSON.stringify(this.collectFormData());
+    // Comparing editor state must not allocate lifecycle identity for a blank form.
+    return JSON.stringify(this.readEditorData());
   }
 
   private markFormPristine(): void {
@@ -382,17 +434,101 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private resetFormForNewQuotation(): void {
-    this.selectedHistoryIndex.set(null);
-    this.coordinator.setSelectedStorage(null);
+    this.detachDocumentIdentity();
     this.resetForm();
     this.markFormPristine();
   }
 
+  /** Repository/owner changes retain editor content but require a fresh document identity. */
+  private detachDocumentIdentity(): void {
+    ++this.documentEpoch;
+    this.observedRepository = this.isCloudStorage();
+    this.viewingBusinessSnapshot = false;
+    this.documentScope = null;
+    this.pendingSubmission = null;
+    this.submissionFlight = null;
+    this.isSubmitting.set(false);
+    this.submissionUncertain.set(false);
+    this.selectedHistoryIndex.set(null);
+    this.selectedHistoryId.set(null);
+    this.savedBusinessVersion.set(null);
+    this.coordinator.setSelectedStorage(null);
+    this.quotationNumber.set('');
+    this.quotationStatus.set('draft');
+    this.quotationBusinessVersion.set(1);
+    this.form?.patchValue({ quotationId: '', quotationNumber: '', status: 'draft', businessVersion: 1, previousVersions: [] }, { emitEvent: false });
+  }
+
   private loadHistoryFromLocalStorage(): void {
-    const history = this.quotationStorage.getHistory();
+    const history = this.quotationStorage
+      .getHistory(this.localStorageScope())
+      .map((entry) => normalizeQuotationLifecycle(entry));
     this.localHistoryData.set(history);
     this.historyData.set(history);
+    const scope = this.localStorageScope();
+    this.recoveryInfo.set(this.quotationStorage.getRecoveryInfo(scope));
+    this.recoveryBackup.set(this.quotationStorage.createRecoveryBackup(scope));
+    this.refreshLegacyCandidates();
     this.coordinator.resetInapplicableSelectedIndex(history.length);
+  }
+
+  private refreshLegacyCandidates(): void {
+    const legacy = this.legacyImportEnabled()
+      ? this.quotationStorage.getLegacyHistory()
+      : [];
+    this.legacyCandidates.set(legacy);
+    this.legacyHistoryCount.set(legacy.length);
+  }
+
+  /** 訪客與每個 UID 使用不同 key；不以 localStorage 當作系統層安全性。 */
+  private localStorageScope(): string {
+    const uid = this.authService.currentUser()?.uid;
+    return uid ? `quotation:user:${uid}` : 'quotation:visitor';
+  }
+
+  claimSelectedLegacyHistory(selectedIndexes: readonly number[]): void {
+    if (!this.legacyImportEnabled()) return;
+    const scope = this.localStorageScope();
+    const version = this.coordinator.nextOperationVersion();
+    const result = this.quotationStorage.claimLegacyHistory(
+      scope,
+      selectedIndexes
+    );
+    if (!this.coordinator.isCurrentOperation(version) || scope !== this.localStorageScope()) return;
+    if (!result.success && result.reason === 'target-full') {
+      this.toastService.warning('舊資料與目前歷史合計超過 5 筆；請在後續版本選擇要匯入的項目，原資料已保留');
+      return;
+    }
+    if (!result.success) {
+      this.toastService.error('匯入舊報價失敗，原始資料未變更');
+      return;
+    }
+    this.loadHistoryFromLocalStorage();
+    this.toastService.success(result.claimed ? `已匯入 ${result.claimed} 筆此瀏覽器的舊報價` : '所選舊資料已在目前資料區');
+  }
+
+  async restoreRecoveryBackup(file: File): Promise<void> {
+    const scope = this.localStorageScope();
+    const outcome = await restoreRecoveryFileForCurrentScope({
+      file,
+      scope,
+      beginOperation: () => this.coordinator.nextOperationVersion(),
+      isCurrentOperation: (version) => this.coordinator.isCurrentOperation(version),
+      getCurrentScope: () => this.localStorageScope(),
+      restore: (rawSource, targetScope) =>
+        this.quotationStorage.restoreRecoveryBackup(rawSource, targetScope).success,
+    });
+    if (outcome === 'stale') return;
+    if (outcome === 'read-failed') {
+      this.toastService.error('無法讀取備份檔；現有資料未被覆寫');
+      return;
+    }
+    if (outcome === 'invalid') {
+      this.toastService.error('無法還原備份；現有資料未被覆寫');
+      return;
+    }
+    this.loadHistoryFromLocalStorage();
+    this.toastService.success('已還原本機歷史備份，請檢查內容後再儲存');
   }
 
   private setupResizeListener(): void {
@@ -550,6 +686,224 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.serviceItems.insert(index + 1, newItem);
   }
 
+  onTemplateSearch(event: Event): void {
+    this.templateSearch.set((event.target as HTMLInputElement).value);
+    if (!this.customerTemplates().some((template) => template.id === this.selectedCustomerTemplateId())) {
+      this.selectedCustomerTemplateId.set('');
+    }
+    if (!this.serviceItemTemplates().some((template) => template.id === this.selectedServiceItemTemplateId())) {
+      this.selectedServiceItemTemplateId.set('');
+    }
+  }
+
+  onCustomerTemplateSelected(event: Event): void {
+    const id = (event.target as HTMLSelectElement).value;
+    this.selectedCustomerTemplateId.set(id);
+  }
+
+  onServiceItemTemplateSelected(event: Event): void {
+    this.selectedServiceItemTemplateId.set((event.target as HTMLSelectElement).value);
+  }
+
+  applySelectedCustomerTemplate(): void {
+    const template = this.selectedCustomerTemplate();
+    if (template) this.applyCustomerTemplate(template);
+  }
+
+  applySelectedServiceItemTemplate(): void {
+    const template = this.selectedServiceItemTemplate();
+    if (template) this.applyServiceItemTemplate(template);
+  }
+
+  renameSelectedCustomerTemplate(): void {
+    const template = this.selectedCustomerTemplate();
+    if (template) this.renameCustomerTemplate(template);
+  }
+
+  deleteSelectedCustomerTemplate(): void {
+    const template = this.selectedCustomerTemplate();
+    if (!template) return;
+    this.deleteCustomerTemplate(template.id);
+    this.selectedCustomerTemplateId.set('');
+  }
+
+  renameSelectedServiceItemTemplate(): void {
+    const template = this.selectedServiceItemTemplate();
+    if (template) this.renameServiceItemTemplate(template);
+  }
+
+  deleteSelectedServiceItemTemplate(): void {
+    const template = this.selectedServiceItemTemplate();
+    if (!template) return;
+    this.deleteServiceItemTemplate(template.id);
+    this.selectedServiceItemTemplateId.set('');
+  }
+
+  saveCurrentCustomerTemplate(): void {
+    const value = this.form.getRawValue();
+    if (!this.quotationTemplates.saveCustomer({
+      name: value.customerCompany || '',
+      customerCompany: value.customerCompany || '',
+      customerTaxID: value.customerTaxID || undefined,
+      customerContact: value.customerContact || undefined,
+      customerPhone: value.customerPhone || undefined,
+      customerPhoneExt: value.customerPhoneExt || undefined,
+      customerEmail: value.customerEmail || undefined,
+      customerAddress: value.customerAddress || undefined,
+    })) {
+      this.toastService.error('請先填寫客戶名稱，才能儲存為常用客戶');
+      return;
+    }
+    this.refreshTemplates();
+    this.toastService.success('已儲存常用客戶（只在目前資料區）');
+  }
+
+  applyCustomerTemplate(template: CustomerTemplate): void {
+    const current = this.form.getRawValue();
+    const fields: (keyof CustomerTemplate)[] = [
+      'customerCompany', 'customerTaxID', 'customerContact', 'customerPhone',
+      'customerPhoneExt', 'customerEmail', 'customerAddress',
+    ];
+    const overwritesExisting = fields.some((field) => {
+      const existing = current[field] ?? '';
+      const replacement = template[field] ?? '';
+      return existing !== '' && existing !== replacement;
+    });
+    if (overwritesExisting &&
+      !window.confirm('套用常用客戶會取代目前客戶資訊，是否繼續？')) return;
+    this.form.patchValue({
+      customerCompany: template.customerCompany,
+      customerTaxID: template.customerTaxID || '',
+      customerContact: template.customerContact || '',
+      customerPhone: template.customerPhone || '',
+      customerPhoneExt: template.customerPhoneExt || '',
+      customerEmail: template.customerEmail || '',
+      customerAddress: template.customerAddress || '',
+    });
+    this.form.markAsDirty();
+  }
+
+  applyServiceItemTemplate(template: ServiceItemTemplate): void {
+    const item = this.quotationFormService.createServiceItem();
+    item.patchValue({
+      category: template.category || '', item: template.item, price: template.price,
+      unit: template.unit || '', count: 1,
+    });
+    this.serviceItems.push(item);
+    this.form.markAsDirty();
+  }
+
+  saveServiceItemTemplate(index: number): void {
+    const value = this.serviceItems.at(index)?.getRawValue();
+    if (!value || !this.quotationTemplates.saveServiceItem({
+      name: value.item || '', item: value.item || '', price: Number(value.price),
+      unit: value.unit || undefined, category: value.category || undefined,
+    })) {
+      this.toastService.error('請填寫有效的項目名稱與非負單價');
+      return;
+    }
+    this.refreshTemplates();
+    this.toastService.success('已儲存常用服務項目');
+  }
+
+  renameCustomerTemplate(template: CustomerTemplate): void {
+    const name = window.prompt('常用客戶名稱', template.name)?.trim();
+    if (!name) return;
+    this.quotationTemplates.saveCustomer({ ...template, name });
+    this.refreshTemplates();
+  }
+
+  deleteCustomerTemplate(id: string): void {
+    if (this.quotationTemplates.deleteCustomer(id)) this.refreshTemplates();
+  }
+
+  renameServiceItemTemplate(template: ServiceItemTemplate): void {
+    const name = window.prompt('常用服務項目名稱', template.name)?.trim();
+    if (!name) return;
+    this.quotationTemplates.saveServiceItem({ ...template, name });
+    this.refreshTemplates();
+  }
+
+  deleteServiceItemTemplate(id: string): void {
+    if (this.quotationTemplates.deleteServiceItem(id)) this.refreshTemplates();
+  }
+
+  onCreateNextBusinessVersion(): void {
+    const saved = this.savedBusinessVersion();
+    if (!saved || this.documentScope !== this.localStorageScope() ||
+        this.coordinator.getSelectedStorage() !== (this.isCloudStorage() ? 'cloud' : 'local') ||
+        this.pendingSubmission || this.isSubmitting()) {
+      this.toastService.error('請先完成儲存並確認結果，再建立下一版');
+      return;
+    }
+    const current = this.collectFormData();
+    let next: QuotationData;
+    try {
+      next = createNextBusinessVersion(current, saved);
+    } catch {
+      this.toastService.error('找不到已儲存的原始版本，請先儲存後再建立下一版');
+      return;
+    }
+    this.quotationNumber.set(next.quotationNumber || '');
+    this.quotationStatus.set(next.status || 'draft');
+    this.quotationBusinessVersion.set(next.businessVersion || 1);
+    this.form.patchValue({
+      quotationId: next.quotationId || '',
+      quotationNumber: next.quotationNumber || '',
+      status: next.status || 'draft',
+      businessVersion: next.businessVersion || 1,
+      previousVersions: next.previousVersions || [],
+    });
+    // 下一個業務版本仍是同一份報價單；保留選取來源使儲存原地更新，
+    // 舊版本只會保存在 previousVersions，不會另建同 ID 的 top-level 紀錄。
+    this.form.markAsDirty();
+    this.toastService.info('已建立下一個業務版本，儲存後才會寫入歷史');
+  }
+
+  onStatusChange(event: Event): void {
+    const status = (event.target as HTMLSelectElement).value as 'draft' | 'sent' | 'won' | 'lost';
+    this.quotationStatus.set(status);
+    this.form.get('status')?.setValue(status);
+    this.form.markAsDirty();
+  }
+
+  /** 雲端 v2 payload 與本機都保存此快照；查看不會覆寫目前文件。 */
+  async onViewBusinessVersion(snapshot: QuotationVersionSnapshot): Promise<void> {
+    if (this.blockWhileSubmissionPending()) return;
+    const request = ++this.snapshotViewRequest;
+    const epoch = this.documentEpoch;
+    const scope = this.localStorageScope();
+    const repository = this.isCloudStorage();
+    const editor = JSON.stringify(this.readEditorData());
+    const data = structuredClone(snapshot.data);
+    const confirmed = await this.confirmDiscardUnsavedChanges(
+      `查看 v${snapshot.businessVersion} 快照`,
+      '目前版本尚未儲存，確定要放棄變更並查看舊版嗎？舊版儲存時會建立新的報價單。'
+    );
+    if (!confirmed || request !== this.snapshotViewRequest || epoch !== this.documentEpoch ||
+        scope !== this.localStorageScope() || repository !== this.isCloudStorage() ||
+        editor !== JSON.stringify(this.readEditorData()) || this.blockWhileSubmissionPending()) return;
+    this.detachDocumentIdentity();
+    this.loadQuotationData(data);
+    this.documentScope = null;
+    this.savedBusinessVersion.set(null);
+    this.viewingBusinessSnapshot = true;
+    this.selectedHistoryIndex.set(null);
+    this.selectedHistoryId.set(null);
+    this.coordinator.setSelectedStorage(null);
+    this.form.markAsPristine();
+    this.toastService.info(`正在查看 v${snapshot.businessVersion} 快照；儲存將建立新的報價，而非覆寫原文件`);
+  }
+
+  private refreshTemplates(): void {
+    this.templateRevision.update((value) => value + 1);
+  }
+
+  private clearTemplateSelections(): void {
+    this.selectedCustomerTemplateId.set('');
+    this.selectedServiceItemTemplateId.set('');
+  }
+
   /**
    * 處理拖曳排序事件
    */
@@ -572,71 +926,108 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   async onCreateNewForm(): Promise<void> {
+    if (this.blockWhileSubmissionPending()) return;
     const confirmed = await this.confirmDiscardUnsavedChanges(
       '建立新表單',
       '目前表單尚未儲存，確定要建立新表單嗎？'
     );
-    if (!confirmed) return;
+    if (!confirmed || this.blockWhileSubmissionPending()) return;
 
     this.resetFormForNewQuotation();
   }
 
   async onLoadHistory(index: number): Promise<void> {
+    if (this.blockWhileSubmissionPending()) return;
+    const request = ++this.historyLoadRequest;
+    const epoch = this.documentEpoch;
+    const scope = this.localStorageScope();
+    const repository = this.isCloudStorage();
+    const formSnapshotAtLoad = this.serializeCurrentFormData();
+    let data = this.historyData()[index];
+    const entry = repository ? this.cloudQuotationSync.history()[index] : undefined;
+    if (!data || (repository && !entry)) return;
+    const isCurrent = () => request === this.historyLoadRequest &&
+      epoch === this.documentEpoch && scope === this.localStorageScope() &&
+      repository === this.isCloudStorage();
     const confirmed = await this.confirmDiscardUnsavedChanges(
       '載入其他報價單',
       '目前表單尚未儲存，確定要載入其他報價單嗎？'
     );
-    if (!confirmed) return;
-
-    const formSnapshotAtLoad = this.serializeCurrentFormData();
-
-    this.analytics.trackHistoryLoaded(index);
-
-    let data = this.historyData()[index];
-    if (!data) {
-      console.warn(`History data not found at index: ${index}`);
+    if (!confirmed || !isCurrent() || this.blockWhileSubmissionPending()) return;
+    if (formSnapshotAtLoad !== this.serializeCurrentFormData()) {
+      this.toastService.warning('載入期間表單已變更，已保留目前編輯內容');
       return;
     }
 
-    if (this.isCloudStorage()) {
-      const entry = this.cloudQuotationSync.history()[index];
-      if (!entry) return;
+    this.analytics.trackHistoryLoaded(index);
+
+    if (entry) {
       try {
         data = await this.cloudQuotationSync.load(entry);
-        this.loadCloudHistory();
+        if (!isCurrent() || this.blockWhileSubmissionPending()) return;
         if (formSnapshotAtLoad !== this.serializeCurrentFormData()) {
           this.toastService.warning('載入期間表單已變更，已保留目前編輯內容');
           return;
         }
+        this.loadCloudHistory();
       } catch {
-        this.toastService.error('無法讀取雲端報價單，請稍後再試');
+        if (isCurrent()) this.toastService.error('無法讀取雲端報價單，請稍後再試');
         return;
       }
     }
     this.selectedHistoryIndex.set(index);
+    this.selectedHistoryId.set(normalizeQuotationLifecycle(data).quotationId || null);
     this.coordinator.setSelectedStorage(
-      this.isCloudStorage() ? 'cloud' : 'local'
+      repository ? 'cloud' : 'local'
     );
     this.loadQuotationData(data);
     this.markFormPristine();
   }
 
   async onDeleteHistory(index: number): Promise<void> {
+    if (this.blockWhileSubmissionPending()) return;
+    const startedScope = this.localStorageScope();
+    const startedRoute = this.isCloudStorage() ? 'cloud' : 'local';
+    const startedVersion = this.coordinator.nextOperationVersion();
+    const startedData = this.historyData()[index];
+    const startedCloudEntry = startedRoute === 'cloud'
+      ? this.cloudQuotationSync.history()[index]
+      : undefined;
+    const targetId = startedRoute === 'cloud'
+      ? startedCloudEntry?.quotationId
+      : startedData && normalizeQuotationLifecycle(startedData).quotationId;
+    if (!startedData || !targetId) return;
     const confirmed = await this.confirmDialog.confirm({
       title: '刪除歷史記錄',
       message: '確定要刪除此筆歷史記錄嗎？',
       confirmText: '刪除',
       confirmStyle: 'error',
     });
-    if (!confirmed) return;
+    if (!confirmed || this.blockWhileSubmissionPending()) return;
+    if (!this.coordinator.isCurrentOperation(startedVersion) ||
+      startedScope !== this.localStorageScope() ||
+      startedRoute !== (this.isCloudStorage() ? 'cloud' : 'local')) {
+      return;
+    }
 
-    if (this.isCloudStorage()) {
-      const entry = this.cloudQuotationSync.history()[index];
+    const currentIndex = startedRoute === 'cloud'
+      ? this.cloudQuotationSync.history().findIndex((entry) => entry.quotationId === targetId)
+      : this.historyData().findIndex(
+          (entry) => normalizeQuotationLifecycle(entry).quotationId === targetId
+        );
+    if (currentIndex < 0) return;
+
+    if (startedRoute === 'cloud') {
+      const entry = this.cloudQuotationSync.history().find(
+        (item) => item.quotationId === targetId
+      );
       if (!entry) return;
       try {
         await this.cloudQuotationSync.delete(entry);
-        this.analytics.trackHistoryDeleted(index);
-        this.updateSelectedIndexAfterDelete(index);
+        if (!this.coordinator.isCurrentOperation(startedVersion) ||
+          startedScope !== this.localStorageScope() || !this.isCloudStorage()) return;
+        this.analytics.trackHistoryDeleted(currentIndex);
+        this.updateSelectedIndexAfterDelete(currentIndex);
         this.loadCloudHistory();
       } catch {
         this.toastService.error('無法刪除雲端報價單，請稍後再試');
@@ -644,10 +1035,10 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.analytics.trackHistoryDeleted(index);
-    this.updateSelectedIndexAfterDelete(index);
-    const success = this.quotationStorage.deleteFromHistory(index);
+    const success = this.quotationStorage.deleteFromHistory(currentIndex, startedScope);
     if (success) {
+      this.analytics.trackHistoryDeleted(currentIndex);
+      this.updateSelectedIndexAfterDelete(currentIndex);
       this.loadHistoryFromLocalStorage();
     }
   }
@@ -657,6 +1048,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
 
     if (currentIndex === deletedIndex) {
       this.selectedHistoryIndex.set(null);
+      this.selectedHistoryId.set(null);
       this.coordinator.setSelectedStorage(null);
     } else if (currentIndex !== null && currentIndex > deletedIndex) {
       this.selectedHistoryIndex.update((current) => current! - 1);
@@ -668,46 +1060,62 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.customerLogo.set('');
     this.stamp.set('');
     this.quoterLogo.set('');
+    this.quotationNumber.set('');
+    this.quotationStatus.set('draft');
+    this.quotationBusinessVersion.set(1);
+    this.savedBusinessVersion.set(null);
+    this.form?.patchValue({ quotationId: '', quotationNumber: '', status: 'draft', businessVersion: 1, previousVersions: [] });
   }
 
   private loadQuotationData(data: QuotationData): void {
-    this.quotationFormService.loadQuotationData(this.form, data);
+    const normalized = normalizeQuotationLifecycle(data);
+    this.documentScope = this.localStorageScope();
+    this.quotationFormService.loadQuotationData(this.form, normalized);
     this.customerLogo.set(data.customerLogo || '');
     this.stamp.set(data.quoterStamp || '');
     this.quoterLogo.set(data.quoterLogo || '');
+    this.quotationNumber.set(normalized.quotationNumber || '');
+    this.quotationStatus.set(normalized.status || 'draft');
+    this.quotationBusinessVersion.set(normalized.businessVersion || 1);
+    this.selectedHistoryId.set(normalized.quotationId || null);
+    this.savedBusinessVersion.set(structuredClone(normalized));
+    this.form.patchValue({
+      quotationId: normalized.quotationId || '',
+      quotationNumber: normalized.quotationNumber || '',
+      status: normalized.status || 'draft',
+      businessVersion: normalized.businessVersion || 1,
+      previousVersions: normalized.previousVersions || [],
+    }, { emitEvent: false });
   }
 
   /** 收集目前表單內容（含圖片）為 QuotationData */
   private collectFormData(): QuotationData {
     const data = this.form.getRawValue();
-    return {
+    return normalizeQuotationLifecycle({
       ...data,
       customerLogo: this.customerLogo(),
       quoterStamp: this.stamp(),
       quoterLogo: this.quoterLogo(),
-    };
+      quotationNumber: this.quotationNumber(),
+      status: this.quotationStatus(),
+      businessVersion: this.quotationBusinessVersion(),
+      quotationId: data.quotationId || undefined,
+      previousVersions: data.previousVersions || [],
+    });
   }
 
   /**
    * 儲存記錄：編輯既有筆時覆蓋更新，否則新增
    */
-  async onSubmit(): Promise<void> {
-    const data = this.collectFormData();
-    if (await this.saveQuotation(data)) {
-      this.markFormPristine();
-      this.analytics.trackQuotationGenerated();
-    }
+  onSubmit(): Promise<void> {
+    return this.submitQuotation(false);
   }
 
   /**
    * 另存新檔：不論目前是否在編輯既有筆，都以目前內容新增一筆
    */
-  async onSaveAsNew(): Promise<void> {
-    const data = this.collectFormData();
-    if (await this.saveQuotation(data, true)) {
-      this.markFormPristine();
-      this.analytics.trackQuotationGenerated();
-    }
+  onSaveAsNew(): Promise<void> {
+    return this.submitQuotation(true);
   }
 
   private showSuccessToast(isUpdate: boolean): void {
@@ -726,58 +1134,91 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private saveLocalStorage(data: QuotationData, forceCreate = false): boolean {
-    this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
-    const selectedIndex = this.selectedHistoryIndex();
-    const isUpdate =
-      !forceCreate &&
-      selectedIndex !== null &&
-      selectedIndex >= 0 &&
-      selectedIndex < this.historyData().length;
+    const current = data;
+    const selectedId = this.selectedHistoryId();
+    const baseline = this.savedBusinessVersion();
+    const isUpdate = !forceCreate && (selectedId !== null || baseline !== null);
+    if (isUpdate && (!selectedId || !baseline || this.coordinator.getSelectedStorage() !== 'local')) {
+      this.toastService.error('原本的報價紀錄無法定位；未新增任何紀錄，請重新載入確認');
+      return false;
+    }
+    const storedHistory = this.quotationStorage.getHistory(this.localStorageScope());
+    const selectedIndex = selectedId
+      ? storedHistory.findIndex((entry) => entry.quotationId === selectedId)
+      : null;
     const isCopyOfExisting =
       forceCreate &&
       selectedIndex !== null &&
       selectedIndex >= 0 &&
-      selectedIndex < this.historyData().length &&
+      selectedIndex < storedHistory.length &&
       this.coordinator.getSelectedStorage() === 'local';
 
     // 載入既有紀錄並修改 → 原地覆蓋更新；否則新增一筆
     const success = isUpdate
-      ? this.quotationStorage.updateHistory(selectedIndex, data)
+      ? this.quotationStorage.updateHistoryById(selectedId!, current, baseline!, this.localStorageScope())
       : isCopyOfExisting
-        ? this.quotationStorage.saveCopyToHistory(data, selectedIndex)
-      : this.quotationStorage.saveToHistory(data);
+        ? this.quotationStorage.saveCopyToHistory(current, selectedIndex, this.localStorageScope())
+      : this.quotationStorage.saveToHistory(current, this.localStorageScope());
 
     if (success) {
       // 重新載入歷史記錄
       this.loadHistoryFromLocalStorage();
+      this.applySavedQuotationState(current, 'local');
 
       // 新增時，新紀錄位於最前面，將選取索引指向它，
       // 以便後續再次儲存時會更新同一筆，而非持續新增重複
-      if (!isUpdate) {
-        this.selectedHistoryIndex.set(0);
-        this.coordinator.setSelectedStorage('local');
-      }
-
       this.showSuccessToast(isUpdate);
     }
     return success;
   }
 
   async onDriveConnect(): Promise<void> {
-    await this.coordinator.handleConnect(
-      () => this.cloudQuotationSync.beginConnect(),
-      (error) => {
-        const message =
-          error instanceof Error ? error.message : 'Google Drive 授權流程失敗';
-        this.toastService.error(`Google Drive 連結失敗：${message}`);
+    if (this.isCloudStorage()) {
+      await this.resumeCloudConnection(() => this.cloudQuotationSync.beginConnect());
+      return;
+    }
+    const scope = this.localStorageScope();
+    try {
+      await this.coordinator.handleConnect(
+        () => this.cloudQuotationSync.beginConnect(),
+        (error) => {
+          const message =
+            error instanceof Error ? error.message : 'Google Drive 授權流程失敗';
+          this.toastService.error(`Google Drive 連結失敗：${message}`);
+        }
+      );
+    } finally {
+      if (scope === this.localStorageScope()) this.reconcileRepositoryIdentity();
+    }
+  }
+
+  async onCloudSyncToggleChange(event: Event): Promise<void> {
+    const control = event.currentTarget as HTMLInputElement;
+    const enabled = control.checked;
+    const request = ++this.cloudToggleRequest;
+    // Native change already toggled the DOM, even if the signal stays unchanged.
+    control.checked = this.isCloudStorage();
+    try {
+      await this.onCloudSyncToggle(enabled);
+    } finally {
+      // Never restore an old owner's requested value or touch a detached control.
+      if (request === this.cloudToggleRequest && control.isConnected) {
+        control.checked = this.isCloudStorage();
       }
-    );
+    }
   }
 
   async onCloudSyncToggle(enabled: boolean): Promise<void> {
-    await this.coordinator.handleToggle(() =>
-      this.cloudQuotationSync.setSyncEnabled(enabled)
-    );
+    if (enabled && this.isCloudStorage()) {
+      await this.resumeCloudConnection(() => this.cloudQuotationSync.setSyncEnabled(true));
+      return;
+    }
+    const scope = this.localStorageScope();
+    try {
+      await this.coordinator.handleToggle(() => this.cloudQuotationSync.setSyncEnabled(enabled));
+    } finally {
+      if (scope === this.localStorageScope()) this.reconcileRepositoryIdentity();
+    }
   }
 
   async onSyncLocalHistory(): Promise<void> {
@@ -808,9 +1249,33 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   }
 
   private async initializeStorageRoute(): Promise<void> {
-    await this.coordinator.handleInitialize(() =>
-      this.cloudQuotationSync.initialize()
-    );
+    if (this.isCloudStorage()) {
+      await this.resumeCloudConnection(() => this.cloudQuotationSync.initialize());
+      return;
+    }
+    const scope = this.localStorageScope();
+    try {
+      await this.coordinator.handleInitialize(() => this.cloudQuotationSync.initialize());
+    } finally {
+      if (scope === this.localStorageScope()) this.reconcileRepositoryIdentity();
+    }
+  }
+
+  private async resumeCloudConnection(connect: () => Promise<void>): Promise<void> {
+    const epoch = this.documentEpoch;
+    const scope = this.localStorageScope();
+    try {
+      await connect();
+      if (epoch !== this.documentEpoch || scope !== this.localStorageScope() ||
+          !this.isCloudStorage() || !this.cloudQuotationSync.isCloudStorage()) return;
+      this.loadCloudHistory();
+      const index = this.cloudQuotationSync.history().findIndex((entry) => entry.quotationId === this.selectedHistoryId());
+      this.selectedHistoryIndex.set(index >= 0 ? index : null);
+      if (this.pendingSubmission) await this.submitQuotation(false);
+    } catch (error) {
+      if (epoch !== this.documentEpoch || scope !== this.localStorageScope()) return;
+      this.toastService.error(error instanceof Error ? error.message : 'Google Drive 重新連線失敗');
+    }
   }
 
   private loadHistoryForCurrentStorage(): void {
@@ -828,33 +1293,190 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
   }
 
-  private async saveQuotation(
-    data: QuotationData,
-    forceCreate = false
-  ): Promise<boolean> {
-    if (!this.isCloudStorage()) {
-      return this.saveLocalStorage(data, forceCreate);
-    }
+  private readEditorData(): QuotationData {
+    return {
+      ...this.form.getRawValue(),
+      customerLogo: this.customerLogo(), quoterStamp: this.stamp(), quoterLogo: this.quoterLogo(),
+      quotationNumber: this.quotationNumber(), status: this.quotationStatus(),
+      businessVersion: this.quotationBusinessVersion(),
+    };
+  }
 
-    this.coordinator.resetInapplicableSelectedIndex(this.historyData().length);
-    const selectedIndex = this.selectedHistoryIndex();
-    const existing =
-      forceCreate || selectedIndex === null
-        ? undefined
-        : this.cloudQuotationSync.history()[selectedIndex];
-    try {
-      const saved = await this.cloudQuotationSync.save(data, existing);
-      this.loadCloudHistory();
-      const nextIndex = this.cloudQuotationSync
-        .history()
-        .findIndex((entry) => entry.revisionId === saved.revisionId);
-      this.selectedHistoryIndex.set(nextIndex >= 0 ? nextIndex : null);
-      this.coordinator.setSelectedStorage(nextIndex >= 0 ? 'cloud' : null);
-      this.showSuccessToast(!!existing);
-      return true;
-    } catch {
-      this.toastService.error('無法儲存到 Google Drive，請確認連線後再試');
-      return false;
+  private blockWhileSubmissionPending(): boolean {
+    if (!this.pendingSubmission) return false;
+    this.toastService.warning('請先完成或確認目前儲存，再切換報價單');
+    return true;
+  }
+
+  private isCurrentSubmission(submission: QuotationSubmission): boolean {
+    return submission.epoch === this.documentEpoch &&
+      submission.scope === this.localStorageScope() &&
+      submission.repository === (this.isCloudStorage() ? 'cloud' : 'local');
+  }
+
+  private submitQuotation(forceCreate: boolean): Promise<void> {
+    this.reconcileRepositoryIdentity();
+    if (this.documentScope !== null &&
+        (this.documentScope !== this.localStorageScope() ||
+         (this.coordinator.getSelectedStorage() !== null &&
+          this.coordinator.getSelectedStorage() !== (this.isCloudStorage() ? 'cloud' : 'local')))) {
+      this.detachDocumentIdentity();
     }
+    if (this.pendingSubmission && !this.isCurrentSubmission(this.pendingSubmission)) {
+      this.detachDocumentIdentity();
+    }
+    if (this.submissionFlight) return this.submissionFlight;
+    if (this.isCloudStorage() && !this.cloudQuotationSync.isCloudStorage()) {
+      this.toastService.warning('請先重新連線 Google Drive；原文件與未確認提交已保留');
+      return Promise.resolve();
+    }
+    // An uncertain prior submission is resolved even if later edits are invalid.
+    // This click never submits those later edits or creates a second copy.
+    if (!this.pendingSubmission) {
+      if (this.form.invalid) {
+        this.form.markAllAsTouched();
+        this.toastService.error('請先修正標示的金額或必填欄位，才能儲存報價單');
+        this.focusFirstInvalidControl();
+        return Promise.resolve();
+      }
+      const editor = this.readEditorData();
+      const collected = this.collectFormData();
+      forceCreate ||= this.viewingBusinessSnapshot;
+      const payload = structuredClone(forceCreate ? cloneAsNewQuotation(collected) : collected);
+      const repository = this.isCloudStorage() ? 'cloud' : 'local';
+      const existing = !forceCreate && this.coordinator.getSelectedStorage() === 'cloud'
+        ? this.cloudQuotationSync.history().find((entry) => entry.quotationId === this.selectedHistoryId())
+        : undefined;
+      try {
+        this.pendingSubmission = {
+          epoch: this.documentEpoch, scope: this.localStorageScope(), repository,
+          editorFingerprint: JSON.stringify(editor), editorSource: editor, payload, forceCreate,
+          duplicateNumber: hasDuplicateQuotationNumber(
+            this.historyData(), payload.quotationNumber || '', payload.quotationId
+          ),
+          duplicateConfirmed: false,
+          cloudIntent: repository === 'cloud' ? this.cloudQuotationSync.prepareSave(payload, existing) : undefined,
+        };
+      } catch {
+        this.toastService.error('無法開始儲存；若上次結果尚未確認，請先確認原提交');
+        return Promise.resolve();
+      }
+    }
+    const submission = this.pendingSubmission;
+    this.isSubmitting.set(true);
+    // Install the shared flight before any asynchronous work can start.
+    const flight = Promise.resolve().then(() => this.completeSubmission(submission)).finally(() => {
+      if (this.submissionFlight === flight) {
+        this.submissionFlight = null;
+        this.isSubmitting.set(false);
+      }
+    });
+    this.submissionFlight = flight;
+    return flight;
+  }
+
+  private async completeSubmission(submission: QuotationSubmission): Promise<void> {
+    if (!this.isCurrentSubmission(submission)) return;
+    try {
+      if (submission.duplicateNumber && !submission.duplicateConfirmed) {
+        const confirmed = await this.confirmDialog.confirm({
+          title: '報價編號重複',
+          message: '目前已載入的歷史中有相同報價編號。離線或其他裝置仍可能有未同步資料；要繼續儲存嗎？',
+          confirmText: '仍要儲存', confirmStyle: 'warning',
+        });
+        if (!this.isCurrentSubmission(submission)) return;
+        if (!confirmed) {
+          if (submission.cloudIntent) this.cloudQuotationSync.cancelPreparedSave(submission.cloudIntent);
+          this.pendingSubmission = null;
+          return;
+        }
+        submission.duplicateConfirmed = true;
+      }
+      if (submission.cloudIntent) {
+        const saved = await this.cloudQuotationSync.submitSave(submission.cloudIntent);
+        if (!this.isCurrentSubmission(submission)) return;
+        const editor = this.readEditorData();
+        const edited = JSON.stringify(editor) !== submission.editorFingerprint;
+        this.loadCloudHistory();
+        const index = this.cloudQuotationSync.history().findIndex((entry) => entry.revisionId === saved.revisionId);
+        this.applySavedQuotationState(saved.data, 'cloud', index);
+        // Preserve edits made while awaiting/retrying, including user-edited
+        // metadata, while the verified saved baseline advances independently.
+        if (edited) {
+          for (const field of ['quotationNumber', 'status', 'businessVersion', 'previousVersions'] as const) {
+            if (JSON.stringify(editor[field]) !== JSON.stringify(submission.editorSource[field])) {
+              this.form.patchValue({ [field]: editor[field] }, { emitEvent: false });
+              if (field === 'quotationNumber') this.quotationNumber.set(editor.quotationNumber || '');
+              if (field === 'status') this.quotationStatus.set(editor.status || 'draft');
+              if (field === 'businessVersion') this.quotationBusinessVersion.set(editor.businessVersion || 1);
+            }
+          }
+          this.form.markAsDirty();
+          this.toastService.info('已確認上次儲存；後續編輯仍保留，請再次儲存以送出變更');
+        } else {
+          this.markFormPristine();
+          this.showSuccessToast(submission.cloudIntent.input.kind === 'update');
+        }
+      } else {
+        const editor = this.readEditorData();
+        if (!this.saveLocalStorage(submission.payload, submission.forceCreate)) {
+          this.pendingSubmission = null;
+          return;
+        }
+        if (JSON.stringify(editor) !== submission.editorFingerprint) {
+          this.restoreSubmissionMetadataEdits(editor, submission);
+          this.form.markAsDirty();
+        } else this.markFormPristine();
+      }
+      this.pendingSubmission = null;
+      this.submissionUncertain.set(false);
+      this.analytics.trackQuotationGenerated();
+    } catch {
+      if (!this.isCurrentSubmission(submission)) return;
+      const uncertain = !!submission.cloudIntent &&
+        this.cloudQuotationSync.saveOutcome(submission.cloudIntent) === 'unknown';
+      this.submissionUncertain.set(uncertain);
+      if (!uncertain) this.pendingSubmission = null;
+      this.toastService.error(uncertain
+        ? '尚未確認儲存結果。再次按儲存會先確認上次提交；後續編輯將保留'
+        : '儲存尚未送出，請稍後再試');
+    }
+  }
+  private restoreSubmissionMetadataEdits(editor: QuotationData, submission: QuotationSubmission): void {
+    for (const field of ['quotationNumber', 'status', 'businessVersion', 'previousVersions'] as const) {
+      if (JSON.stringify(editor[field]) !== JSON.stringify(submission.editorSource[field])) {
+        this.form.patchValue({ [field]: editor[field] }, { emitEvent: false });
+        if (field === 'quotationNumber') this.quotationNumber.set(editor.quotationNumber || '');
+        if (field === 'status') this.quotationStatus.set(editor.status || 'draft');
+        if (field === 'businessVersion') this.quotationBusinessVersion.set(editor.businessVersion || 1);
+      }
+    }
+  }
+  /** 將 repository 回傳的 canonical 資料回寫畫面；本機、雲端走相同收斂路徑。 */
+  private applySavedQuotationState(
+    data: QuotationData,
+    storage: 'local' | 'cloud',
+    selectedIndex?: number
+  ): void {
+    const normalized = normalizeQuotationLifecycle(data);
+    this.viewingBusinessSnapshot = false;
+    this.documentScope = this.localStorageScope();
+    this.form.patchValue({
+      quotationId: normalized.quotationId || '',
+      quotationNumber: normalized.quotationNumber || '',
+      status: normalized.status || 'draft',
+      businessVersion: normalized.businessVersion || 1,
+      previousVersions: normalized.previousVersions || [],
+    }, { emitEvent: false });
+    this.quotationNumber.set(normalized.quotationNumber || '');
+    this.quotationStatus.set(normalized.status || 'draft');
+    this.quotationBusinessVersion.set(normalized.businessVersion || 1);
+    this.selectedHistoryId.set(normalized.quotationId || null);
+    this.savedBusinessVersion.set(structuredClone(normalized));
+    const index = selectedIndex ?? this.historyData().findIndex(
+      (entry) => normalizeQuotationLifecycle(entry).quotationId === normalized.quotationId
+    );
+    this.selectedHistoryIndex.set(index >= 0 ? index : null);
+    this.coordinator.setSelectedStorage(index >= 0 ? storage : null);
   }
 }

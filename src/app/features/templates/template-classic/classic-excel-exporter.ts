@@ -58,10 +58,9 @@ export class ClassicExcelExporter implements ExcelExporter {
     const titleBgColor = createFillStyle(EXCEL_STYLES.COLORS.TITLE_BG);
     const titleStartCol = logo ? 'B1:C2' : 'A1:C2';
 
-    // 合併標題儲存格
     worksheet.mergeCells(titleStartCol);
     const titleCell = worksheet.getCell(titleStartCol.split(':')[0]);
-    titleCell.value = `${data.customerCompany} - 報價單`;
+    titleCell.value = `${data.customerCompany} - 報價單${data.quotationNumber?.trim() ? `（${data.quotationNumber.trim()}）` : ''}`;
     titleCell.font = { size: EXCEL_STYLES.FONT_SIZES.TITLE, bold: true };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = titleBgColor;

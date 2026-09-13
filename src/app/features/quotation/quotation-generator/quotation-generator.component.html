@@ -1,3 +1,138 @@
+<div
+  class="mb-4 flex min-w-0 flex-wrap items-center gap-2 rounded-sm border border-base-200 bg-base-100 p-2 md:p-3"
+>
+  @if (
+    hasHistory() ||
+    recoveryInfo()?.writeProtected ||
+    recoveryInfo()?.quarantinedRecordCount ||
+    legacyCandidates().length
+  ) {
+    <app-quotation-history
+      [metadataIncomplete]="historyMetadataIncomplete()"
+      class="min-w-0 max-w-full"
+      [history]="historyData()"
+      [selectedIndex]="selectedHistoryIndex()"
+      [searchEnabled]="cloudEligible()"
+      [recovery]="recoveryInfo()"
+      [recoveryBackup]="recoveryBackup()"
+      [legacyCandidates]="legacyCandidates()"
+      (load)="onLoadHistory($event)"
+      (delete)="onDeleteHistory($event)"
+      (createNew)="onCreateNewForm()"
+      (claimLegacy)="claimSelectedLegacyHistory($event)"
+      (restoreRecovery)="restoreRecoveryBackup($event)"
+    />
+  }
+  <div class="join shrink-0" aria-label="功能模式">
+    <button
+      type="button"
+      class="btn btn-xs join-item"
+      [class.btn-active]="!showAdvancedFeatures()"
+      (click)="setAdvancedMode(false)"
+    >
+      簡易版
+    </button>
+    @if (cloudEligible()) {
+      <button
+        type="button"
+        class="btn btn-xs join-item"
+        [class.btn-active]="showAdvancedFeatures()"
+        (click)="setAdvancedMode(true)"
+      >
+        進階版
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-xs join-item gap-1 hover:bg-base-300 transition-colors"
+        (click)="openAdvancedPromoModal()"
+        title="進階版（贊助會員專屬功能，點擊查看詳情）"
+      >
+        <span>進階版</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-3 h-3 text-amber-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </button>
+    }
+  </div>
+  <div class="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+    @if (cloudEligible()) {
+      <div class="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+        <span class="text-sm">本機</span>
+
+        <input
+          id="cloud-sync-toggle"
+          type="checkbox"
+          [checked]="isCloudStorage()"
+          (change)="onCloudSyncToggleChange($event)"
+          class="toggle toggle-success toggle-sm"
+          aria-label="切換本機或雲端儲存"
+        />
+
+        <span class="text-sm">雲端</span>
+      </div>
+      <app-cloud-sync-status
+        class="min-w-0 max-w-full flex-1"
+        [status]="syncStatus()"
+        [lastSyncedAt]="lastSyncedAt()"
+        [errorMessage]="syncError()"
+        (reconnect)="onDriveConnect()"
+      />
+    }
+    @if (hasLocalHistoryToSync()) {
+      <button
+        type="button"
+        class="btn btn-ghost h-8 min-h-8 w-8 min-w-8 shrink-0 border-0 bg-transparent p-0 text-base-content/70 shadow-none hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:bg-transparent"
+        [disabled]="isSyncingLocalHistory()"
+        [attr.aria-busy]="isSyncingLocalHistory()"
+        (click)="onSyncLocalHistory()"
+        title="同步本機資料"
+        aria-label="同步本機資料"
+      >
+        @if (isSyncingLocalHistory()) {
+          <span
+            class="loading loading-spinner h-4 w-4"
+            aria-hidden="true"
+          ></span>
+        } @else {
+          <svg lucideCloudUpload aria-hidden="true" />
+        }
+      </button>
+    }
+  </div>
+  @if (!showPreview()) {
+    <button
+      type="button"
+      class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
+      (click)="showPreview.set(true)"
+      title="顯示預覽"
+    >
+      <svg lucidePanelLeftClose />
+      <span>顯示預覽</span>
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
+      (click)="showPreview.set(false)"
+      title="隱藏預覽"
+    >
+      <svg lucidePanelLeftOpen />
+      <span>隱藏預覽</span>
+    </button>
+  }
+</div>
+
 <div class="lg:flex lg:gap-4">
   <!-- Left Column: Form -->
   <div
@@ -9,128 +144,27 @@
       class="pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0"
       [formGroup]="form"
     >
+      <app-quotation-info-section
+        [form]="form"
+        [advancedMode]="showAdvancedFeatures()"
+        (quotationNumberChange)="
+          quotationNumber.set($event); form.markAsDirty()
+        "
+        (datePickersReady)="onDatePickersReady($event)"
+      />
       <!-- 基本資料 -->
       <div class="card bg-base-100 md:shadow-sm mb-4">
         <div class="card-body p-2 md:p-4">
-          <!-- 標題與工具列 -->
+          <!-- 標題 -->
           <div
             class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-200 pb-3"
           >
-            <div
-              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-base-200"
-            >
-              <svg
-                lucideFileText
-                width="20"
-                height="20"
-                class="text-base-content/70"
-              />
-            </div>
             <h2
-              class="shrink-0 text-lg font-semibold whitespace-nowrap text-base-content"
+              class="flex items-center gap-2 shrink-0 text-lg font-semibold whitespace-nowrap text-base-content"
             >
+              <svg lucideFileText [size]="24" class="text-base-content/70" />
               基本資料
             </h2>
-            @if (hasHistory() || cloudEligible() || hasLocalHistoryToSync()) {
-              <div
-                class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 lg:ml-auto lg:w-auto"
-              >
-                @if (hasHistory()) {
-                  <app-quotation-history
-                    class="min-w-0 max-w-full"
-                    [history]="historyData()"
-                    [selectedIndex]="selectedHistoryIndex()"
-                    (load)="onLoadHistory($event)"
-                    (delete)="onDeleteHistory($event)"
-                    (createNew)="onCreateNewForm()"
-                  />
-                }
-                <div
-                  class="flex w-full min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 empty:hidden lg:w-auto"
-                >
-                  @if (cloudEligible()) {
-                    <div
-                      class="flex shrink-0 items-center gap-1.5 whitespace-nowrap"
-                    >
-                      <span>本機</span>
-                      <div
-                        class="tooltip tooltip-bottom tooltip-end"
-                        [attr.data-tip]="
-                          isCloudStorage()
-                            ? '綠色表示已連結 Google Drive，報價單會同步儲存到雲端'
-                            : '尚未連結 Google Drive，報價單目前未使用雲端'
-                        "
-                      >
-                        <input
-                          id="cloud-sync-toggle"
-                          type="checkbox"
-                          [checked]="isCloudStorage()"
-                          (change)="
-                            onCloudSyncToggle($any($event.target).checked)
-                          "
-                          class="toggle toggle-success toggle-sm"
-                          aria-label="切換本機或雲端儲存"
-                        />
-                      </div>
-                      <span>雲端</span>
-                    </div>
-                    <app-cloud-sync-status
-                      class="min-w-0 max-w-full flex-1"
-                      [status]="syncStatus()"
-                      [lastSyncedAt]="lastSyncedAt()"
-                      [errorMessage]="syncError()"
-                      (reconnect)="onDriveConnect()"
-                    />
-                  }
-                  @if (hasLocalHistoryToSync()) {
-                    <button
-                      type="button"
-                      class="btn btn-ghost h-8 min-h-8 w-8 min-w-8 shrink-0 border-0 bg-transparent p-0 text-base-content/70 shadow-none hover:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:bg-transparent"
-                      [disabled]="isSyncingLocalHistory()"
-                      [attr.aria-busy]="isSyncingLocalHistory()"
-                      (click)="onSyncLocalHistory()"
-                      title="同步本機資料"
-                      aria-label="同步本機資料"
-                    >
-                      @if (isSyncingLocalHistory()) {
-                        <span
-                          class="loading loading-spinner h-4 w-4"
-                          aria-hidden="true"
-                        ></span>
-                      } @else {
-                        <svg
-                          lucideCloudUpload
-                          width="18"
-                          height="18"
-                          aria-hidden="true"
-                        />
-                      }
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-            @if (!showPreview()) {
-              <button
-                type="button"
-                class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
-                (click)="showPreview.set(true)"
-                title="顯示預覽"
-              >
-                <svg lucidePanelLeftClose width="16" height="16" />
-                <span>顯示預覽</span>
-              </button>
-            } @else {
-              <button
-                type="button"
-                class="btn btn-sm btn-ghost ml-auto hidden gap-2 lg:flex"
-                (click)="showPreview.set(false)"
-                title="隱藏預覽"
-              >
-                <svg lucidePanelLeftOpen width="16" height="16" />
-                <span>隱藏預覽</span>
-              </button>
-            }
           </div>
           <!-- 客戶基本資料 -->
           <app-customer-info-section
@@ -139,6 +173,137 @@
             (logoChange)="onLogoChange($event)"
             (logoRemove)="removeLogo()"
           />
+          @if (showAdvancedFeatures()) {
+            <div class="rounded-sm bg-base-200 p-3 text-sm">
+              <div
+                class="mb-2 flex flex-wrap items-center justify-between gap-2"
+              >
+                <strong>常用客戶與服務項目</strong>
+                <button
+                  type="button"
+                  class="btn btn-xs"
+                  (click)="saveCurrentCustomerTemplate()"
+                >
+                  儲存目前客戶
+                </button>
+              </div>
+              <label class="input input-sm mb-2 flex w-full items-center">
+                <input
+                  type="search"
+                  class="grow"
+                  placeholder="搜尋常用資料"
+                  [value]="templateSearch()"
+                  (input)="onTemplateSearch($event)"
+                />
+              </label>
+              <div class="grid gap-3 md:grid-cols-2">
+                <div class="min-w-0">
+                  <label class="label py-0" for="customer-template-select"
+                    ><span class="label-text font-medium">常用客戶</span></label
+                  >
+                  <div class="flex gap-1">
+                    <select
+                      id="customer-template-select"
+                      class="select select-sm min-w-0 flex-1"
+                      aria-label="常用客戶"
+                      [value]="selectedCustomerTemplateId()"
+                      (change)="onCustomerTemplateSelected($event)"
+                    >
+                      <option value="">選擇常用客戶</option>
+                      @for (
+                        template of customerTemplates();
+                        track template.id
+                      ) {
+                        <option [value]="template.id">
+                          {{ template.name }}
+                        </option>
+                      }
+                    </select>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary"
+                      aria-label="套用選取的常用客戶"
+                      [disabled]="!selectedCustomerTemplate()"
+                      (click)="applySelectedCustomerTemplate()"
+                    >
+                      套用
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost"
+                      aria-label="重新命名選取的常用客戶"
+                      [disabled]="!selectedCustomerTemplate()"
+                      (click)="renameSelectedCustomerTemplate()"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost text-error"
+                      aria-label="刪除選取的常用客戶"
+                      [disabled]="!selectedCustomerTemplate()"
+                      (click)="deleteSelectedCustomerTemplate()"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                <div class="min-w-0">
+                  <label class="label py-0" for="service-template-select"
+                    ><span class="label-text font-medium"
+                      >常用服務項目</span
+                    ></label
+                  >
+                  <div class="flex gap-1">
+                    <select
+                      id="service-template-select"
+                      class="select select-sm min-w-0 flex-1"
+                      aria-label="常用服務項目"
+                      [value]="selectedServiceItemTemplateId()"
+                      (change)="onServiceItemTemplateSelected($event)"
+                    >
+                      <option value="">選擇常用服務項目</option>
+                      @for (
+                        template of serviceItemTemplates();
+                        track template.id
+                      ) {
+                        <option [value]="template.id">
+                          {{ template.name }}
+                        </option>
+                      }
+                    </select>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary"
+                      aria-label="加入選取的常用服務項目"
+                      [disabled]="!selectedServiceItemTemplate()"
+                      (click)="applySelectedServiceItemTemplate()"
+                    >
+                      加入
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost"
+                      aria-label="重新命名選取的常用服務項目"
+                      [disabled]="!selectedServiceItemTemplate()"
+                      (click)="renameSelectedServiceItemTemplate()"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost text-error"
+                      aria-label="刪除選取的常用服務項目"
+                      [disabled]="!selectedServiceItemTemplate()"
+                      (click)="deleteSelectedServiceItemTemplate()"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
 
           <!-- 報價人員基本資料 -->
           <app-quoter-info-section
@@ -149,7 +314,6 @@
             (quoterLogoRemove)="removeQuoterLogo()"
             (stampChange)="onStampChange($event)"
             (stampRemove)="removeStamp()"
-            (datePickersReady)="onDatePickersReady($event)"
           />
         </div>
       </div>
@@ -157,9 +321,11 @@
       <!-- 服務項目 -->
       <app-service-items-section
         [form]="form"
+        [advancedMode]="showAdvancedFeatures()"
         (addField)="onAddField()"
         (removeField)="onRemoveField($event)"
         (copyField)="onCopyField($event)"
+        (saveTemplate)="saveServiceItemTemplate($event)"
         (drop)="onDrop($event)"
       >
         <!-- 計價設定（嵌入服務項目 card 內） -->
@@ -173,6 +339,76 @@
 
       <!-- 其他資訊 -->
       <app-other-info-section [form]="form" />
+      @if (showAdvancedFeatures()) {
+        <div class="card bg-base-100 shadow-sm mb-4">
+          <div class="card-body gap-2 p-4">
+            <h2 class="text-base font-semibold">報價追蹤</h2>
+            <div class="flex flex-wrap items-end gap-3">
+              <label class="flex min-w-0 w-full flex-col gap-1 sm:max-w-xs">
+                <select
+                  class="select select-sm w-full"
+                  aria-label="報價進度"
+                  [value]="quotationStatus()"
+                  (change)="onStatusChange($event)"
+                >
+                  @for (status of quotationStatuses; track status) {
+                    <option [value]="status">{{ statusLabel(status) }}</option>
+                  }
+                </select>
+              </label>
+              @if (quotationStatus() === 'sent') {
+                @if (savedBusinessVersion()) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline"
+                    (click)="onCreateNextBusinessVersion()"
+                  >
+                    修改已寄出的報價
+                  </button>
+                }
+              }
+            </div>
+            @if (quotationStatus() === 'draft') {
+              <p class="text-xs text-base-content/60">
+                這份報價尚在編輯。完成寄送後，將進度改為「已送出」並儲存。
+              </p>
+            } @else if (quotationStatus() === 'sent') {
+              @if (savedBusinessVersion()) {
+                <p class="text-xs text-base-content/60">
+                  這份報價已標記為已送出；系統不會自動寄送 Email。
+                </p>
+              } @else {
+                <p class="text-xs text-base-content/60">
+                  請先儲存，之後才能建立修改版。
+                </p>
+              }
+            } @else {
+              <p class="text-xs text-base-content/60">
+                可依目前處理情況更新進度。
+              </p>
+            }
+            @if (savedBusinessVersion()?.previousVersions?.length) {
+              <details class="text-sm">
+                <summary>查看先前寄出的版本</summary>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  @for (
+                    snapshot of savedBusinessVersion()?.previousVersions;
+                    track snapshot.businessVersion
+                  ) {
+                    <button
+                      type="button"
+                      class="btn btn-xs"
+                      (click)="onViewBusinessVersion(snapshot)"
+                    >
+                      查看版本 v{{ snapshot.businessVersion }}
+                    </button>
+                  }
+                </div>
+              </details>
+            }
+          </div>
+        </div>
+      }
       <!-- Action Buttons -->
       <div class="card bg-base-100 shadow-sm sticky bottom-0 z-10 lg:relative">
         <div
@@ -184,7 +420,7 @@
               class="btn btn-primary btn-md lg:hidden"
               (click)="preview_modal.showModal()"
             >
-              <svg lucideEye width="16" height="16" />
+              <svg lucideEye />
               預覽
             </button>
             @if (isEditingExisting()) {
@@ -192,9 +428,10 @@
                 type="button"
                 class="btn btn-outline btn-md"
                 (click)="onSaveAsNew()"
+                [disabled]="isSubmitting() || submissionUncertain()"
                 title="以目前內容另外新增一筆，不覆蓋原紀錄"
               >
-                <svg lucideCopy width="16" height="16" />
+                <svg lucideCopy />
                 複製為新報價
               </button>
             }
@@ -202,9 +439,16 @@
               type="button"
               class="btn btn-primary btn-md"
               (click)="onSubmit()"
+              [disabled]="isSubmitting()"
             >
-              <svg lucideCheck width="16" height="16" />
-              {{ isEditingExisting() ? '更新此筆' : '儲存記錄' }}
+              <svg lucideCheck />
+              {{
+                submissionUncertain()
+                  ? '確認上次儲存'
+                  : isEditingExisting()
+                    ? '更新此筆'
+                    : '儲存記錄'
+              }}
             </button>
           </div>
         </div>
@@ -220,7 +464,7 @@
       <div class="bg-base-100 rounded-lg shadow-sm p-4 mt-4 lg:mt-0">
         <div class="flex items-center mb-4 bg-base-100 pb-2 border-b">
           <h3 class="text-lg font-bold flex items-center">
-            <svg lucideEye width="16" height="16" class="mr-1" />
+            <svg lucideEye [size]="24" class="mr-1" />
             即時預覽
           </h3>
         </div>
@@ -272,3 +516,165 @@
     <button>close</button>
   </form>
 </dialog>
+
+<!-- 進階版功能介紹 Modal (免費會員/訪客點擊進階版時顯示) -->
+@if (showAdvancedPromoModal()) {
+  <dialog class="modal modal-open z-50">
+    <div class="modal-box max-w-lg p-6 relative">
+      <!-- 關閉按鈕 -->
+      <button
+        type="button"
+        class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 text-base-content/60 hover:text-base-content"
+        (click)="closeAdvancedPromoModal()"
+        aria-label="關閉"
+      >
+        ✕
+      </button>
+
+      <!-- 標題區 -->
+      <div class="flex items-center gap-3 mb-2">
+        <div
+          class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-6 h-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+            />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-lg leading-snug">解鎖進階版專屬功能</h3>
+          <p class="text-xs text-base-content/60">
+            提升開單效率，享受完整的商務管理體驗
+          </p>
+        </div>
+      </div>
+
+      <div class="divider my-3"></div>
+
+      <!-- 功能亮點列表 -->
+      <div class="space-y-3 my-4">
+        <div class="flex items-start gap-3">
+          <div
+            class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"
+              />
+            </svg>
+          </div>
+          <div>
+            <div class="font-medium text-sm">常用客戶與品項範本庫</div>
+            <div class="text-xs text-base-content/70">
+              一鍵套用經常配合的客戶資料與報價項目，大幅節省重複輸入時間。
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div
+            class="w-7 h-7 rounded-lg bg-info/10 text-info flex items-center justify-center shrink-0 mt-0.5"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <div>
+            <div class="font-medium text-sm">報價進度與商機狀態追蹤</div>
+            <div class="text-xs text-base-content/70">
+              輕鬆標記草稿、已發送、已接受、已拒絕等狀態，隨時掌握每筆案件進度。
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div
+            class="w-7 h-7 rounded-lg bg-success/10 text-success flex items-center justify-center shrink-0 mt-0.5"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+            </svg>
+          </div>
+          <div>
+            <div class="font-medium text-sm">Google Drive 雲端雙向同步</div>
+            <div class="text-xs text-base-content/70">
+              跨裝置（電腦、筆電、手機）自動同步資料，雲端備份安全不遺失。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider my-3"></div>
+
+      <!-- 操作按鈕 -->
+      <div class="modal-action mt-4 flex items-center justify-between">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          (click)="closeAdvancedPromoModal()"
+        >
+          稍後再說
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm gap-2"
+          (click)="goToDonation()"
+        >
+          <span>前往贊助解鎖</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-backdrop" (click)="closeAdvancedPromoModal()"></div>
+  </dialog>
+}

@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, ChangeDetectorRef, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
@@ -31,11 +31,20 @@ import { ServiceItemControlComponent } from '@app/features/quotation/service-ite
 export class ServiceItemsSection {
   // Inputs
   readonly form = input.required<FormGroup>();
+  readonly advancedMode = input(false);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  // Parent-side template application mutates FormArray without replacing FormGroup.
+  // An OnPush child must be marked even when the originating click was outside it.
+  private readonly formChanges = effect((onCleanup) => {
+    const subscription = this.form().valueChanges.subscribe(() => this.changeDetector.markForCheck());
+    onCleanup(() => subscription.unsubscribe());
+  });
 
   // Outputs
   readonly addField = output<void>();
   readonly removeField = output<number>();
   readonly copyField = output<number>();
+  readonly saveTemplate = output<number>();
   readonly drop = output<CdkDragDrop<string[]>>();
 
   /**
@@ -64,6 +73,10 @@ export class ServiceItemsSection {
    */
   onCopyField(index: number): void {
     this.copyField.emit(index);
+  }
+
+  onSaveTemplate(index: number): void {
+    this.saveTemplate.emit(index);
   }
 
   /**

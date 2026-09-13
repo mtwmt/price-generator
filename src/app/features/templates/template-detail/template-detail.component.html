@@ -1,5 +1,6 @@
 <div
   class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm print:p-4"
+  data-pdf-padding="1rem"
   style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 標題區：左右佈局 -->
@@ -49,9 +50,9 @@
           </div>
         }
         @if (form().get('quoterEmail')?.value) {
-          <div class="flex">
-            <span class="text-base-content/60 w-20">E-Mail：</span>
-            <span class="text-base-content">
+          <div class="flex min-w-0">
+            <span class="text-base-content/60 w-20 shrink-0">E-Mail：</span>
+            <span class="text-base-content break-all min-w-0">
               {{ form().get('quoterEmail')?.value || '' }}
             </span>
           </div>
@@ -60,22 +61,15 @@
     </div>
 
     <!-- 右側：報價單資訊 -->
-    <div class="text-right">
-      <h1 class="text-2xl font-bold text-base-content mb-3">報價單</h1>
-      <div class="space-y-1">
-        <div class="flex justify-between gap-4">
-          <span class="font-semibold">報價日期：</span>
-          <span class="text-base-content">
-            {{ form().get('startDate')?.value || '-' }}
-          </span>
-        </div>
+    <div class="shrink-0 text-right">
+      <h1 class="text-2xl font-bold text-base-content mb-1 tracking-wider">報價單</h1>
+      <div class="shrink-0 text-right text-sm text-base-content/70 leading-relaxed">
+        @if (form().get('quotationNumber')?.value?.trim()) {
+          <div>編號：{{ form().get('quotationNumber')?.value }}</div>
+        }
+        <div>報價日期：{{ form().get('startDate')?.value || '-' }}</div>
         @if (form().get('endDate')?.value) {
-          <div class="flex justify-between gap-4">
-            <span class="font-semibold">有效期限：</span>
-            <span class="text-base-content">
-              {{ form().get('endDate')?.value }}
-            </span>
-          </div>
+          <div>有效期限：{{ form().get('endDate')?.value }}</div>
         }
       </div>
     </div>
@@ -121,9 +115,9 @@
       }
 
       @if (form().get('customerEmail')?.value) {
-        <div class="flex">
-          <span class="text-base-content/60 w-20">E-Mail：</span>
-          <span class="text-base-content break-all">
+        <div class="flex min-w-0">
+          <span class="text-base-content/60 w-20 shrink-0">E-Mail：</span>
+          <span class="text-base-content break-all min-w-0">
             {{ form().get('customerEmail')?.value || '' }}
           </span>
         </div>
@@ -240,7 +234,7 @@
           }
         </span>
         <span class="font-semibold text-base-content">
-          ${{ form().get('excludingTax')?.value || 0 | number }}
+          ${{ (form().get('excludingTax')?.value || 0) | number }}
         </span>
       </div>
 
@@ -257,7 +251,7 @@
             ：
           </span>
           <span class="text-green-600">
-            -${{ form().get('discountAmount')?.value || 0 | number }}
+            -${{ (form().get('discountAmount')?.value || 0) | number }}
           </span>
         </div>
       }
@@ -287,7 +281,7 @@
           </span>
 
           <span class="text-rose-500">
-            ${{ form().get('tax')?.value || 0 | number }}
+            ${{ (form().get('tax')?.value || 0) | number }}
           </span>
         </div>
       }
@@ -296,7 +290,7 @@
       >
         <span class="font-bold text-xl">總計：</span>
         <span class="text-xl font-bold text-red-500">
-          ${{ form().get('includingTax')?.value || 0 | number }}
+          ${{ (form().get('includingTax')?.value || 0) | number }}
         </span>
       </div>
     </div>

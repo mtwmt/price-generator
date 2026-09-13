@@ -147,7 +147,7 @@
                         class="badge badge-sm badge-soft badge-info gap-1"
                         title="置頂留言"
                       >
-                        <svg lucidePin width="10" height="10" class="size-2.5 shrink-0" />
+                        <svg lucidePin [size]="16" class="shrink-0" />
                         置頂
                       </span>
                     }
@@ -206,8 +206,8 @@
                         [title]="comment.isPinned ? '取消置頂' : '置頂留言'"
                       >
                         <svg
+                          [size]="16"
                           [lucideIcon]="comment.isPinned ? PinOff : Pin"
-                          [size]="14"
                         />
                       </button>
                       <button
@@ -378,7 +378,7 @@
 <ng-template #reactionPicker let-commentId="commentId">
   <details class="dropdown" #reactionDropdown>
     <summary class="btn btn-ghost btn-xs">
-      <svg lucideSmile width="16" height="16"></svg>
+      <svg lucideSmile [size]="16"></svg>
     </summary>
     <ul
       class="dropdown-content menu flex-row p-2 shadow-sm bg-base-100 rounded-box w-40 z-[1]"

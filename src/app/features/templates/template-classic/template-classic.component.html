@@ -1,26 +1,43 @@
 <div
   class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm print:p-4"
+  data-pdf-padding="1rem"
   style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 標題區 -->
   <div class="border-b-1 border-primary pb-3 mb-4">
-    <div class="flex items-baseline justify-between">
-      <h1 class="text-2xl font-bold text-base-content">
+    <!-- 第一行：標題 + 報價編號（同一行，有填寫才顯示） -->
+    <div class="flex flex-wrap sm:flex-nowrap items-baseline justify-between gap-x-4 gap-y-1 mb-2">
+      <h1 class="whitespace-nowrap text-2xl font-bold text-base-content">
         {{ form().get('customerCompany')?.value || '[客戶名稱]' }} - 報價單
       </h1>
+      @if (form().get('quotationNumber')?.value?.trim()) {
+        <div class="shrink-0 text-right text-sm text-base-content/70">
+          編號：{{ form().get('quotationNumber')?.value }}
+        </div>
+      }
     </div>
-    @if (form().get('customerTaxID')?.value) {
-      <div class="text-base-content/70 mt-1">
-        統一編號：{{ form().get('customerTaxID')?.value }}
+
+    <!-- 資訊列：統一編號（左）+ 報價日期、有效期限換行顯示（右） -->
+    <div class="flex items-start justify-between gap-x-4 gap-y-1 text-sm text-base-content/70">
+      <div>
+        @if (form().get('customerTaxID')?.value) {
+          <span>統一編號：{{ form().get('customerTaxID')?.value }}</span>
+        }
       </div>
-    }
+      <div class="shrink-0 text-right leading-relaxed">
+        <div>報價日期：{{ form().get('startDate')?.value || '-' }}</div>
+        @if (form().get('endDate')?.value) {
+          <div>有效期限：{{ form().get('endDate')?.value }}</div>
+        }
+      </div>
+    </div>
   </div>
 
   <!-- 報價人員資訊區 -->
-  <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-6 leading-relaxed">
-    <div>
+  <div class="flex justify-between items-start mb-6 leading-relaxed">
+    <div class="space-y-1">
       <div class="flex">
-        <span class="text-base-content font-semibold w-24">報價人員：</span>
+        <span class="text-base-content font-semibold w-24 shrink-0">報價人員：</span>
         <span class="text-base-content">
           {{ form().get('quoterName')?.value || '' }}
         </span>
@@ -28,7 +45,7 @@
 
       @if (form().get('quoterTaxID')?.value) {
         <div class="flex">
-          <span class="text-base-content font-semibold w-24">統一編號：</span>
+          <span class="text-base-content font-semibold w-24 shrink-0">統一編號：</span>
           <span class="text-base-content">
             {{ form().get('quoterTaxID')?.value }}
           </span>
@@ -36,9 +53,9 @@
       }
 
       @if (form().get('quoterEmail')?.value) {
-        <div class="flex">
-          <span class="text-base-content font-semibold w-24">E-Mail：</span>
-          <span class="text-base-content">
+        <div class="flex min-w-0">
+          <span class="text-base-content font-semibold w-24 shrink-0">E-Mail：</span>
+          <span class="text-base-content whitespace-nowrap">
             {{ form().get('quoterEmail')?.value }}
           </span>
         </div>
@@ -46,7 +63,7 @@
 
       @if (form().get('quoterPhone')?.value) {
         <div class="flex">
-          <span class="text-base-content font-semibold w-24">聯絡電話：</span>
+          <span class="text-base-content font-semibold w-24 shrink-0">聯絡電話：</span>
           <span class="text-base-content">
             {{ form().get('quoterPhone')?.value }}
             @if (form().get('quoterPhoneExt')?.value) {
@@ -55,28 +72,9 @@
           </span>
         </div>
       }
-
-      @if (form().get('startDate')?.value) {
-        <div class="flex">
-          <span class="text-base-content font-semibold w-24">報價日期：</span>
-          <span class="text-base-content">
-            {{ form().get('startDate')?.value }}
-          </span>
-        </div>
-      }
-
-      @if (form().get('endDate')?.value) {
-        <div class="flex">
-          <span class="text-base-content font-semibold w-24">有效日期：</span>
-          <span class="text-base-content">
-            {{ form().get('endDate')?.value }}
-          </span>
-        </div>
-      }
-
     </div>
     @if (stamp()) {
-      <div class="text-center">
+      <div class="shrink-0 text-center ml-4">
         <img
           [src]="stamp()"
           alt="公司發票章"
@@ -146,7 +144,7 @@
               未稅：NT$
             }
             <span class="text-lg font-bold text-error">
-              {{ form().get('excludingTax')?.value || 0 | number }}
+              {{ (form().get('excludingTax')?.value || 0) | number }}
             </span>
             元
 
@@ -161,7 +159,7 @@
                 ：
               </span>
               <span class="text-green-600 text-lg">
-                -${{ form().get('discountAmount')?.value || 0 | number }} </span
+                -${{ (form().get('discountAmount')?.value || 0) | number }} </span
               >元
             }
 
@@ -173,14 +171,14 @@
               {{ form().get('taxName')?.value }}
               {{ form().get('percentage')?.value }}%
               <span class="text-lg font-bold text-error">{{
-                form().get('tax')?.value
+                (form().get('tax')?.value || 0) | number
               }}</span>
               元
               <br />
               @if (form().get('taxMode')?.value !== 'including') {
                 含稅：NT$
                 <span class="text-lg font-bold text-error">{{
-                  form().get('includingTax')?.value || 0 | number
+                  (form().get('includingTax')?.value || 0) | number
                 }}</span>
                 元整
               }
@@ -190,7 +188,7 @@
               <br />
               總計：NT$
               <span class="text-lg font-bold text-error">{{
-                form().get('includingTax')?.value || 0 | number
+                (form().get('includingTax')?.value || 0) | number
               }}</span>
               元整
             }

@@ -1,7 +1,8 @@
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 
-export const CLOUD_SCHEMA_VERSION = 1 as const;
-export type CloudSchemaVersion = typeof CLOUD_SCHEMA_VERSION;
+/** v2 新寫入可帶報價業務 metadata；v1 仍以原欄位與原 hash 驗證。 */
+export const CLOUD_SCHEMA_VERSION = 2 as const;
+export type CloudSchemaVersion = 1 | typeof CLOUD_SCHEMA_VERSION;
 
 export type CloudQuotationKind = 'create' | 'update' | 'delete' | 'restore';
 

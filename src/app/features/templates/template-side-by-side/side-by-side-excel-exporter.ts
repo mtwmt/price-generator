@@ -61,7 +61,9 @@ export class SideBySideExcelExporter implements ExcelExporter {
     // 報價單標題
     worksheet.mergeCells('A1:E1');
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = '報價單';
+    titleCell.value = data.quotationNumber?.trim()
+      ? `報價單（${data.quotationNumber.trim()}）`
+      : '報價單';
     titleCell.font = { size: EXCEL_STYLES.FONT_SIZES.TITLE, bold: true };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = titleBgColor;

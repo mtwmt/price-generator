@@ -1,6 +1,7 @@
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
 import {
   CLOUD_SCHEMA_VERSION,
+  CloudSchemaVersion,
   CloudQuotationKind,
   CloudQuotationRevision,
   CloudQuotationRevisionInput,
@@ -15,6 +16,7 @@ import {
   JsonValue,
   canonicalizeJsonValue,
   isPlainJsonObject,
+  normalizeJsonValue,
 } from './cloud-json';
 
 const ENVELOPE_REQUIRED_KEYS = [
@@ -93,6 +95,14 @@ const QUOTATION_OPTIONAL_KEYS = [
   ...QUOTATION_OPTIONAL_NUMBER_KEYS,
   'discountType',
   'taxMode',
+] as const;
+
+/** v2 才允許的業務層欄位；quotationId 在 v2 是必填且須與封套一致。 */
+const QUOTATION_V2_OPTIONAL_KEYS = [
+  'quotationNumber',
+  'businessVersion',
+  'status',
+  'previousVersions',
 ] as const;
 
 const SERVICE_ITEM_REQUIRED_KEYS = [
@@ -205,12 +215,20 @@ function normalizeServiceItem(value: unknown, index: number): JsonValue {
   return normalized;
 }
 
-function normalizeQuotationPayload(value: unknown): JsonValue {
+function normalizeQuotationPayload(
+  value: unknown,
+  schemaVersion: CloudSchemaVersion,
+  envelopeQuotationId: string
+): JsonValue {
   const quotation = asPlainRecord(value, '$.payload');
   assertExactKeys(
     quotation,
-    QUOTATION_REQUIRED_KEYS,
-    QUOTATION_OPTIONAL_KEYS,
+    schemaVersion === 2
+      ? [...QUOTATION_REQUIRED_KEYS, 'quotationId']
+      : QUOTATION_REQUIRED_KEYS,
+    schemaVersion === 2
+      ? [...QUOTATION_OPTIONAL_KEYS, ...QUOTATION_V2_OPTIONAL_KEYS]
+      : QUOTATION_OPTIONAL_KEYS,
     '$.payload'
   );
 
@@ -265,10 +283,43 @@ function normalizeQuotationPayload(value: unknown): JsonValue {
     normalized['taxMode'] = taxMode;
   }
 
+  if (schemaVersion === 2) {
+    const payloadQuotationId = readIdentifier(quotation['quotationId'], '$.payload.quotationId');
+    if (payloadQuotationId !== envelopeQuotationId) {
+      invalidEnvelope('$.payload.quotationId 必須與 $.quotationId 相同');
+    }
+    normalized['quotationId'] = payloadQuotationId;
+    if (Object.prototype.hasOwnProperty.call(quotation, 'quotationNumber')) {
+      normalized['quotationNumber'] = readString(quotation['quotationNumber'], '$.payload.quotationNumber');
+    }
+    if (Object.prototype.hasOwnProperty.call(quotation, 'businessVersion')) {
+      const version = readFiniteNumber(quotation['businessVersion'], '$.payload.businessVersion');
+      if (!Number.isInteger(version) || version < 1) invalidEnvelope('$.payload.businessVersion 必須是正整數');
+      normalized['businessVersion'] = version;
+    }
+    if (Object.prototype.hasOwnProperty.call(quotation, 'status')) {
+      const status = quotation['status'];
+      if (status !== 'draft' && status !== 'sent' && status !== 'won' && status !== 'lost') invalidEnvelope('$.payload.status 無效');
+      normalized['status'] = status;
+    }
+    if (Object.prototype.hasOwnProperty.call(quotation, 'previousVersions')) {
+      const versions = quotation['previousVersions'];
+      if (!Array.isArray(versions)) invalidEnvelope('$.payload.previousVersions 必須是陣列');
+      normalized['previousVersions'] = versions.map((entry, index) =>
+        normalizeJsonValue(entry, `$.payload.previousVersions[${index}]`)
+      );
+    }
+  }
+
   return normalized;
 }
 
-function normalizePayload(value: unknown, kind: CloudQuotationKind): JsonValue {
+function normalizePayload(
+  value: unknown,
+  kind: CloudQuotationKind,
+  schemaVersion: CloudSchemaVersion,
+  envelopeQuotationId: string
+): JsonValue {
   if (kind === 'delete') {
     if (value !== null) {
       invalidEnvelope('delete 修訂的 $.payload 必須是 null');
@@ -278,7 +329,7 @@ function normalizePayload(value: unknown, kind: CloudQuotationKind): JsonValue {
   if (value === null) {
     invalidEnvelope(`${kind} 修訂的 $.payload 必須是完整報價單`);
   }
-  return normalizeQuotationPayload(value);
+  return normalizeQuotationPayload(value, schemaVersion, envelopeQuotationId);
 }
 
 function assertSummaryMatchesPayload(
@@ -310,18 +361,18 @@ function assertSummaryMatchesPayload(
   }
 }
 
-function readSchemaVersion(value: unknown): typeof CLOUD_SCHEMA_VERSION {
+function readSchemaVersion(value: unknown): CloudSchemaVersion {
   const schemaVersion = readFiniteNumber(value, '$.schemaVersion');
   if (
     !Number.isInteger(schemaVersion) ||
-    schemaVersion !== CLOUD_SCHEMA_VERSION
+    (schemaVersion !== 1 && schemaVersion !== CLOUD_SCHEMA_VERSION)
   ) {
     throw new CloudDomainError(
       'UNKNOWN_SCHEMA_VERSION',
       `不支援的雲端報價單 schemaVersion：${schemaVersion}`
     );
   }
-  return CLOUD_SCHEMA_VERSION;
+  return schemaVersion;
 }
 
 function readKind(value: unknown): CloudQuotationKind {
@@ -411,7 +462,10 @@ function normalizeContentFields(
 ): CloudRevisionContent<JsonValue> {
   const schemaVersion = readSchemaVersion(value['schemaVersion']);
   const kind = readKind(value['kind']);
-  const payload = normalizePayload(value['payload'], kind);
+  const quotationId = readIdentifier(value['quotationId'], '$.quotationId');
+  const payload = normalizePayload(
+    value['payload'], kind, schemaVersion, quotationId
+  );
   const summary = normalizeSummary(value['summary']);
   assertSummaryMatchesPayload(payload, summary);
   const createdAt = readIdentifier(value['createdAt'], '$.createdAt');
@@ -425,7 +479,7 @@ function normalizeContentFields(
 
   return {
     schemaVersion,
-    quotationId: readIdentifier(value['quotationId'], '$.quotationId'),
+    quotationId,
     revisionId: readIdentifier(value['revisionId'], '$.revisionId'),
     parentRevisionIds: normalizeCloudParentRevisionIds(
       value['parentRevisionIds']
@@ -496,7 +550,7 @@ function toHashDocument(
   const content = normalizeContentFields(record);
   return {
     ...content,
-    schemaVersion: CLOUD_SCHEMA_VERSION,
+    schemaVersion: content.schemaVersion,
   };
 }
 

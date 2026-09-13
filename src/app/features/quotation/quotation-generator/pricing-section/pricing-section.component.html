@@ -14,6 +14,7 @@
           <input
             formControlName="discountValue"
             type="number"
+            [class.input-error]="form().get('discountValue')?.invalid"
             min="0"
             step="0.1"
             [placeholder]="
@@ -30,9 +31,15 @@
           }
         </label>
       </div>
+      @if (getControlError('discountValue'); as error) {
+        <p class="text-error text-xs mt-1">折扣值{{ error }}</p>
+      }
       @if (form().get('discountType')?.value === 'percentage') {
         <p class="text-xs opacity-60 mt-1">
-          台灣習慣：輸入「9」為 9 折（付 90%）、「85」為 85 折（付 85%）
+          台灣習慣：8、85、9.5 分別代表支付原價 80%、85%、95%。
+          @if (getPaymentPercentage(); as paymentPercentage) {
+            目前為支付原價 {{ paymentPercentage }}%。
+          }
         </p>
       }
     </fieldset>
@@ -97,12 +104,16 @@
             formControlName="percentage"
             type="number"
             class="input"
+            [class.input-error]="form().get('percentage')?.invalid"
             placeholder="請輸入稅率百分比"
             min="0"
             max="100"
             step="0.01"
             (input)="normalizePercentage()"
           />
+          @if (getControlError('percentage'); as error) {
+            <p class="text-error text-xs mt-1">稅率{{ error }}</p>
+          }
         </fieldset>
       }
     </div>
@@ -118,7 +129,7 @@
         }
       </span>
       <span class="font-semibold">
-        ${{ form().get('excludingTax')?.value || 0 }}
+        ${{ getAmountValue('excludingTax') }}
       </span>
     </div>
 
@@ -134,13 +145,13 @@
           }
         </span>
         <span class="text-green-600 font-medium text-base">
-          -${{ form().get('discountAmount')?.value || 0 }}
+          -${{ getAmountValue('discountAmount') }}
         </span>
       </div>
       <div class="flex justify-between items-center">
         <span class="font-medium">折扣後</span>
         <span class="font-semibold">
-          ${{ form().get('afterDiscount')?.value || 0 }}
+          ${{ getAmountValue('afterDiscount') }}
         </span>
       </div>
     }
@@ -168,7 +179,7 @@
         !!form().get('taxName')?.value || !!form().get('customTaxName')?.value
       ) {
         <span class="text-base text-red-500">
-          ${{ form().get('tax')?.value || 0 }}
+          ${{ getAmountValue('tax') }}
         </span>
       }
     </div>
@@ -177,7 +188,7 @@
       <div class="flex justify-between items-center">
         <span class="text-lg font-semibold">總計</span>
         <span class="text-xl font-bold text-red-500">
-          ${{ form().get('includingTax')?.value || 0 }}
+          ${{ getAmountValue('includingTax') }}
         </span>
       </div>
     </div>

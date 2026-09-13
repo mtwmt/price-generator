@@ -9,10 +9,9 @@ import { UserApiMapper } from '@app/core/mappers/user-api.mapper';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
-  GoogleOAuthPopup,
-  GoogleOAuthPopupError,
-  type GoogleOAuthAuthorization,
-} from './google-oauth-popup';
+  getGoogleIdentityApi,
+  type GoogleOAuth2Api,
+} from './google-identity.types';
 
 /**
  * Google 使用者資料
@@ -34,10 +33,20 @@ type GoogleLoginResponse = TokenPair & D1UserResponseDTO;
 
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+const GIS_LOAD_TIMEOUT_MS = 15_000;
+const GOOGLE_CODE_TIMEOUT_MS = 120_000;
+const GOOGLE_LOGIN_SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.appdata';
+
+interface GoogleLoginFlight {
+  readonly epoch: number;
+  codeConsumed: boolean;
+  timeoutId: ReturnType<typeof setTimeout> | null;
+}
 
 /**
  * 認證服務（永久登入版）
- * 採原生 Google OAuth popup（Authorization Code + PKCE）+ 後端自發 session token：
+ * 採 Google Identity Services popup 授權碼模式 + 後端自發 session token：
  * - access token（短效）打 API；過期前自動用 refresh token 換新（滑動續命）
  * - refresh token（長效）存 localStorage，常用即不掉線，登出或逾時才需重登
  */
@@ -55,8 +64,9 @@ export class AuthService {
   private accessExpiry = 0;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshInFlight: Promise<boolean> | null = null;
-  private googleOAuthPopup: GoogleOAuthPopup | null = null;
-  private googleOAuthLoginInFlight: Promise<void> | null = null;
+  private gisPromise: Promise<void> | null = null;
+  private readonly failedGisScripts = new WeakSet<HTMLScriptElement>();
+  private googleLoginInFlight: GoogleLoginFlight | null = null;
   private authEpoch = 0;
 
   readonly currentUser = signal<GoogleUser | null>(null);
@@ -89,72 +99,187 @@ export class AuthService {
     }
   }
 
-  /**
-   * 從原本的登入按鈕直接開啟原生 OAuth popup；同一次授權尚未結束前不再開第二個視窗。
-   * popup 先同步開 about:blank，再建立 PKCE，避免被瀏覽器視為非使用者觸發的彈出視窗。
-   */
+  /** 從登入按鈕啟動 GIS popup；同一次授權尚未結束前不再開第二個視窗。 */
   loginWithGoogle(): void {
-    if (this.isAuthenticated() || this.googleOAuthLoginInFlight) return;
+    if (this.isAuthenticated() || this.googleLoginInFlight) return;
 
-    const loginEpoch = this.authEpoch;
-    const popup = new GoogleOAuthPopup();
-    this.googleOAuthPopup = popup;
-    const authorization = popup.authorize(environment.googleClientId);
-    const flight = this.exchangeGoogleAuthorization(authorization, loginEpoch);
-    this.googleOAuthLoginInFlight = flight;
-    void flight.finally(() => {
-      if (this.googleOAuthLoginInFlight === flight) {
-        this.googleOAuthLoginInFlight = null;
-        if (this.googleOAuthPopup === popup) this.googleOAuthPopup = null;
-      }
-    });
+    const flight: GoogleLoginFlight = {
+      epoch: this.authEpoch,
+      codeConsumed: false,
+      timeoutId: null,
+    };
+    this.googleLoginInFlight = flight;
+
+    // GIS 已就緒時，維持 requestCode 在 click 的同步呼叫堆疊內，避免失去使用者啟用狀態。
+    const oauth2 = getGoogleIdentityApi()?.accounts?.oauth2;
+    if (oauth2) {
+      this.requestGoogleCode(oauth2, flight);
+      return;
+    }
+
+    void this.loadGis().then(
+      () => {
+        if (!this.isCurrentGoogleLoginFlight(flight)) return;
+        const loadedOauth2 = getGoogleIdentityApi()?.accounts?.oauth2;
+        if (!loadedOauth2) {
+          this.failGoogleLogin(flight, 'Google 登入元件尚未就緒，請重試');
+          return;
+        }
+        this.requestGoogleCode(loadedOauth2, flight);
+      },
+      () => this.failGoogleLogin(flight, '無法載入 Google 登入元件，請檢查網路後重試'),
+    );
   }
 
-  private async exchangeGoogleAuthorization(
-    authorization: Promise<GoogleOAuthAuthorization>,
-    exchangeEpoch: number,
-  ): Promise<void> {
+  private requestGoogleCode(oauth2: GoogleOAuth2Api, flight: GoogleLoginFlight): void {
+    if (!this.isCurrentGoogleLoginFlight(flight)) return;
     try {
-      const result = await authorization;
-      if (exchangeEpoch !== this.authEpoch) return;
+      const client = oauth2.initCodeClient({
+        client_id: environment.googleClientId,
+        scope: GOOGLE_LOGIN_SCOPE,
+        ux_mode: 'popup',
+        include_granted_scopes: true,
+        callback: (response) => {
+          if (!this.isCurrentGoogleLoginFlight(flight)) return;
+          // GIS 可能在已回傳 code 後補送關閉或空回應；第一個 code 一旦接受，
+          // 後續事件必須不能中斷既有交換或影響下一個登入批次。
+          if (flight.codeConsumed) return;
+          if (!response.code) {
+            this.failGoogleLogin(flight, '登入已取消');
+            return;
+          }
+          flight.codeConsumed = true;
+          void this.exchangeGoogleCode(response.code, flight);
+        },
+        error_callback: (error) => {
+          if (!this.isCurrentGoogleLoginFlight(flight)) return;
+          if (flight.codeConsumed) return;
+          this.failGoogleLogin(
+            flight,
+            error.type === 'popup_failed_to_open'
+              ? 'Google 登入視窗無法開啟，請允許此網站的彈出視窗後重試'
+              : error.type === 'popup_closed'
+                ? '登入已取消'
+                : 'Google 登入流程失敗，請重試',
+          );
+        },
+      });
+      flight.timeoutId = setTimeout(
+        () => this.failGoogleLogin(flight, '登入逾時，請重新登入'),
+        GOOGLE_CODE_TIMEOUT_MS,
+      );
+      client.requestCode();
+    } catch {
+      this.failGoogleLogin(flight, '無法開啟 Google 登入，請稍後再試');
+    }
+  }
+
+  private async exchangeGoogleCode(code: string, flight: GoogleLoginFlight): Promise<void> {
+    try {
+      if (!this.isCurrentGoogleLoginFlight(flight)) return;
       const res = await firstValueFrom(
         this.http.post<GoogleLoginResponse>(
           `${this.authBase}/google/exchange`,
           {
-            code: result.code,
+            code,
             driveAuthorization: true,
-            flow: 'web',
-            codeVerifier: result.codeVerifier,
-            nonce: result.nonce,
-            redirectUri: result.redirectUri,
           },
           { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
         ),
       );
-      if (!this.startNewSession(res, exchangeEpoch)) return;
+      if (!this.isCurrentGoogleLoginFlight(flight)) return;
+      if (!this.startNewSession(res, flight.epoch)) return;
       this.toastService.success('登入成功');
       this.analyticsService.trackEvent('user_signed_in', {
-        method: 'google_oauth_pkce',
+        method: 'google',
         user_id: res.user?.id,
         user_role: this.userRole(),
       });
     } catch (error) {
-      if (exchangeEpoch !== this.authEpoch) return;
-      if (error instanceof GoogleOAuthPopupError) {
-        if (error.code === 'popup_blocked') {
-          this.toastService.error('瀏覽器封鎖登入視窗，請允許彈出視窗後重試');
-        } else if (error.code === 'cancelled') {
-          this.toastService.error('登入已取消');
-        } else if (error.code === 'timeout') {
-          this.toastService.error('登入逾時，請重新登入');
-        } else {
-          this.toastService.error('無法開啟 Google 登入，請稍後再試');
-        }
-        return;
-      }
+      if (!this.isCurrentGoogleLoginFlight(flight)) return;
       this.logGoogleExchangeFailure('登入失敗（code 交換）', error);
       this.toastService.error('登入失敗，請稍後再試');
+    } finally {
+      this.finishGoogleLogin(flight);
     }
+  }
+
+  private isCurrentGoogleLoginFlight(flight: GoogleLoginFlight): boolean {
+    return this.googleLoginInFlight === flight && flight.epoch === this.authEpoch;
+  }
+
+  private failGoogleLogin(flight: GoogleLoginFlight, message: string): void {
+    if (!this.isCurrentGoogleLoginFlight(flight)) return;
+    this.toastService.error(message);
+    this.finishGoogleLogin(flight);
+  }
+
+  private finishGoogleLogin(flight: GoogleLoginFlight): void {
+    if (flight.timeoutId) {
+      clearTimeout(flight.timeoutId);
+      flight.timeoutId = null;
+    }
+    if (this.googleLoginInFlight === flight) {
+      this.googleLoginInFlight = null;
+    }
+  }
+
+  /** 載入或共用 GIS script；失敗後清空快取，讓下一次點擊可以重試。 */
+  private loadGis(): Promise<void> {
+    if (getGoogleIdentityApi()?.accounts?.oauth2) return Promise.resolve();
+    if (this.gisPromise) return this.gisPromise;
+
+    const promise = new Promise<void>((resolve, reject) => {
+      const existing = Array.from(
+        document.querySelectorAll<HTMLScriptElement>(`script[src="${GIS_SRC}"]`),
+      ).find((candidate) => !this.failedGisScripts.has(candidate));
+      const script = existing ?? document.createElement('script');
+      const createdHere = !existing;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let settled = false;
+      const cleanup = (): void => {
+        script.removeEventListener('load', onLoad);
+        script.removeEventListener('error', onError);
+        if (timeoutId) clearTimeout(timeoutId);
+      };
+      const succeed = (): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const fail = (): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        this.failedGisScripts.add(script);
+        if (createdHere) script.remove();
+        reject(new Error('Google Identity Services 載入失敗'));
+      };
+      const onLoad = (): void => {
+        if (getGoogleIdentityApi()?.accounts?.oauth2) {
+          succeed();
+        } else {
+          fail();
+        }
+      };
+      const onError = (): void => fail();
+
+      script.addEventListener('load', onLoad, { once: true });
+      script.addEventListener('error', onError, { once: true });
+      timeoutId = setTimeout(fail, GIS_LOAD_TIMEOUT_MS);
+      if (createdHere) {
+        script.src = GIS_SRC;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+    });
+    this.gisPromise = promise;
+    void promise.catch(() => {
+      if (this.gisPromise === promise) this.gisPromise = null;
+    });
+    return promise;
   }
 
   /**
@@ -273,6 +398,10 @@ export class AuthService {
   }
 
   private clearLocal(): void {
+    this.authEpoch += 1;
+    if (this.googleLoginInFlight) {
+      this.finishGoogleLogin(this.googleLoginInFlight);
+    }
     this.clearRefreshTimer();
     this.accessToken = null;
     this.accessExpiry = 0;
@@ -285,11 +414,7 @@ export class AuthService {
     const userId = this.userId();
     const accessToken = this.accessToken ?? localStorage.getItem(ACCESS_KEY);
     const refreshToken = localStorage.getItem(REFRESH_KEY);
-    this.authEpoch += 1;
     this.refreshInFlight = null;
-    this.googleOAuthPopup?.cancel();
-    this.googleOAuthPopup = null;
-    this.googleOAuthLoginInFlight = null;
     this.clearLocal();
     this.currentUser.set(null);
     this.userData.set(null);

@@ -1,70 +1,73 @@
 <div
   class="bg-base-100 border border-base-300 rounded-lg p-2 md:p-4 shadow-sm print:p-6"
+  data-pdf-padding="1.5rem"
   style="max-width: 210mm; margin: 0 auto"
 >
   <!-- 頂部：LOGO + 標題 -->
   <div
-    class="flex justify-between items-center mb-6 pb-4 border-b border-primary"
+    class="flex justify-between items-start mb-6 pb-4 border-b border-primary"
   >
-    <div class="flex justify-between gap-3 w-full">
+    <div class="flex justify-between items-start gap-4 w-full">
       <div>
-        <div class="text-3xl font-bold text-primary">QUOTATION</div>
-        <div class="text-lg text-base-content/70">報價單</div>
+        <div class="text-3xl font-bold text-primary tracking-wider">QUOTATION</div>
+        <div class="text-lg text-base-content/70 tracking-wide mt-0.5">報價單</div>
       </div>
-      <!-- 日期資訊 -->
-      <div class="gap-4 mt-4">
-        @if (form().get('startDate')?.value) {
-          <div class="flex pb-1">
-            <span class="text-base-content/70">報價日期：</span>
-            <span class="font-semibold">{{
-              form().get('startDate')?.value
-            }}</span>
-          </div>
+      <!-- 右側資訊區（編號 + 日期） -->
+      <div class="shrink-0 text-right text-sm text-base-content/70 leading-relaxed">
+        @if (form().get('quotationNumber')?.value?.trim()) {
+          <div>編號：{{ form().get('quotationNumber')?.value }}</div>
         }
+        <div>報價日期：{{ form().get('startDate')?.value || '-' }}</div>
         @if (form().get('endDate')?.value) {
-          <div class="flex pb-1">
-            <span class="text-base-content/70">有效期限：</span>
-            <span class="font-semibold">{{
-              form().get('endDate')?.value
-            }}</span>
-          </div>
+          <div>有效期限：{{ form().get('endDate')?.value }}</div>
         }
       </div>
     </div>
   </div>
 
   <!-- 賣方資訊（左）+ 客戶資訊（右）-->
-  <div class="grid grid-cols-2 gap-8 mb-6">
+  <div class="grid grid-cols-2 gap-4 md:gap-6 mb-6 text-xs md:text-sm text-base-content/75">
     <!-- 賣方資訊 FROM -->
     <div>
-      <div class="font-bold mb-2 tracking-wider">
-        FROM {{ form().get('quoterName')?.value || '[公司名稱]' }}
+      <div class="font-bold text-sm md:text-base text-base-content mb-2 tracking-wider">
+        FROM: {{ form().get('quoterName')?.value || '[公司名稱]' }}
       </div>
-      <div class="bg-base-50 rounded space-y-1">
-        <!-- <div class="font-bold text-base text-base-content">
-          {{ form().get('quoterName')?.value || '[公司名稱]' }}
-        </div> -->
+      <div class="space-y-1">
         @if (form().get('quoterTaxID')?.value) {
-          <div class="text-base-content/70">
-            統編：{{ form().get('quoterTaxID')?.value }}
-          </div>
-        }
-        @if (form().get('quoterAddress')?.value) {
-          <div class="text-base-content/70">
-            地址：{{ form().get('quoterAddress')?.value }}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>
+            </svg>
+            <span class="truncate">統編：{{ form().get('quoterTaxID')?.value }}</span>
           </div>
         }
         @if (form().get('quoterPhone')?.value) {
-          <div class="text-base-content/70">
-            電話：{{ form().get('quoterPhone')?.value }}
-            @if (form().get('quoterPhoneExt')?.value) {
-              #{{ form().get('quoterPhoneExt')?.value }}
-            }
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <span class="truncate">
+              {{ form().get('quoterPhone')?.value }}
+              @if (form().get('quoterPhoneExt')?.value) {
+                #{{ form().get('quoterPhoneExt')?.value }}
+              }
+            </span>
           </div>
         }
         @if (form().get('quoterEmail')?.value) {
-          <div class="text-base-content/70">
-            Email：{{ form().get('quoterEmail')?.value }}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <span class="truncate">{{ form().get('quoterEmail')?.value }}</span>
+          </div>
+        }
+        @if (form().get('quoterAddress')?.value) {
+          <div class="flex items-start gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span class="break-words">{{ form().get('quoterAddress')?.value }}</span>
           </div>
         }
       </div>
@@ -72,48 +75,53 @@
 
     <!-- 客戶資訊 TO -->
     <div>
-      <div class="font-bold mb-2 tracking-wider">
-        TO {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
+      <div class="font-bold text-sm md:text-base text-base-content mb-2 tracking-wider">
+        TO: {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
       </div>
-      <div class="bg-base-50 rounded space-y-1">
-        <div class="flex items-center gap-2">
-          <!-- @if (customerLogo()) {
-            <img
-              [src]="customerLogo()"
-              class="h-8 object-contain"
-              alt="Customer Logo"
-            />
-          } -->
-          <!-- <div class="font-bold text-base text-base-content">
-            {{ form().get('customerCompany')?.value || '[客戶名稱]' }}
-          </div> -->
-        </div>
+      <div class="space-y-1">
         @if (form().get('customerContact')?.value) {
-          <div class="text-base-content/70">
-            聯絡人：{{ form().get('customerContact')?.value }}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span class="truncate">{{ form().get('customerContact')?.value }}</span>
           </div>
         }
         @if (form().get('customerTaxID')?.value) {
-          <div class="text-base-content/70">
-            統編：{{ form().get('customerTaxID')?.value }}
-          </div>
-        }
-        @if (form().get('customerAddress')?.value) {
-          <div class="text-base-content/70">
-            地址：{{ form().get('customerAddress')?.value }}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>
+            </svg>
+            <span class="truncate">統編：{{ form().get('customerTaxID')?.value }}</span>
           </div>
         }
         @if (form().get('customerPhone')?.value) {
-          <div class="text-base-content/70">
-            電話：{{ form().get('customerPhone')?.value }}
-            @if (form().get('customerPhoneExt')?.value) {
-              #{{ form().get('customerPhoneExt')?.value }}
-            }
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <span class="truncate">
+              {{ form().get('customerPhone')?.value }}
+              @if (form().get('customerPhoneExt')?.value) {
+                #{{ form().get('customerPhoneExt')?.value }}
+              }
+            </span>
           </div>
         }
         @if (form().get('customerEmail')?.value) {
-          <div class="text-base-content/70">
-            Email：{{ form().get('customerEmail')?.value }}
+          <div class="flex items-center gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <span class="truncate">{{ form().get('customerEmail')?.value }}</span>
+          </div>
+        }
+        @if (form().get('customerAddress')?.value) {
+          <div class="flex items-start gap-1.5 min-w-0">
+            <svg class="w-3.5 h-3.5 shrink-0 text-base-content/60 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span class="break-words">{{ form().get('customerAddress')?.value }}</span>
           </div>
         }
       </div>
@@ -212,7 +220,7 @@
           }
         </span>
         <span class="font-semibold text-base-content">
-          ${{ form().get('excludingTax')?.value || 0 | number }}
+          ${{ (form().get('excludingTax')?.value || 0) | number }}
         </span>
       </div>
 
@@ -229,7 +237,7 @@
             ：
           </span>
           <span class="text-green-600">
-            -${{ form().get('discountAmount')?.value || 0 | number }}
+            -${{ (form().get('discountAmount')?.value || 0) | number }}
           </span>
         </div>
       }
@@ -259,7 +267,7 @@
           </span>
 
           <span class="text-rose-500">
-            ${{ form().get('tax')?.value || 0 | number }}
+            ${{ (form().get('tax')?.value || 0) | number }}
           </span>
         </div>
       }
@@ -268,7 +276,7 @@
       >
         <span class="font-bold text-xl">總計：</span>
         <span class="text-xl font-bold text-red-500">
-          ${{ form().get('includingTax')?.value || 0 | number }}
+          ${{ (form().get('includingTax')?.value || 0) | number }}
         </span>
       </div>
     </div>

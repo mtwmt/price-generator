@@ -1,14 +1,14 @@
 <div class="card bg-base-100 shadow-sm mb-6">
   <div class="card-body">
     <h2 class="card-title flex items-center gap-2">
-      <svg lucideUser width="24" height="24" />
+      <svg lucideUser [size]="24" />
       會員資訊
     </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
       <!-- 使用者名稱 + 會員等級 -->
       <div class="flex items-center gap-3">
-        <svg lucideUser width="20" height="20" class="text-base-content/70" />
+        <svg lucideUser class="text-base-content/70" />
         <div class="flex-1">
           <div class="text-sm text-base-content/70">使用者名稱</div>
           @if (isEditing()) {
@@ -27,14 +27,14 @@
                 (click)="saveEditing()"
                 title="保存"
               >
-                <svg lucideCheck width="16" height="16" />
+                <svg lucideCheck />
               </button>
               <button
                 class="btn btn-ghost btn-sm btn-square"
                 (click)="cancelEditing()"
                 title="取消"
               >
-                <svg lucideX width="16" height="16" />
+                <svg lucideX />
               </button>
             </div>
           } @else {
@@ -47,7 +47,7 @@
                 (click)="startEditing()"
                 title="編輯名稱"
               >
-                <svg lucidePencil width="14" height="14" />
+                <svg lucidePencil />
               </button> -->
               <span>
                 @if (isAdmin()) {
@@ -70,7 +70,7 @@
       <!-- Email -->
       @if (userEmail()) {
         <div class="flex items-center gap-3">
-          <svg lucideMail width="20" height="20" class="text-base-content/70" />
+          <svg lucideMail class="text-base-content/70" />
           <div>
             <div class="text-sm text-base-content/70">Email</div>
             <div class="font-medium">{{ userEmail() }}</div>
@@ -81,7 +81,7 @@
       <!-- 註冊時間 -->
       @if (formattedCreatedAt()) {
         <div class="flex items-center gap-3">
-          <svg lucideClock width="20" height="20" class="text-base-content/70" />
+          <svg lucideClock class="text-base-content/70" />
           <div>
             <div class="text-sm text-base-content/70">註冊時間</div>
             <div class="font-medium">{{ formattedCreatedAt() }}</div>
@@ -103,8 +103,6 @@
             }"
           >
             <svg lucideCalendar
-              width="20"
-              height="20"
               [ngClass]="{
                 'text-warning':
                   daysUntilExpiry() !== null && daysUntilExpiry()! > 0,
@@ -133,8 +131,6 @@
           <!-- 正常狀態 -->
           <div class="flex items-center gap-3">
             <svg lucideCalendar
-              width="20"
-              height="20"
               class="text-base-content/70"
             />
             <div>

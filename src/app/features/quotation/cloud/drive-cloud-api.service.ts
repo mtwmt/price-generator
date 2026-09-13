@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { AuthService } from '@app/core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 import type { CloudQuotationRevision } from './cloud-contracts';
+import { readCloudLifecycleMetadata } from './cloud-lifecycle-metadata';
 import {
   DriveAuthorizationApiService,
   DriveAuthorizationBrokerError,
@@ -72,6 +73,14 @@ export class DriveAuthorizationRequiredError extends Error {
   constructor(message = 'Google Drive 授權已失效，請重新連結') {
     super(message);
     this.name = 'DriveAuthorizationRequiredError';
+  }
+}
+
+/** Failure before any upload attempt; the sync layer can distinguish it from a lost receipt. */
+export class DriveOperationNotSentError extends Error {
+  constructor(readonly originalError: unknown) {
+    super(originalError instanceof Error ? originalError.message : '雲端儲存尚未送出');
+    this.name = 'DriveOperationNotSentError';
   }
 }
 
@@ -182,6 +191,7 @@ function createMetadata(revision: CloudQuotationRevision<unknown>) {
       createdAt: revision.createdAt,
       contentHash: revision.contentHash,
       parentRevisionIds: JSON.stringify(revision.parentRevisionIds),
+      ...readCloudLifecycleMetadata(revision.payload),
     },
   };
 }
@@ -221,6 +231,7 @@ function parseRevisionMetadata(
     parentRevisionIds,
     kind,
     createdAt: properties['createdAt'],
+    ...readCloudLifecycleMetadata(properties),
   };
 }
 
@@ -398,24 +409,29 @@ export class DriveCloudApiService {
   async createOperation(
     revision: CloudQuotationRevision<unknown>
   ): Promise<DriveOperationResponse> {
-    this.assertRevision(revision);
-    const existing = await this.findByOperation(
-      revision.ownerSub,
-      revision.operationId
-    );
-    if (existing) {
-      if (!isSameOperation(existing, revision) || !isIdentifier(existing.id)) {
-        throw new Error('Google Drive 已有同名操作，但內容不一致');
+    let content: string;
+    let bytes: number;
+    let metadata: ReturnType<typeof createMetadata>;
+    try {
+      this.assertRevision(revision);
+      const existing = await this.findByOperation(revision.ownerSub, revision.operationId);
+      if (existing) {
+        if (!isSameOperation(existing, revision) || !isIdentifier(existing.id)) {
+          throw new Error('Google Drive 已有同名操作，但內容不一致');
+        }
+        return this.toOperationReceipt(existing.id, revision, 'replayed');
       }
-      return this.toOperationReceipt(existing.id, revision, 'replayed');
+      content = JSON.stringify(revision);
+      bytes = new TextEncoder().encode(content).byteLength;
+      if (bytes > MAX_REVISION_BYTES) {
+        throw new Error('報價單內容超過 8 MB，無法儲存到 Google Drive');
+      }
+      metadata = createMetadata(revision);
+    } catch (error) {
+      // Everything above is lookup/local validation, never an upload attempt.
+      // Keep upload/receipt failures outside this known-not-sent boundary.
+      throw new DriveOperationNotSentError(error);
     }
-
-    const content = JSON.stringify(revision);
-    const bytes = new TextEncoder().encode(content).byteLength;
-    if (bytes > MAX_REVISION_BYTES) {
-      throw new Error('報價單內容超過 8 MB，無法儲存到 Google Drive');
-    }
-    const metadata = createMetadata(revision);
     const file =
       bytes <= MULTIPART_UPLOAD_MAX_BYTES
         ? await this.multipartUpload(metadata, content)

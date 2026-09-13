@@ -32,3 +32,40 @@ export function isGoogleOAuthCallbackMessage(
   const hasError = typeof record['error'] === 'string' && record['error'].length > 0;
   return hasCode !== hasError;
 }
+
+/** Google Identity Services 授權碼 popup 所需的最小型別。 */
+export interface GoogleOAuthCodeResponse {
+  readonly code?: string;
+  readonly error?: string;
+}
+
+export interface GoogleOAuthCodeClientError {
+  readonly type?: string;
+}
+
+export interface GoogleOAuthCodeClient {
+  requestCode(): void;
+}
+
+export interface GoogleOAuth2Api {
+  initCodeClient(config: {
+    readonly client_id: string;
+    readonly scope: string;
+    readonly ux_mode: 'popup';
+    readonly include_granted_scopes?: boolean;
+    callback: (response: GoogleOAuthCodeResponse) => void;
+    error_callback?: (error: GoogleOAuthCodeClientError) => void;
+  }): GoogleOAuthCodeClient;
+}
+
+export interface GoogleIdentityApi {
+  readonly accounts?: {
+    readonly oauth2?: GoogleOAuth2Api;
+  };
+}
+
+export function getGoogleIdentityApi(
+  target: Window = window,
+): GoogleIdentityApi | undefined {
+  return (target as unknown as { readonly google?: GoogleIdentityApi }).google;
+}

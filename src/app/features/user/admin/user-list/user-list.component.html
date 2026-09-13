@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="flex items-center gap-2">
         <h2 class="card-title flex items-center gap-2">
-          <svg lucideUsers width="24" height="24" />
+          <svg lucideUsers [size]="24" />
           使用者管理
         </h2>
         <!-- 重新整理按鈕 -->
@@ -18,13 +18,13 @@
           @if (usersStore.loading()) {
             <span class="loading loading-spinner loading-sm"></span>
           } @else {
-            <svg lucideRefreshCw width="16" height="16" />
+            <svg lucideRefreshCw />
           }
         </button>
       </div>
       <!-- 搜尋框 -->
       <label class="input input-sm input-bordered flex items-center gap-2">
-        <svg lucideSearch width="16" height="16" class="opacity-50" />
+        <svg lucideSearch class="opacity-50" />
         <input
           type="search"
           class="grow"
@@ -96,8 +96,7 @@
                     <span class="badge badge-soft gap-1 whitespace-nowrap">
                       <svg
                         lucideCrown
-                        width="10"
-                        height="10"
+                        [size]="12"
                         class="size-2.5 shrink-0"
                       />
                       贊助會員（已過期）
@@ -108,12 +107,11 @@
                       [class]="item.roleBadgeClass"
                     >
                       @if (item.role === 'admin') {
-                        <svg lucideShield width="12" height="12" />
+                        <svg lucideShield [size]="12" />
                       } @else if (item.role === 'premium') {
                         <svg
                           lucideCrown
-                          width="10"
-                          height="10"
+                          [size]="12"
                           class="size-2.5 shrink-0"
                         />
                       }

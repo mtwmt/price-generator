@@ -46,6 +46,7 @@ function metadata(
 describe('本機報價單明確再次匯入', () => {
   it('刪除再匯入會接續 delete 恢復，再按時去重', async () => {
     const original = (await create([]))!.revision;
+    expect(original.payload.quotationId).toBe(`local-${dataHash}`);
     const revisions = [
       metadata(original.revisionId, 'create'),
       metadata('deleted', 'delete', [original.revisionId]),

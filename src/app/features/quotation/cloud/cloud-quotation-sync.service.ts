@@ -1,16 +1,17 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { QuotationData } from '@app/features/quotation/models/quotation.model';
+import { normalizeQuotationLifecycle } from '@app/features/quotation/utils/quotation-lifecycle';
 import { AuthService } from '@app/core/services/auth.service';
 import {
   CLOUD_SCHEMA_VERSION,
   WebCryptoSha256HashProvider,
-  createCloudQuotationDraft,
   createCloudQuotationRevision,
-  createCloudSaveOperation,
   createQuotationCloudSummary,
   decideQuotationStorageRoute,
   verifyCloudQuotationEnvelope,
   type QuotationStorageRoute,
+  type CloudQuotationRevision,
+  type CloudQuotationRevisionInput,
 } from './index';
 import {
   buildCloudHistoryEntries,
@@ -19,6 +20,7 @@ import {
 } from './cloud-history';
 import {
   DriveAuthorizationRequiredError,
+  DriveOperationNotSentError,
   DriveServiceUnavailableError,
   DriveCloudApiService,
   type DriveOperationResponse,
@@ -31,6 +33,7 @@ import {
 import { canonicalizeJsonValue } from './cloud-json';
 import { createLocalMigrationOperation } from './cloud-local-migration';
 import { classifyDriveFailure } from './cloud-failures';
+import { readCloudLifecycleMetadata } from './cloud-lifecycle-metadata';
 
 export type CloudSyncStatus =
   | 'local'
@@ -90,6 +93,7 @@ function readMetadata(value: unknown): DriveRevisionMetadata | null {
     parentRevisionIds: Object.freeze([...record['parentRevisionIds']]),
     kind,
     createdAt: record['createdAt'],
+    ...readCloudLifecycleMetadata(record),
   };
 }
 
@@ -116,6 +120,30 @@ export interface LocalHistorySyncResult {
   readonly skipped: number;
 }
 
+/** Synchronously reserved, immutable target/content/identity, before hashing or I/O. */
+export interface CloudSaveIntent {
+  readonly repository: 'cloud';
+  readonly input: CloudQuotationRevisionInput<QuotationData>;
+}
+
+interface CloudSaveState {
+  readonly version: number;
+  readonly key: string;
+  readonly fingerprint: string;
+  outcome: 'ready' | 'not-sent' | 'unknown' | 'saved';
+  revision?: CloudQuotationRevision<QuotationData>;
+  flight?: Promise<CloudQuotationHistoryEntry>;
+  result?: CloudQuotationHistoryEntry;
+}
+
+function freezeIntent<T>(value: T): T {
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(freezeIntent);
+    Object.freeze(value);
+  }
+  return value;
+}
+
 /**
  * 贊助會員的雲端同步協調層。完整內容只在選取或儲存時讀寫；列表只讀 Drive metadata，
  * 因而不會因報價單筆數增加而下載全部 payload。
@@ -126,9 +154,13 @@ export class CloudQuotationSyncService {
   private readonly api = inject(DriveCloudApiService);
   private readonly hashProvider = new WebCryptoSha256HashProvider();
   private ownerSub: string | null = null;
+  private readonly sessionOwner = signal<string | null>(null);
   private operationVersion = 0;
   private statusOperationVersion = 0;
   private revisionMetadata: readonly DriveRevisionMetadata[] = [];
+  /** 傳輸結果遺失時，下一次相同儲存必須重送同一 immutable revision。 */
+  private readonly pendingSaveOperations = new Map<string, CloudSaveIntent>();
+  private readonly saveStates = new WeakMap<CloudSaveIntent, CloudSaveState>();
 
   readonly route = signal<QuotationStorageRoute>(
     decideQuotationStorageRoute({
@@ -139,6 +171,9 @@ export class CloudQuotationSyncService {
     })
   );
   readonly history = signal<readonly CloudQuotationHistoryEntry[]>([]);
+  readonly hasIncompleteHistoryMetadata = computed(() => this.history().some(({ data }) =>
+    data.quotationNumber === undefined || data.status === undefined
+  ));
   readonly isAvailable = signal(true);
   readonly isEligible = computed(
     () => this.auth.isPremium() || this.auth.isAdmin()
@@ -148,14 +183,24 @@ export class CloudQuotationSyncService {
   readonly isCloudStorage = computed(
     () => this.route().repository === 'cloud-sync'
   );
+  /** Authorization availability may lapse without changing the editor's repository. */
+  readonly isCloudRepository = computed(() =>
+    this.isSyncEnabled() && this.isEligible() && this.auth.isAuthenticated() &&
+    this.sessionOwner() !== null && this.sessionOwner() === this.auth.userId()
+  );
   readonly syncStatus = signal<CloudSyncStatus>('local');
   readonly lastSyncedAt = signal<number | null>(null);
   readonly syncError = signal<string | null>(null);
 
   async initialize(): Promise<void> {
-    const operationVersion = ++this.operationVersion;
-    this.history.set([]);
-    this.ownerSub = null;
+    const resume = this.isCloudRepository();
+    const operationVersion = resume ? this.operationVersion : ++this.operationVersion;
+    if (!resume) {
+      this.history.set([]);
+      this.sessionOwner.set(null);
+      this.ownerSub = null;
+      this.pendingSaveOperations.clear();
+    }
     if (this.auth.isAuthenticated() && this.isEligible()) {
       this.readSyncEnabledPreferenceForCurrentOwner();
     }
@@ -167,6 +212,7 @@ export class CloudQuotationSyncService {
       }) === 'disconnect'
     ) {
       this.api.disconnect();
+      this.sessionOwner.set(null);
       this.setNotConnectedRoute();
       this.setLocalStatus();
       return;
@@ -182,6 +228,7 @@ export class CloudQuotationSyncService {
     // 只嘗試無提示恢復既有授權；首次授權仍須由使用者點擊連線按鈕啟動。
     // 不可先 disconnect，否則會清除同一頁面仍有效的記憶體 token。
     const statusOperationVersion = this.beginStatus('connecting');
+    this.ownerSub = this.requireAuthenticatedOwner();
     this.setNotConnectedRoute();
 
     try {
@@ -208,6 +255,7 @@ export class CloudQuotationSyncService {
       }
 
       this.ownerSub = this.requireAuthenticatedOwner();
+      this.sessionOwner.set(this.ownerSub);
       this.setSyncEnabledPreference(true);
       this.route.set(
         decideQuotationStorageRoute({
@@ -227,13 +275,21 @@ export class CloudQuotationSyncService {
   async beginConnect(): Promise<void> {
     if (!this.auth.isAuthenticated() || !this.isEligible()) return;
 
+    const resume = this.isCloudRepository();
     this.setSyncEnabledPreference(true);
-    const operationVersion = ++this.operationVersion;
+    const operationVersion = resume ? this.operationVersion : ++this.operationVersion;
+    if (!resume) {
+      this.pendingSaveOperations.clear();
+      this.history.set([]);
+      this.sessionOwner.set(null);
+    }
     const statusOperationVersion = this.beginStatus('connecting');
     this.ownerSub = this.requireAuthenticatedOwner();
     try {
       await this.api.beginConnect(this.requireAuthenticatedEmail());
-      if (!this.isCurrentOperation(operationVersion)) return;
+      if (!this.isCurrentOperation(operationVersion) ||
+          !this.isCurrentStatusOperation(statusOperationVersion)) return;
+      this.sessionOwner.set(this.ownerSub);
       this.route.set(
         decideQuotationStorageRoute({
           isPremium: this.auth.isPremium(),
@@ -252,8 +308,10 @@ export class CloudQuotationSyncService {
 
   disconnect(): void {
     ++this.operationVersion;
+    this.pendingSaveOperations.clear();
     this.api.disconnect();
     this.ownerSub = null;
+    this.sessionOwner.set(null);
     this.history.set([]);
     this.route.set(this.notConnectedRoute());
     this.setLocalStatus();
@@ -352,7 +410,13 @@ export class CloudQuotationSyncService {
       ) {
         throw new Error('雲端報價單內容與清單 metadata 不一致');
       }
-      const data = revision.payload as unknown as QuotationData;
+      // v1 hash 驗證時保留原 payload；只有在應用程式讀取層補入封套 ID，
+      // 避免把新增欄位誤納入舊 schema 的 canonical hash。
+      const data = normalizeQuotationLifecycle(
+        revision.schemaVersion === 1
+          ? { ...(revision.payload as unknown as QuotationData), quotationId: revision.quotationId }
+          : (revision.payload as unknown as QuotationData)
+      );
       this.history.update((entries) =>
         entries.map((item) =>
           item.revisionId === entry.revisionId ? { ...item, data } : item
@@ -368,61 +432,125 @@ export class CloudQuotationSyncService {
     }
   }
 
-  async save(
-    data: QuotationData,
-    existing?: CloudQuotationHistoryEntry
-  ): Promise<CloudQuotationHistoryEntry> {
-    const operationVersion = this.operationVersion;
-    const statusOperationVersion = this.beginStatus('syncing');
-    try {
-      const ownerSub = this.requireConnectedOwner();
-      const quotationId = existing?.quotationId ?? newIdentifier();
-      const draft = createCloudQuotationDraft({
-        ownerSub,
-        quotationId,
-        baseRevisionIds: existing?.headRevisionIds ?? [],
-        payload: data,
-        summary: createQuotationCloudSummary(data),
-      });
-      const operation = await createCloudSaveOperation(
-        {
-          draft,
-          operationId: newIdentifier(),
-          revisionId: newIdentifier(),
-          kind: existing ? 'update' : 'create',
-          createdAt: new Date().toISOString(),
-        },
-        this.hashProvider
-      );
-      this.assertCurrentOperation(operationVersion);
-      const receipt = await this.api.createOperation(operation.revision);
-      assertOperationReceipt(receipt, operation.revision);
-      this.assertCurrentOperation(operationVersion);
-
-      const entry: CloudQuotationHistoryEntry = {
-        fileId: receipt.driveFileId,
-        quotationId,
-        revisionId: operation.revision.revisionId,
-        headRevisionIds: Object.freeze([operation.revision.revisionId]),
-        data,
-      };
-      this.history.update((entries) =>
-        existing
-          ? entries.map((item) =>
-              item.quotationId === quotationId ? entry : item
-            )
-          : [entry, ...entries]
-      );
-      this.completeStatus(statusOperationVersion);
-      return entry;
-    } catch (error) {
-      if (this.isCurrentOperation(operationVersion)) {
-        this.handleDriveError(error, statusOperationVersion);
+  /** 相同文件尚未確定結果時，不准用不同 payload/parent 開另一個操作。 */
+  prepareSave(data: QuotationData, existing?: CloudQuotationHistoryEntry): CloudSaveIntent {
+    const ownerSub = this.requireConnectedOwner();
+    if (ownerSub !== this.requireAuthenticatedOwner()) throw new Error('雲端同步帳號已變更');
+    const key = `${ownerSub}:${existing?.quotationId || data.quotationId || 'new'}`;
+    const fingerprint = canonicalizeJsonValue({
+      payload: { ...data, quotationId: existing?.quotationId || data.quotationId || null },
+      parents: [...(existing?.headRevisionIds ?? [])].sort(),
+    });
+    const pending = this.pendingSaveOperations.get(key);
+    if (pending) {
+      if (this.saveStates.get(pending)?.fingerprint !== fingerprint) {
+        throw new Error('上次儲存結果尚未確認，請先確認原提交');
       }
-      throw error;
+      return pending;
+    }
+    const quotationId = existing?.quotationId || data.quotationId || newIdentifier();
+    const payload: QuotationData = JSON.parse(canonicalizeJsonValue(
+      normalizeQuotationLifecycle({ ...data, quotationId })
+    ));
+    const intent: CloudSaveIntent = freezeIntent({
+      repository: 'cloud',
+      input: {
+        schemaVersion: CLOUD_SCHEMA_VERSION,
+        ownerSub, quotationId, payload,
+        parentRevisionIds: [...(existing?.headRevisionIds ?? [])],
+        summary: createQuotationCloudSummary(payload),
+        kind: existing ? 'update' : 'create',
+        operationId: newIdentifier(), revisionId: newIdentifier(),
+        createdAt: new Date().toISOString(),
+      },
+    });
+    // Reservation is synchronous; not even SHA work starts before this is registered.
+    this.pendingSaveOperations.set(key, intent);
+    this.saveStates.set(intent, {
+      version: this.operationVersion, key, fingerprint, outcome: 'ready',
+    });
+    return intent;
+  }
+
+  saveOutcome(intent: CloudSaveIntent): CloudSaveState['outcome'] {
+    return this.saveStates.get(intent)?.outcome ?? 'not-sent';
+  }
+
+  /** Only an unsent reservation may be cancelled by the duplicate-number dialog. */
+  cancelPreparedSave(intent: CloudSaveIntent): void {
+    const state = this.saveStates.get(intent);
+    if (!state || state.outcome !== 'ready' || state.flight) return;
+    state.outcome = 'not-sent';
+    if (this.pendingSaveOperations.get(state.key) === intent) this.pendingSaveOperations.delete(state.key);
+  }
+
+  save(data: QuotationData, existing?: CloudQuotationHistoryEntry): Promise<CloudQuotationHistoryEntry> {
+    try {
+      return this.submitSave(this.prepareSave(data, existing));
+    } catch (error) {
+      return Promise.reject(error);
     }
   }
 
+  submitSave(intent: CloudSaveIntent): Promise<CloudQuotationHistoryEntry> {
+    const state = this.saveStates.get(intent);
+    if (!state) return Promise.reject(new Error('未知的儲存操作'));
+    if (state.flight) return state.flight;
+    const assertCurrent = () => {
+      this.assertCurrentOperation(state.version);
+      if (intent.input.ownerSub !== this.requireAuthenticatedOwner() ||
+          intent.input.ownerSub !== this.requireConnectedOwner()) {
+        throw new Error('雲端同步帳號已變更');
+      }
+    };
+    try { assertCurrent(); } catch (error) { return Promise.reject(error); }
+    if (state.result) return Promise.resolve(state.result);
+    const statusVersion = this.beginStatus('syncing');
+    // Shared promise is installed before its microtask can start hashing.
+    const flight = Promise.resolve().then(async () => {
+      let transportStarted = false;
+      try {
+        assertCurrent();
+        state.revision ??= await createCloudQuotationRevision(intent.input, this.hashProvider);
+        assertCurrent();
+        transportStarted = true;
+        const receipt = await this.api.createOperation(state.revision);
+        assertOperationReceipt(receipt, state.revision);
+        assertCurrent();
+        const entry: CloudQuotationHistoryEntry = {
+          fileId: receipt.driveFileId,
+          quotationId: state.revision.quotationId,
+          revisionId: state.revision.revisionId,
+          headRevisionIds: Object.freeze([state.revision.revisionId]),
+          data: state.revision.payload,
+        };
+        this.history.update((entries) => [
+          entry, ...entries.filter((item) => item.quotationId !== entry.quotationId),
+        ]);
+        state.result = entry;
+        state.outcome = 'saved';
+        if (this.pendingSaveOperations.get(state.key) === intent) this.pendingSaveOperations.delete(state.key);
+        this.completeStatus(statusVersion);
+        return entry;
+      } catch (error) {
+        // Before transport, failure is known not to have persisted. Once sent,
+        // conservatively keep the immutable operation until a verified receipt.
+        const definitelyNotSent = error instanceof DriveOperationNotSentError;
+        state.outcome = state.outcome === 'unknown' || (transportStarted && !definitelyNotSent) ? 'unknown' : 'not-sent';
+        if (state.outcome === 'not-sent' && this.pendingSaveOperations.get(state.key) === intent) {
+          this.pendingSaveOperations.delete(state.key);
+        }
+        if (this.isCurrentOperation(state.version)) this.handleDriveError(
+          definitelyNotSent ? error.originalError : error, statusVersion
+        );
+        throw error;
+      } finally {
+        state.flight = undefined;
+      }
+    });
+    state.flight = flight;
+    return flight;
+  }
   /** 將本機歷史批次上傳到雲端；相同內容重複執行時會由固定 operationId 去重。 */
   async syncLocalHistory(
     localHistory: readonly QuotationData[]
@@ -553,8 +681,6 @@ export class CloudQuotationSyncService {
   }
 
   private setReconnectRequiredRoute(): void {
-    this.ownerSub = null;
-    this.history.set([]);
     this.route.set(
       decideQuotationStorageRoute({
         isPremium: this.auth.isPremium(),
@@ -575,6 +701,7 @@ export class CloudQuotationSyncService {
       if (error.code === 'forbidden') {
         this.api.disconnect();
         this.ownerSub = null;
+        this.sessionOwner.set(null);
         this.history.set([]);
         this.setNotConnectedRoute();
       }
@@ -644,11 +771,14 @@ export class CloudQuotationSyncService {
   private requireConnectedOwner(): string {
     if (!this.isCloudStorage() || !this.ownerSub)
       throw new Error('Google Drive 尚未連結');
+    if (!this.auth.isAuthenticated() || this.ownerSub !== this.auth.userId())
+      throw new Error('雲端同步帳號已變更');
     return this.ownerSub;
   }
 
   private isCurrentOperation(operationVersion: number): boolean {
-    return operationVersion === this.operationVersion;
+    return operationVersion === this.operationVersion &&
+      (this.ownerSub === null || (this.auth.isAuthenticated() && this.ownerSub === this.auth.userId()));
   }
 
   private assertCurrentOperation(operationVersion: number): void {

@@ -1,0 +1,43 @@
+<section class="card bg-base-100 md:shadow-sm mb-4" [formGroup]="form()" aria-labelledby="quotation-information-heading">
+  <div class="card-body p-2 md:p-4">
+    <div class="border-b border-base-200 pb-3">
+      <h2 id="quotation-information-heading" class="text-lg font-semibold text-base-content flex items-center gap-2">
+        <svg lucideReceiptText [size]="24" class="text-base-content/70" />
+        報價資訊
+      </h2>
+    </div>
+    <div class="rounded-sm bg-base-200 p-4">
+      <div [class]="advancedMode() ? 'grid grid-cols-1 gap-x-3 sm:grid-cols-2 xl:grid-cols-3' : 'grid grid-cols-1 gap-x-3 sm:grid-cols-2'">
+        @if (advancedMode()) {
+          <fieldset class="fieldset sm:col-span-2 xl:col-span-1">
+            <legend class="fieldset-legend whitespace-nowrap">報價編號</legend>
+            <label class="input w-full">
+              <svg lucideReceiptText class="shrink-0 opacity-70" />
+              <input
+                class="min-w-0"
+                formControlName="quotationNumber"
+                type="text"
+                placeholder="Q-2026-001"
+                (input)="quotationNumberChange.emit($any($event.target).value)"
+              />
+            </label>
+          </fieldset>
+        }
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend whitespace-nowrap">報價日期</legend>
+          <label class="input w-full">
+            <svg lucideCalendar1 class="shrink-0 opacity-70" />
+            <input class="min-w-0" #startDate id="startDate" formControlName="startDate" type="text" placeholder="選擇日期" autocomplete="off" />
+          </label>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend whitespace-nowrap">有效期限</legend>
+          <label class="input w-full">
+            <svg lucideCalendar1 class="shrink-0 opacity-70" />
+            <input class="min-w-0" #endDate id="endDate" formControlName="endDate" type="text" placeholder="待確認" autocomplete="off" />
+          </label>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+</section>

@@ -6,7 +6,15 @@
     aria-live="polite"
     class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 break-words text-base-content/70"
   >
-    <span>{{ presentation().text }}</span>
+    @if (status() === 'connecting') {
+      <span
+        class="loading loading-spinner h-4 w-4 shrink-0"
+        aria-hidden="true"
+      ></span>
+    }
+    <span [attr.title]="status() === 'synced' ? presentation().text : null">
+      {{ status() === 'synced' ? '已同步' : presentation().text }}
+    </span>
     @if (errorMessage() && (status() === 'error' || status() === 'reconnect')) {
       <span class="min-w-0 break-words text-xs text-error">
         {{ errorMessage() }}
