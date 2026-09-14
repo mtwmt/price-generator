@@ -1,22 +1,27 @@
-/** @jest-environment jsdom */
 const dependencies = new Map<unknown, unknown>();
 
 jest.mock('@angular/core', () => ({
   Injectable: () => (target: unknown) => target,
   inject: (token: unknown) => dependencies.get(token),
+  signal: <T>(value: T) => {
+    let current = value;
+    const state = (() => current) as { (): T; set(value: T): void; update(updater: (value: T) => T): void };
+    state.set = (value) => { current = value; };
+    state.update = (updater) => { current = updater(current); };
+    return state;
+  },
 }));
-jest.mock('@app/shared/services/storage.service', () => ({
-  StorageService: class StorageService {},
-}), { virtual: true });
+jest.mock('@app/shared/services/storage.service', () => ({ StorageService: class StorageService {} }), { virtual: true });
 
 import { StorageService } from '@app/shared/services/storage.service';
+import { createTemplateOperation } from '../cloud/template-sync-domain';
 import { QuotationTemplatesService } from './quotation-templates.service';
 
 interface MemoryStorage {
   values: Map<string, unknown>;
   failWrites: boolean;
-  get<T>(key: string, fallback: T): T;
-  set<T>(key: string, value: T): boolean;
+  readJson<T>(key: string): { status: 'ok'; value: T } | { status: 'missing' } | { status: 'parse-failed' };
+  setDetailed<T>(key: string, value: T): { success: boolean };
 }
 
 function createStorage(): MemoryStorage {
@@ -24,94 +29,191 @@ function createStorage(): MemoryStorage {
   return {
     values,
     failWrites: false,
-    get<T>(key: string, fallback: T): T {
-      return (values.get(key) as T | undefined) ?? fallback;
+    readJson<T>(key: string) {
+      if (!values.has(key)) return { status: 'missing' };
+      const value = values.get(key);
+      return value === '__broken__' ? { status: 'parse-failed' } : { status: 'ok', value: value as T };
     },
-    set<T>(key: string, value: T): boolean {
-      if (this.failWrites) return false;
+    setDetailed<T>(key: string, value: T) {
+      if (this.failWrites) return { success: false };
       values.set(key, JSON.parse(JSON.stringify(value)) as unknown);
-      return true;
+      return { success: true };
     },
   };
 }
 
-describe('QuotationTemplatesService C1 常用資料操作', () => {
+function installLocks(): void {
+  const tails = new Map<string, Promise<void>>();
+  const locks = {
+    async request<T>(name: string, callback: () => Promise<T>): Promise<T> {
+      const prior = tails.get(name) ?? Promise.resolve();
+      let release: (() => void) | undefined;
+      const tail = new Promise<void>((resolve) => { release = resolve; });
+      tails.set(name, prior.then(() => tail));
+      await prior;
+      try { return await callback(); } finally { release?.(); }
+    },
+  };
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { locks } });
+}
+
+describe('QuotationTemplatesService v2 本機封套', () => {
   let storage: MemoryStorage;
-  let service: QuotationTemplatesService;
 
   beforeEach(() => {
     dependencies.clear();
     storage = createStorage();
     dependencies.set(StorageService, storage);
-    service = new QuotationTemplatesService();
+    installLocks();
   });
 
-  it('建立後以獨立快照讀取，支援同名客戶並可搜尋', () => {
-    expect(service.saveCustomer({
-      name: ' 專案窗口 ', customerCompany: '合成公司', customerEmail: 'a@example.test',
-    })).toBe(true);
-    expect(service.saveCustomer({ name: '專案窗口', customerCompany: '另一家合成公司' })).toBe(true);
-
-    const matches = service.getCustomers('窗口');
-    expect(matches).toHaveLength(2);
-    expect(matches.map((entry) => entry.customerCompany)).toEqual([
-      '另一家合成公司', '合成公司',
-    ]);
-    expect(new Set(matches.map((entry) => entry.id)).size).toBe(2);
-
-    // UI 套用取得的是儲存當時的資料，不會讓呼叫端意外改寫本機快照。
-    (matches[0] as { customerCompany: string }).customerCompany = '頁面暫存修改';
-    expect(service.getCustomers('窗口')[0]?.customerCompany).toBe('另一家合成公司');
-  });
-
-  it('建立、搜尋與刪除常用服務項目，保留套用所需的價格與分類快照', () => {
-    expect(service.saveServiceItem({
-      name: '網站設計', item: '網站設計', price: 12000, category: '設計', unit: '式',
-    })).toBe(true);
-    expect(service.saveServiceItem({ name: '維護', item: '維護服務', price: 3000 })).toBe(true);
-
-    const template = service.getServiceItems('網')[0];
-    expect(template).toMatchObject({ item: '網站設計', price: 12000, category: '設計', unit: '式' });
-    expect(service.deleteServiceItem(template?.id ?? '')).toBe(true);
-    expect(service.getServiceItems()).toEqual([
-      expect.objectContaining({ item: '維護服務', price: 3000 }),
-    ]);
-  });
-
-  it('切換訪客與帳號資料區時不洩漏彼此的常用資料', () => {
-    service.saveCustomer({ name: '訪客客戶', customerCompany: '訪客客戶' });
-    service.setScope('user-42');
-    expect(service.getCustomers()).toEqual([]);
-    service.saveCustomer({ name: '帳號客戶', customerCompany: '帳號客戶' });
-
-    service.setScope('visitor');
-    expect(service.getCustomers().map((entry) => entry.name)).toEqual(['訪客客戶']);
-    service.setScope(' user-42 ');
-    expect(service.getCustomers().map((entry) => entry.name)).toEqual(['帳號客戶']);
-  });
-
-  it('容量寫入失敗時回傳失敗且不宣稱新增或刪除成功', () => {
-    service.saveCustomer({ name: '既有客戶', customerCompany: '既有客戶' });
-    const existing = service.getCustomers()[0];
-    storage.failWrites = true;
-
-    expect(service.saveCustomer({ name: '無法寫入', customerCompany: '無法寫入' })).toBe(false);
-    expect(service.deleteCustomer(existing?.id ?? '')).toBe(false);
-    storage.failWrites = false;
-    expect(service.getCustomers().map((entry) => entry.name)).toEqual(['既有客戶']);
-  });
-
-  it('隔離損壞模板項目，避免手機搜尋或套用時因缺欄位崩潰', () => {
+  it('遷移兩個 v1 來源為單一封套，保留來源並持久待送操作', async () => {
     storage.values.set('quotation:templates:visitor:customers', {
-      schemaVersion: 1,
-      entries: [{ id: 'valid', name: '可套用', customerCompany: '可套用' }, { id: 'bad', name: 9 }],
+      schemaVersion: 1, entries: [{ id: 'c-1', name: '客戶', customerCompany: '合成公司' }],
     });
     storage.values.set('quotation:templates:visitor:service-items', {
-      schemaVersion: 1,
-      entries: [{ id: 'valid', name: '可套用', item: '可套用', price: 0 }, { id: 'bad', name: '壞資料', item: '壞資料', price: 'NaN' }],
+      schemaVersion: 1, entries: [{ id: 's-1', name: '設計', item: '網站設計', price: 12000 }],
     });
+    const service = new QuotationTemplatesService();
+    await service.ready();
 
-    expect(service.getCustomers('可')).toEqual([expect.objectContaining({ id: 'valid' })]);
-    expect(service.getServiceItems('可')).toEqual([expect.objectContaining({ id: 'valid', price: 0 })]);
+    expect(service.getCustomers()).toEqual([expect.objectContaining({ id: 'c-1', customerCompany: '合成公司' })]);
+    expect(service.getServiceItems()).toEqual([expect.objectContaining({ id: 's-1', price: 12000 })]);
+    expect(service.snapshot().pendingIds).toHaveLength(2);
+    expect(storage.values.get('quotation:templates:visitor:customers')).toBeDefined();
+    expect(storage.values.get('quotation:templates:visitor:service-items')).toBeDefined();
+    expect(storage.values.get('quotation:templates:visitor:v2')).toEqual(expect.objectContaining({ schemaVersion: 2, migrationComplete: true }));
+
+    const reloaded = new QuotationTemplatesService();
+    await reloaded.ready();
+    expect(reloaded.snapshot().pendingIds).toHaveLength(2);
+    expect(reloaded.getCustomers()).toHaveLength(1);
+  });
+
+  it('遷移含首尾空白的舊 ID 後改名仍沿用原 entityId', async () => {
+    storage.values.set('quotation:templates:visitor:customers', {
+      schemaVersion: 1, entries: [{ id: ' legacy-id ', name: '舊名稱', customerCompany: '合成公司' }],
+    });
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    const template = service.getCustomers()[0]!;
+    expect(template.id).toBe(' legacy-id ');
+    expect(await service.saveCustomer({ ...template, name: '新名稱' }, service.baseFor(template))).toBe(true);
+    const operations = service.snapshot().operations;
+    expect(operations.at(-1)).toEqual(expect.objectContaining({ entityId: ' legacy-id ', parentRevisionIds: [operations[0]?.revisionId] }));
+  });
+
+  it('來源格式、重複 ID 或目標未知 schema 失敗時不覆寫也不復活已刪資料', async () => {
+    storage.values.set('quotation:templates:visitor:customers', {
+      schemaVersion: 1, entries: [{ id: 'same', name: '一', customerCompany: '一' }, { id: 'same', name: '二', customerCompany: '二' }],
+    });
+    const invalidLegacy = new QuotationTemplatesService();
+    await expect(invalidLegacy.ready()).rejects.toThrow('重複識別');
+    expect(invalidLegacy.error()).toContain('重複識別');
+    expect(storage.values.has('quotation:templates:visitor:v2')).toBe(false);
+
+    storage.values.set('quotation:templates:visitor:v2', { schemaVersion: 9 });
+    const invalidTarget = new QuotationTemplatesService();
+    await expect(invalidTarget.ready()).rejects.toThrow();
+    expect(invalidTarget.getCustomers()).toEqual([]);
+    expect(storage.values.get('quotation:templates:visitor:v2')).toEqual({ schemaVersion: 9 });
+  });
+
+  it('新增與確認送出會原子保存封套；容量失敗不會假稱成功', async () => {
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    expect(await service.saveCustomer({ name: '窗口', customerCompany: '合成公司' })).toBe(true);
+    const [operation] = service.snapshot().operations;
+    expect(service.snapshot().pendingIds).toEqual([operation.operationId]);
+    await service.acknowledge(operation.operationId, () => true);
+    expect(service.snapshot().pendingIds).toEqual([]);
+
+    storage.failWrites = true;
+    expect(await service.saveCustomer({ name: '失敗', customerCompany: '不能存' })).toBe(false);
+    expect(service.getCustomers().map((value) => value.name)).toEqual(['窗口']);
+  });
+
+  it('兩個 service 共用儲存時由真實序列化 lock 保留雙方新增與待送紀錄', async () => {
+    const first = new QuotationTemplatesService();
+    const second = new QuotationTemplatesService();
+    await Promise.all([first.ready(), second.ready()]);
+    await Promise.all([
+      first.saveCustomer({ name: '分頁 A', customerCompany: 'A 公司' }),
+      second.saveCustomer({ name: '分頁 B', customerCompany: 'B 公司' }),
+    ]);
+    await first.refresh();
+    expect(first.getCustomers().map((value) => value.name).sort()).toEqual(['分頁 A', '分頁 B']);
+    expect(first.snapshot().pendingIds).toHaveLength(2);
+  });
+
+  it('遠端重複列出相同操作時封套只保存一筆且重新載入可驗證', async () => {
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    const operation = await createTemplateOperation({
+      ownerSub: 'visitor', resourceKind: 'customers', entityId: 'remote-customer',
+      revisionId: 'remote-r-1', operationId: 'remote-o-1', parentRevisionIds: [], action: 'put',
+      value: { id: 'remote-customer', name: '遠端客戶', customerCompany: '遠端公司' },
+      createdAt: '2026-09-15T00:00:00.000Z',
+    });
+    await service.mergeRemote([operation, operation], () => true);
+    expect(service.snapshot().operations).toHaveLength(1);
+    const reloaded = new QuotationTemplatesService();
+    await reloaded.ready();
+    expect(reloaded.getCustomers()).toEqual([expect.objectContaining({ id: 'remote-customer' })]);
+  });
+
+  it('兩個並行衝突解決者只有先取得 lock 者可寫入，後者不會另建 sibling', async () => {
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    const root = await createTemplateOperation({
+      ownerSub: 'visitor', resourceKind: 'customers', entityId: 'conflict-customer', revisionId: 'root-r', operationId: 'root-o', parentRevisionIds: [], action: 'put',
+      value: { id: 'conflict-customer', name: '初始', customerCompany: '初始' }, createdAt: '2026-09-15T00:00:00.000Z',
+    });
+    const branch = (revisionId: string, operationId: string, name: string) => createTemplateOperation({
+      ownerSub: 'visitor', resourceKind: 'customers' as const, entityId: 'conflict-customer', revisionId, operationId, parentRevisionIds: ['root-r'], action: 'put' as const,
+      value: { id: 'conflict-customer', name, customerCompany: name }, createdAt: '2026-09-15T00:00:01.000Z',
+    });
+    const [left, right] = await Promise.all([branch('left-r', 'left-o', '左'), branch('right-r', 'right-o', '右')]);
+    await service.mergeRemote([root, left, right], () => true);
+    const parents = service.getConflicts()[0]?.heads.map((head) => head.revisionId) ?? [];
+    const results = await Promise.all([
+      service.resolveConflict('customers', 'conflict-customer', 'left-r', false, parents),
+      service.resolveConflict('customers', 'conflict-customer', 'left-r', false, parents),
+    ]);
+    expect(results).toEqual([true, false]);
+    expect(service.getConflicts()).toEqual([]);
+    expect(service.snapshot().operations).toHaveLength(4);
+  });
+
+  it('scope 切換清空快取，過期 owner 回應不可污染新帳號', async () => {
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    await service.saveCustomer({ name: '訪客', customerCompany: '訪客' });
+    const old = service.snapshot().operations;
+    await service.setScope('user:user-a');
+    expect(service.getCustomers()).toEqual([]);
+    await service.mergeRemote(old, () => false);
+    expect(service.getCustomers()).toEqual([]);
+    await service.setScope('visitor');
+    expect(service.getCustomers().map((value) => value.name)).toEqual(['訪客']);
+  });
+
+  it('遠端驗證晚到失敗後切換帳號，不會把 A 的 error 寫到 B', async () => {
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    const lateFailure = service.mergeRemote([{} as never], () => true);
+    await service.setScope('user:account-b');
+    await lateFailure;
+    expect(service.currentScope()).toBe('user:account-b');
+    expect(service.error()).toBeNull();
+  });
+
+  it('無 Web Locks 時拒絕不安全寫入', async () => {
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {} });
+    const service = new QuotationTemplatesService();
+    await service.ready();
+    expect(await service.saveCustomer({ name: '不可寫', customerCompany: '不可寫' })).toBe(false);
+    expect(storage.values.has('quotation:templates:visitor:v2')).toBe(false);
+    expect(service.error()).toContain('鎖定');
   });
 });

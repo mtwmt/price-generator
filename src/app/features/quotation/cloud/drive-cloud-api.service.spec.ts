@@ -19,6 +19,25 @@ jest.mock('./drive-authorization-api.service', () => {
   }
   return { DriveAuthorizationApiService, DriveAuthorizationBrokerError };
 });
+jest.mock('./template-sync-domain', () => ({
+  MAX_TEMPLATE_OPERATION_BYTES: 65_536,
+  canonicalTemplateOperation: (operation: Record<string, unknown>) => {
+    const { contentHash: _contentHash, ...content } = operation;
+    return JSON.stringify(content);
+  },
+  validateTemplateOperation: async (value: unknown, owner: string) => {
+    const operation = value as Record<string, unknown>;
+    if (
+      !operation ||
+      operation['schemaVersion'] !== 1 ||
+      operation['ownerSub'] !== owner ||
+      operation['contentHash'] !== 'valid-hash'
+    ) {
+      throw new Error('template operation is invalid');
+    }
+    return operation;
+  },
+}));
 
 import { AuthService } from '@app/core/services/auth.service';
 import {
@@ -29,6 +48,7 @@ import {
   DriveAuthorizationRequiredError,
   DriveCloudApiService,
 } from './drive-cloud-api.service';
+import type { TemplateOperation } from './template-sync-domain';
 
 const grant = {
   accessToken: 'drive-token',
@@ -45,6 +65,32 @@ function jsonResponse(body: unknown, status = 200): Response {
     text: async () => JSON.stringify(body),
     headers: new Headers(),
   } as Response;
+}
+
+const templateOperation: TemplateOperation = {
+  schemaVersion: 1,
+  ownerSub: 'member-1',
+  resourceKind: 'customers',
+  entityId: 'customer-1',
+  revisionId: 'revision-1',
+  operationId: 'operation-1',
+  parentRevisionIds: [],
+  action: 'put',
+  value: { id: 'customer-1', name: '王小明', customerCompany: '測試公司' },
+  createdAt: '2026-09-15T00:00:00.000Z',
+  contentHash: 'valid-hash',
+};
+
+function templateFile(fileId = 'template-file-1') {
+  return {
+    id: fileId,
+    appProperties: {
+      app: 'price-quotation-templates',
+      ownerSub: 'member-1',
+      operationId: 'operation-1',
+      revisionId: 'revision-1',
+    },
+  };
 }
 
 describe('DriveCloudApiService', () => {
@@ -180,5 +226,94 @@ describe('DriveCloudApiService', () => {
     await service.beginConnect('member@example.com');
     await expect(service.listRevisions('member-1')).rejects.toBeInstanceOf(DriveAuthorizationRequiredError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('常用資料清單只查獨立 namespace，且拒絕不合格 metadata', async () => {
+    broker.connect.mockResolvedValue(grant);
+    fetchMock.mockResolvedValue(jsonResponse({ files: [templateFile()] }));
+    const service = new DriveCloudApiService();
+    await service.beginConnect('member@example.com');
+
+    await expect(service.listTemplateOperations('member-1')).resolves.toEqual({
+      files: [{ fileId: 'template-file-1' }], nextPageToken: null,
+    });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('price-quotation-templates');
+    expect(url).not.toContain("value%3D%27price-quotation%27");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ files: [{ ...templateFile(), appProperties: { ...templateFile().appProperties, app: 'price-quotation' } }] }));
+    await expect(service.listTemplateOperations('member-1')).rejects.toThrow('namespace');
+  });
+
+  it('讀取常用資料時套用 64 KiB、schema、owner 與 hash 驗證', async () => {
+    broker.connect.mockResolvedValue(grant);
+    const service = new DriveCloudApiService();
+    await service.beginConnect('member@example.com');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse('x'.repeat(65_537)));
+    await expect(service.getTemplateOperation('member-1', 'template-file-1')).rejects.toThrow('64 KiB');
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...templateOperation, schemaVersion: 2 }));
+    await expect(service.getTemplateOperation('member-1', 'template-file-1')).rejects.toThrow('invalid');
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...templateOperation, ownerSub: 'member-2' }));
+    await expect(service.getTemplateOperation('member-1', 'template-file-1')).rejects.toThrow('invalid');
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...templateOperation, contentHash: 'bad-hash' }));
+    await expect(service.getTemplateOperation('member-1', 'template-file-1')).rejects.toThrow('invalid');
+  });
+
+  it('相同 operationId 的所有分頁內容相同時折疊，不會再次 POST', async () => {
+    broker.connect.mockResolvedValue(grant);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ files: [], nextPageToken: 'page-2' }))
+      .mockResolvedValueOnce(jsonResponse({ files: [templateFile()] }))
+      .mockResolvedValueOnce(jsonResponse(templateOperation));
+    const service = new DriveCloudApiService();
+    await service.beginConnect('member@example.com');
+
+    await expect(service.createTemplateOperation(templateOperation)).resolves.toBeUndefined();
+    expect(String(fetchMock.mock.calls[1][0])).toContain('pageToken=page-2');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('相同 operationId 的內容不同時拒絕，絕不 POST', async () => {
+    broker.connect.mockResolvedValue(grant);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ files: [templateFile()] }))
+      .mockResolvedValueOnce(jsonResponse({ ...templateOperation, value: { ...templateOperation.value, name: '不同內容' } }));
+    const service = new DriveCloudApiService();
+    await service.beginConnect('member@example.com');
+
+    await expect(service.createTemplateOperation(templateOperation)).rejects.toThrow('內容不一致');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('停用同步、切換帳號或 401 後不會接續 POST', async () => {
+    broker.connect.mockResolvedValue(grant);
+    const service = new DriveCloudApiService();
+    await service.beginConnect('member@example.com');
+
+    let current = true;
+    fetchMock.mockImplementationOnce(async () => {
+      current = false;
+      return jsonResponse({ files: [] });
+    });
+    await expect(service.createTemplateOperation(templateOperation, () => current)).rejects.toThrow('停止');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    current = true;
+    fetchMock.mockImplementationOnce(async () => {
+      auth.userId.mockReturnValue('member-2');
+      return jsonResponse({ files: [] });
+    });
+    await expect(service.createTemplateOperation(templateOperation, () => current)).rejects.toThrow('帳號已變更');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    auth.userId.mockReturnValue('member-1');
+    fetchMock.mockImplementationOnce(async () => {
+      auth.userId.mockReturnValue('member-2');
+      return jsonResponse({}, 401);
+    });
+    await expect(service.listTemplateOperations('member-1')).rejects.toThrow('帳號已變更');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

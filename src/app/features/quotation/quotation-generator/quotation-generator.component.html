@@ -81,6 +81,7 @@
 
         <span class="text-sm">雲端</span>
       </div>
+      <span class="text-sm">報價：</span>
       <app-cloud-sync-status
         class="min-w-0 max-w-full flex-1"
         [status]="syncStatus()"
@@ -88,6 +89,34 @@
         [errorMessage]="syncError()"
         (reconnect)="onDriveConnect()"
       />
+    }
+    @if (showAdvancedFeatures() || templateStorageError()) {
+      <div class="basis-full text-sm space-y-2" aria-live="polite">
+        <div class="flex flex-wrap items-center gap-2">
+          <span>常用客戶與項目：{{ templateSyncLabel() }}</span>
+          @if (cloudSyncEnabled()) {
+            <button type="button" class="btn btn-ghost btn-xs" [disabled]="templateSync.status() === 'syncing'" (click)="templateSync.retry()">重試同步</button>
+          }
+          @if (templateSync.status() === 'reconnect') {
+            <button type="button" class="btn btn-ghost btn-xs" (click)="onDriveConnect()">重新連結</button>
+          }
+        </div>
+        @if (templateStorageError() || templateSync.error()) {
+          <p class="text-error">{{ templateStorageError() || templateSync.error() }}</p>
+        }
+        @for (conflict of templateConflicts(); track conflict.resourceKind + conflict.entityId) {
+          <div class="rounded-lg border border-warning p-3 space-y-2">
+            <p class="font-medium">{{ conflict.resourceKind === 'customers' ? '常用客戶' : '常用項目' }}有不同版本，請選擇保留內容</p>
+            @for (branch of conflict.heads; track branch.revisionId) {
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="break-all">{{ templateBranchDescription(branch) }}</span>
+                <button type="button" class="btn btn-sm" [disabled]="resolvingTemplateConflict()" (click)="resolveTemplateConflict(conflict, branch.revisionId)">採用此版本</button>
+              </div>
+            }
+            <button type="button" class="btn btn-sm btn-outline" [disabled]="resolvingTemplateConflict()" (click)="resolveTemplateConflict(conflict, null, true)">保留所有未刪除版本為不同資料</button>
+          </div>
+        }
+      </div>
     }
     @if (hasLocalHistoryToSync()) {
       <button

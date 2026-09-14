@@ -4,6 +4,12 @@ import { environment } from '../../../../environments/environment';
 import type { CloudQuotationRevision } from './cloud-contracts';
 import { readCloudLifecycleMetadata } from './cloud-lifecycle-metadata';
 import {
+  MAX_TEMPLATE_OPERATION_BYTES,
+  canonicalTemplateOperation,
+  validateTemplateOperation,
+  type TemplateOperation,
+} from './template-sync-domain';
+import {
   DriveAuthorizationApiService,
   DriveAuthorizationBrokerError,
   type DriveAuthorizationBrokerFailure,
@@ -63,6 +69,7 @@ const DRIVE_SCOPE = 'openid email https://www.googleapis.com/auth/drive.appdata'
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const DRIVE_APP_PROPERTY = 'price-quotation';
+const TEMPLATE_DRIVE_APP_PROPERTY = 'price-quotation-templates';
 const MAX_REVISION_BYTES = 8 * 1024 * 1024;
 const MULTIPART_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const TOKEN_EARLY_REFRESH_MS = 30_000;
@@ -113,6 +120,12 @@ interface DriveFile {
   readonly name?: unknown;
 }
 
+interface TemplateOperationFile {
+  readonly fileId: string;
+}
+
+type AuthorizationGuard = () => void;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -121,6 +134,15 @@ function isIdentifier(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     /^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$/.test(value)
+  );
+}
+
+function isOwnerSub(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.length <= 512 &&
+    !/[\u0000-\u001F\u007F-\u009F]/.test(value)
   );
 }
 
@@ -267,6 +289,41 @@ function isSameOperation(
   );
 }
 
+function createTemplateMetadata(operation: TemplateOperation) {
+  return {
+    name: `常用資料操作 ${operation.operationId}.json`,
+    mimeType: 'application/json',
+    parents: ['appDataFolder'],
+    // Drive appProperties 的總長度有限；版本分支保留在不可變的操作內容中。
+    appProperties: {
+      app: TEMPLATE_DRIVE_APP_PROPERTY,
+      ownerSub: operation.ownerSub,
+      operationId: operation.operationId,
+      revisionId: operation.revisionId,
+    },
+  };
+}
+
+function parseTemplateOperationFile(
+  file: unknown,
+  ownerSub: string
+): TemplateOperationFile {
+  if (!isRecord(file) || !isIdentifier(file['id'])) {
+    throw new Error('Google Drive 常用資料清單含有無效檔案識別');
+  }
+  const properties = asStringRecord(file['appProperties']);
+  if (
+    !properties ||
+    properties['app'] !== TEMPLATE_DRIVE_APP_PROPERTY ||
+    properties['ownerSub'] !== ownerSub ||
+    !isIdentifier(properties['operationId']) ||
+    !isIdentifier(properties['revisionId'])
+  ) {
+    throw new Error('Google Drive 常用資料清單含有不符合 namespace 或擁有者的 metadata');
+  }
+  return { fileId: file['id'] };
+}
+
 /**
  * 瀏覽器直接透過 Drive REST API 存取 appDataFolder。短效 access token 只保留在
  * 記憶體；後端只保存加密的續期憑證，broker 完全不接收報價單內容。
@@ -406,6 +463,109 @@ export class DriveCloudApiService {
     return await this.readRevisionJson(response);
   }
 
+  /**
+   * 常用資料操作使用獨立的 Drive namespace，不能混入報價修訂清單。呼叫端可藉
+   * isCurrent 在同步停用或帳號切換後使已開始的工作失效。
+   */
+  async listTemplateOperations(
+    ownerSub: string,
+    pageToken?: string,
+    isCurrent: () => boolean = () => true
+  ): Promise<{ files: readonly TemplateOperationFile[]; nextPageToken: string | null }> {
+    const guard = this.createTemplateGuard(ownerSub, isCurrent);
+    guard();
+    const url = this.templateListUrl(ownerSub, pageToken);
+    guard();
+    const response = await this.fetchAuthorized(url, undefined, guard);
+    guard();
+    guard();
+    const body = await this.readJson(response);
+    guard();
+    if (!isRecord(body) || !Array.isArray(body['files'])) {
+      throw new DriveApiError(response.status, 'Google Drive 常用資料清單回應無效');
+    }
+    const nextPageToken = body['nextPageToken'];
+    if (nextPageToken !== undefined && typeof nextPageToken !== 'string') {
+      throw new DriveApiError(response.status, 'Google Drive 常用資料分頁游標無效');
+    }
+    guard();
+    const files = body['files'].map((file) =>
+      parseTemplateOperationFile(file, ownerSub)
+    );
+    guard();
+    return { files, nextPageToken: nextPageToken ?? null };
+  }
+
+  async getTemplateOperation(
+    ownerSub: string,
+    fileId: string,
+    isCurrent: () => boolean = () => true
+  ): Promise<TemplateOperation> {
+    if (!isIdentifier(fileId)) throw new Error('Google Drive 檔案識別無效');
+    const guard = this.createTemplateGuard(ownerSub, isCurrent);
+    guard();
+    const url = new URL(`${DRIVE_API_BASE}/files/${encodeURIComponent(fileId)}`);
+    url.searchParams.set('alt', 'media');
+    guard();
+    const response = await this.fetchAuthorized(url, undefined, guard);
+    guard();
+    guard();
+    const operation = await this.readTemplateOperationJson(response, ownerSub, guard);
+    guard();
+    return operation;
+  }
+
+  /**
+   * 先完整掃描相同 operationId 的所有分頁。這可處理上傳已成功但回條遺失時的
+   * 重送，也會把同 ID、不同內容視為資料完整性錯誤，而非靜默選一份。
+   */
+  async createTemplateOperation(
+    operation: TemplateOperation,
+    isCurrent: () => boolean = () => true
+  ): Promise<void> {
+    const guard = this.createTemplateGuard(operation.ownerSub, isCurrent);
+    guard();
+    guard();
+    const verified = await validateTemplateOperation(operation, operation.ownerSub);
+    guard();
+    guard();
+    const canonical = canonicalTemplateOperation(verified);
+    guard();
+    const existingFiles = await this.findTemplateFilesByOperation(
+      verified.ownerSub,
+      verified.operationId,
+      guard
+    );
+    guard();
+    for (const file of existingFiles) {
+      guard();
+      const existing = await this.getTemplateOperation(
+        verified.ownerSub,
+        file.fileId,
+        isCurrent
+      );
+      guard();
+      guard();
+      if (canonicalTemplateOperation(existing) !== canonical) {
+        throw new Error('Google Drive 已有相同常用資料操作識別，但內容不一致');
+      }
+      guard();
+    }
+    if (existingFiles.length > 0) return;
+
+    guard();
+    const content = JSON.stringify(verified);
+    if (new TextEncoder().encode(content).byteLength > MAX_TEMPLATE_OPERATION_BYTES) {
+      throw new Error('常用資料操作超過 64 KiB，無法儲存到 Google Drive');
+    }
+    const metadata = createTemplateMetadata(verified);
+    guard();
+    // POST 前再次檢查，避免停用同步或切換帳號後把舊操作送到新 session。
+    guard();
+    await this.multipartTemplateUpload(metadata, content, guard);
+    guard();
+  }
+
   async createOperation(
     revision: CloudQuotationRevision<unknown>
   ): Promise<DriveOperationResponse> {
@@ -440,6 +600,112 @@ export class DriveCloudApiService {
       throw new Error('Google Drive 未回傳新檔案識別');
     }
     return this.toOperationReceipt(file.id, revision, 'accepted');
+  }
+
+  private templateListUrl(
+    ownerSub: string,
+    pageToken?: string,
+    operationId?: string
+  ): URL {
+    const url = new URL(`${DRIVE_API_BASE}/files`);
+    url.searchParams.set('spaces', 'appDataFolder');
+    url.searchParams.set('pageSize', '100');
+    url.searchParams.set('fields', 'nextPageToken,files(id,appProperties)');
+    const clauses = [
+      'trashed = false',
+      `appProperties has { key='app' and value='${quoteDriveQueryValue(TEMPLATE_DRIVE_APP_PROPERTY)}' }`,
+      `appProperties has { key='ownerSub' and value='${quoteDriveQueryValue(ownerSub)}' }`,
+    ];
+    if (operationId) {
+      clauses.push(
+        `appProperties has { key='operationId' and value='${quoteDriveQueryValue(operationId)}' }`
+      );
+    }
+    url.searchParams.set('q', clauses.join(' and '));
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    return url;
+  }
+
+  private async findTemplateFilesByOperation(
+    ownerSub: string,
+    operationId: string,
+    guard: AuthorizationGuard
+  ): Promise<readonly TemplateOperationFile[]> {
+    if (!isIdentifier(operationId)) {
+      throw new Error('常用資料操作識別無效');
+    }
+    const files: TemplateOperationFile[] = [];
+    const seenTokens = new Set<string>();
+    let pageToken: string | undefined;
+    do {
+      guard();
+      const url = this.templateListUrl(ownerSub, pageToken, operationId);
+      guard();
+      const response = await this.fetchAuthorized(url, undefined, guard);
+      guard();
+      guard();
+      const body = await this.readJson(response);
+      guard();
+      if (!isRecord(body) || !Array.isArray(body['files'])) {
+        throw new DriveApiError(response.status, 'Google Drive 常用資料操作查詢回應無效');
+      }
+      const nextPageToken = body['nextPageToken'];
+      if (nextPageToken !== undefined && typeof nextPageToken !== 'string') {
+        throw new DriveApiError(response.status, 'Google Drive 常用資料分頁游標無效');
+      }
+      guard();
+      files.push(
+        ...body['files'].map((file) => parseTemplateOperationFile(file, ownerSub))
+      );
+      guard();
+      if (!nextPageToken) break;
+      guard();
+      if (seenTokens.has(nextPageToken)) {
+        throw new Error('Google Drive 常用資料分頁游標重複，已停止查詢');
+      }
+      seenTokens.add(nextPageToken);
+      pageToken = nextPageToken;
+      guard();
+    } while (true);
+    return files;
+  }
+
+  private async multipartTemplateUpload(
+    metadata: ReturnType<typeof createTemplateMetadata>,
+    content: string,
+    guard: AuthorizationGuard
+  ): Promise<void> {
+    guard();
+    const boundary = `price-quotation-templates-${crypto.randomUUID()}`;
+    const body = new Blob([
+      `--${boundary}\r\n`,
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+      JSON.stringify(metadata),
+      `\r\n--${boundary}\r\n`,
+      'Content-Type: application/json\r\n\r\n',
+      content,
+      `\r\n--${boundary}--`,
+    ]);
+    const url = new URL(DRIVE_UPLOAD_URL);
+    url.searchParams.set('uploadType', 'multipart');
+    url.searchParams.set('fields', 'id');
+    guard();
+    const response = await this.fetchAuthorized(
+      url,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body,
+      },
+      guard
+    );
+    guard();
+    guard();
+    const result = await this.readJson(response);
+    guard();
+    if (!isRecord(result) || !isIdentifier(result['id'])) {
+      throw new Error('Google Drive 未回傳新常用資料檔案識別');
+    }
   }
 
   private async findByOperation(
@@ -578,48 +844,70 @@ export class DriveCloudApiService {
 
   private async fetchAuthorized(
     input: RequestInfo | URL,
-    init?: RequestInit
+    init?: RequestInit,
+    guard?: AuthorizationGuard
   ): Promise<Response> {
+    guard?.();
     const authorizationVersion = this.authorizationVersion;
-    const token = await this.getAccessToken();
+    const token = await this.getAccessToken(guard);
+    guard?.();
     this.assertCurrentAuthorization(authorizationVersion);
     const headers = new Headers(init?.headers);
     headers.set('Authorization', `Bearer ${token}`);
+    guard?.();
     const response = await fetch(input, { ...init, headers });
+    guard?.();
     this.assertCurrentAuthorization(authorizationVersion);
     if (response.status === 401) {
+      guard?.();
       this.clearAccessToken();
-      const refreshedToken = await this.getAccessToken();
+      guard?.();
+      const refreshedToken = await this.getAccessToken(guard);
+      guard?.();
       this.assertCurrentAuthorization(authorizationVersion);
       const retryHeaders = new Headers(init?.headers);
       retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+      guard?.();
       const retry = await fetch(input, { ...init, headers: retryHeaders });
+      guard?.();
       this.assertCurrentAuthorization(authorizationVersion);
       if (retry.status === 401) {
+        guard?.();
         this.clearConnection();
         throw new DriveAuthorizationRequiredError();
       }
       if (!retry.ok) {
+        guard?.();
+        const message = await this.readApiErrorMessage(retry, guard);
+        guard?.();
         throw new DriveApiError(
           retry.status,
-          await this.readApiErrorMessage(retry)
+          message
         );
       }
       return retry;
     }
     if (!response.ok) {
+      guard?.();
+      const message = await this.readApiErrorMessage(response, guard);
+      guard?.();
       throw new DriveApiError(
         response.status,
-        await this.readApiErrorMessage(response)
+        message
       );
     }
     return response;
   }
 
-  private async readApiErrorMessage(response: Response): Promise<string> {
+  private async readApiErrorMessage(
+    response: Response,
+    guard?: AuthorizationGuard
+  ): Promise<string> {
     const prefix = `Google Drive 請求失敗（HTTP ${response.status}）`;
     try {
+      guard?.();
       const body = await response.json();
+      guard?.();
       if (
         isRecord(body) &&
         isRecord(body['error']) &&
@@ -633,12 +921,16 @@ export class DriveCloudApiService {
     return prefix;
   }
 
-  private async getAccessToken(): Promise<string> {
+  private async getAccessToken(guard?: AuthorizationGuard): Promise<string> {
+    guard?.();
     if (this.hasValidAccessToken()) {
       return this.accessToken!;
     }
     this.clearAccessToken();
-    return this.refreshAccessToken();
+    guard?.();
+    const token = await this.refreshAccessToken();
+    guard?.();
+    return token;
   }
 
   private refreshAccessToken(): Promise<string> {
@@ -825,6 +1117,25 @@ export class DriveCloudApiService {
     this.clearAccessToken();
   }
 
+  private createTemplateGuard(
+    ownerSub: string,
+    isCurrent: () => boolean
+  ): AuthorizationGuard {
+    if (!isOwnerSub(ownerSub)) {
+      throw new DriveAuthorizationRequiredError('常用資料擁有者識別無效');
+    }
+    const authorizationVersion = this.authorizationVersion;
+    return () => {
+      this.assertCurrentAuthorization(authorizationVersion);
+      if (this.currentOwnerId() !== ownerSub) {
+        throw new DriveAuthorizationRequiredError('會員帳號已變更');
+      }
+      if (!isCurrent()) {
+        throw new DriveAuthorizationRequiredError('常用資料同步已停止');
+      }
+    };
+  }
+
   private currentOwnerId(): string {
     const ownerId = this.auth.userId();
     if (!ownerId) {
@@ -941,5 +1252,36 @@ export class DriveCloudApiService {
         'Google Drive 報價單不是有效 JSON'
       );
     }
+  }
+
+  private async readTemplateOperationJson(
+    response: Response,
+    ownerSub: string,
+    guard: AuthorizationGuard
+  ): Promise<TemplateOperation> {
+    guard();
+    const contentLength = Number(response.headers.get('content-length'));
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAX_TEMPLATE_OPERATION_BYTES
+    ) {
+      throw new Error('Google Drive 常用資料操作超過 64 KiB，無法讀取');
+    }
+    guard();
+    const text = await response.text();
+    guard();
+    if (new TextEncoder().encode(text).byteLength > MAX_TEMPLATE_OPERATION_BYTES) {
+      throw new Error('Google Drive 常用資料操作超過 64 KiB，無法讀取');
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new DriveApiError(response.status, 'Google Drive 常用資料操作不是有效 JSON');
+    }
+    guard();
+    const operation = await validateTemplateOperation(parsed, ownerSub);
+    guard();
+    return operation;
   }
 }

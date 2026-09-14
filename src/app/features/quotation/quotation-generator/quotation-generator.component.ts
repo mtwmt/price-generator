@@ -13,6 +13,7 @@ import {
   signal,
   computed,
   viewChild,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
@@ -51,6 +52,8 @@ import {
   quotationStatusLabel,
 } from '@app/features/quotation/utils/quotation-lifecycle';
 import { CloudQuotationSyncService, CloudSaveIntent } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
+import { CloudTemplateSyncService } from '@app/features/quotation/cloud/cloud-template-sync.service';
+import { TemplateEntity, TemplateOperation } from '@app/features/quotation/cloud/template-sync-domain';
 import { StorageRouteCoordinator } from './storage-route-coordinator';
 import { restoreRecoveryFileForCurrentScope } from './recovery-restore';
 import { CloudSyncStatusComponent } from '@app/features/quotation/cloud/cloud-sync-status/cloud-sync-status.component';
@@ -149,6 +152,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private imageUploadService = inject(ImageUploadService);
   private datePickerService = inject(DatePickerService);
   private cloudQuotationSync = inject(CloudQuotationSyncService);
+  readonly templateSync = inject(CloudTemplateSyncService);
   private authService = inject(AuthService);
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
@@ -177,7 +181,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       this.detachDocumentIdentity();
     }
     this.activeUserId = nextUserId;
-    this.quotationTemplates.setScope(nextUserId ? `user:${nextUserId}` : 'visitor');
+    untracked(() => { void this.quotationTemplates.setScope(nextUserId ? `user:${nextUserId}` : 'visitor').catch(() => undefined); });
     this.clearTemplateSelections();
     this.refreshTemplates();
     if (!user || !userData) {
@@ -198,6 +202,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private observedRepository: boolean | undefined;
   private repositoryEffect = effect(() => {
     this.reconcileRepositoryIdentity();
+  });
+  private templateConnectionEffect = effect(() => {
+    const owner = this.authService.userId();
+    const enabled = this.cloudQuotationSync.isSyncEnabled() && this.cloudQuotationSync.isEligible();
+    const connected = this.cloudQuotationSync.isCloudStorage();
+    untracked(() => this.templateSync.configure(owner, enabled, connected));
+  });
+  private templateChangesEffect = effect(() => {
+    this.quotationTemplates.revision();
+    untracked(() => this.templateSync.notifyChanged());
   });
 
   /** Commit identity changes only when the actual logical repository changed. */
@@ -268,14 +282,27 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   readonly syncStatus = this.cloudQuotationSync.syncStatus;
   readonly lastSyncedAt = this.cloudQuotationSync.lastSyncedAt;
   readonly syncError = this.cloudQuotationSync.syncError;
+  readonly templateStorageError = this.quotationTemplates.error;
+  readonly resolvingTemplateConflict = signal(false);
+  readonly templateConflicts = computed(() => {
+    this.quotationTemplates.revision();
+    return this.quotationTemplates.getConflicts();
+  });
+  readonly templateSyncLabel = computed(() => ({
+    local: '已存於本機', waiting: '已存於本機，等待同步', syncing: '同步中',
+    synced: '已同步', error: '同步失敗，保留本機資料與待送紀錄',
+    reconnect: '需重新連結 Google Drive', conflict: '有衝突，請選擇保留內容',
+  }[this.templateSync.status()]));
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
   customerTemplates = computed(() => {
+    this.quotationTemplates.revision();
     this.templateRevision();
     return this.quotationTemplates.getCustomers(this.templateSearch());
   });
   serviceItemTemplates = computed(() => {
+    this.quotationTemplates.revision();
     this.templateRevision();
     return this.quotationTemplates.getServiceItems(this.templateSearch());
   });
@@ -754,14 +781,17 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   async deleteSelectedCustomerTemplate(): Promise<void> {
     const template = this.selectedCustomerTemplate();
     if (!template) return;
+    const scope = this.localStorageScope();
+    const parents = this.quotationTemplates.baseFor(template);
     const confirmed = await this.confirmDialog.confirm({
       title: '確認刪除常用客戶',
       message: `確定要刪除常用客戶「${template.name}」嗎？此動作無法復原。`,
       confirmText: '刪除',
       confirmStyle: 'error',
     });
-    if (!confirmed) return;
-    this.deleteCustomerTemplate(template.id);
+    if (!confirmed || scope !== this.localStorageScope()) return;
+    if (!await this.quotationTemplates.deleteCustomer(template.id, parents) || scope !== this.localStorageScope()) return;
+    this.refreshTemplates();
     this.selectedCustomerTemplateId.set('');
     this.toastService.success('已刪除常用客戶');
   }
@@ -774,21 +804,25 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   async deleteSelectedServiceItemTemplate(): Promise<void> {
     const template = this.selectedServiceItemTemplate();
     if (!template) return;
+    const scope = this.localStorageScope();
+    const parents = this.quotationTemplates.baseFor(template);
     const confirmed = await this.confirmDialog.confirm({
       title: '確認刪除常用服務項目',
       message: `確定要刪除常用服務項目「${template.name}」嗎？此動作無法復原。`,
       confirmText: '刪除',
       confirmStyle: 'error',
     });
-    if (!confirmed) return;
-    this.deleteServiceItemTemplate(template.id);
+    if (!confirmed || scope !== this.localStorageScope()) return;
+    if (!await this.quotationTemplates.deleteServiceItem(template.id, parents) || scope !== this.localStorageScope()) return;
+    this.refreshTemplates();
     this.selectedServiceItemTemplateId.set('');
     this.toastService.success('已刪除常用服務項目');
   }
 
-  saveCurrentCustomerTemplate(): void {
+  async saveCurrentCustomerTemplate(): Promise<void> {
+    const scope = this.localStorageScope();
     const value = this.form.getRawValue();
-    if (!this.quotationTemplates.saveCustomer({
+    if (!await this.quotationTemplates.saveCustomer({
       name: value.customerCompany || '',
       customerCompany: value.customerCompany || '',
       customerTaxID: value.customerTaxID || undefined,
@@ -798,11 +832,12 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       customerEmail: value.customerEmail || undefined,
       customerAddress: value.customerAddress || undefined,
     })) {
-      this.toastService.error('請先填寫客戶名稱，才能儲存為常用客戶');
+      if (scope === this.localStorageScope()) this.toastService.error(this.quotationTemplates.error() || '請先填寫客戶名稱，才能儲存為常用客戶');
       return;
     }
+    if (scope !== this.localStorageScope()) return;
     this.refreshTemplates();
-    this.toastService.success('已儲存常用客戶（只在目前資料區）');
+    this.toastService.success('已儲存常用客戶於本機' + (this.cloudSyncEnabled() ? '，等待同步' : ''));
   }
 
   applyCustomerTemplate(template: CustomerTemplate): void {
@@ -840,39 +875,55 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.form.markAsDirty();
   }
 
-  saveServiceItemTemplate(index: number): void {
+  async saveServiceItemTemplate(index: number): Promise<void> {
+    const scope = this.localStorageScope();
     const value = this.serviceItems.at(index)?.getRawValue();
-    if (!value || !this.quotationTemplates.saveServiceItem({
+    if (!value || !await this.quotationTemplates.saveServiceItem({
       name: value.item || '', item: value.item || '', price: Number(value.price),
       unit: value.unit || undefined, category: value.category || undefined,
     })) {
-      this.toastService.error('請填寫有效的項目名稱與非負單價');
+      if (scope === this.localStorageScope()) this.toastService.error(this.quotationTemplates.error() || '請填寫有效的項目名稱與非負單價');
       return;
     }
+    if (scope !== this.localStorageScope()) return;
     this.refreshTemplates();
-    this.toastService.success('已儲存常用服務項目');
+    this.toastService.success('已儲存常用服務項目於本機' + (this.cloudSyncEnabled() ? '，等待同步' : ''));
   }
 
-  renameCustomerTemplate(template: CustomerTemplate): void {
+  async renameCustomerTemplate(template: CustomerTemplate): Promise<void> {
     const name = window.prompt('常用客戶名稱', template.name)?.trim();
     if (!name) return;
-    this.quotationTemplates.saveCustomer({ ...template, name });
-    this.refreshTemplates();
+    if (await this.quotationTemplates.saveCustomer({ ...template, name }, this.quotationTemplates.baseFor(template))) this.refreshTemplates();
   }
 
-  deleteCustomerTemplate(id: string): void {
-    if (this.quotationTemplates.deleteCustomer(id)) this.refreshTemplates();
+  async deleteCustomerTemplate(id: string): Promise<void> {
+    if (await this.quotationTemplates.deleteCustomer(id)) this.refreshTemplates();
   }
 
-  renameServiceItemTemplate(template: ServiceItemTemplate): void {
+  async renameServiceItemTemplate(template: ServiceItemTemplate): Promise<void> {
     const name = window.prompt('常用服務項目名稱', template.name)?.trim();
     if (!name) return;
-    this.quotationTemplates.saveServiceItem({ ...template, name });
-    this.refreshTemplates();
+    if (await this.quotationTemplates.saveServiceItem({ ...template, name }, this.quotationTemplates.baseFor(template))) this.refreshTemplates();
   }
 
-  deleteServiceItemTemplate(id: string): void {
-    if (this.quotationTemplates.deleteServiceItem(id)) this.refreshTemplates();
+  async deleteServiceItemTemplate(id: string): Promise<void> {
+    if (await this.quotationTemplates.deleteServiceItem(id)) this.refreshTemplates();
+  }
+
+  async resolveTemplateConflict(entity: TemplateEntity, revisionId: string | null, keepBoth = false): Promise<void> {
+    if (this.resolvingTemplateConflict()) return;
+    this.resolvingTemplateConflict.set(true);
+    try {
+      if (await this.quotationTemplates.resolveConflict(entity.resourceKind, entity.entityId, revisionId, keepBoth, entity.heads.map(head => head.revisionId))) this.refreshTemplates();
+    } finally {
+      this.resolvingTemplateConflict.set(false);
+    }
+  }
+
+  templateBranchDescription(operation: TemplateOperation): string {
+    if (!operation.value) return '刪除此筆常用資料';
+    const { id: _id, ...content } = operation.value;
+    return Object.values(content).filter(value => value !== undefined && value !== '').join(' · ');
   }
 
   onCreateNextBusinessVersion(): void {

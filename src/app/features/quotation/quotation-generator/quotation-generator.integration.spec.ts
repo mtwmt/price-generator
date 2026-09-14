@@ -5,7 +5,7 @@ jest.mock('@angular/core', () => ({
   Injectable: () => (target: unknown) => target, Component: () => (target: unknown) => target,
   ChangeDetectionStrategy: { OnPush: 'OnPush' },
   Renderer2: class {}, DestroyRef: class {}, ChangeDetectorRef: class {}, DOCUMENT: 'document',
-  computed: (fn: () => unknown) => fn, viewChild: () => () => undefined,
+  computed: (fn: () => unknown) => fn, viewChild: () => () => undefined, untracked: <T>(fn: () => T) => fn(),
   effect: (fn: () => void) => { effects.push(fn); },
   inject: (token: unknown) => dependencies.get(token),
   signal: <T>(initial: T) => {
@@ -41,6 +41,7 @@ jest.mock('../cloud/drive-cloud-api.service', () => ({
   DriveServiceUnavailableError: class extends Error {},
   DriveOperationNotSentError: class extends Error { constructor(readonly originalError: unknown) { super('not sent'); } },
 }));
+jest.mock('../cloud/cloud-template-sync.service', () => ({ CloudTemplateSyncService: class {} }));
 
 import { FormGroup } from '@angular/forms';
 import { AuthService } from '@app/core/services/auth.service';
@@ -53,6 +54,7 @@ import { QuotationStorageService } from '../services/quotation-storage.service';
 import { QuotationTemplatesService } from '../services/quotation-templates.service';
 import { QuotationFormService } from '../services/quotation-form.service';
 import { CloudQuotationSyncService } from '../cloud/cloud-quotation-sync.service';
+import { CloudTemplateSyncService } from '../cloud/cloud-template-sync.service';
 import { DriveCloudApiService, DriveAuthorizationRequiredError, DriveOperationNotSentError } from '../cloud/drive-cloud-api.service';
 import { filterQuotationHistory } from './quotation-history/quotation-history.utils';
 import { quotationStatusLabel } from '../utils/quotation-lifecycle';
@@ -143,12 +145,19 @@ async function harness(cloud = true, sharedFiles?: Map<string, CloudQuotationRev
   dependencies.set(DriveCloudApiService, api);
   const sync = new CloudQuotationSyncService();
   dependencies.set(CloudQuotationSyncService, sync);
+  let templateStatus = 'synced';
+  const templateSync = {
+    configure: jest.fn(), notifyChanged: jest.fn(), retry: jest.fn(async () => undefined),
+    status: () => templateStatus, error: () => templateStatus === 'error' ? '常用資料同步失敗' : null,
+  };
+  dependencies.set(CloudTemplateSyncService, templateSync);
   const component = new QuotationGeneratorComponent();
   const form = new FormBoundary(); component.form = form as unknown as FormGroup;
   effects.forEach((fn) => fn());
   await component.onCloudSyncToggle(cloud);
   effects.forEach((fn) => fn());
-  return { component, form, sync, storage, toast, api, files, confirm, auth, accepted: accepted.promise,
+  return { component, form, sync, storage, toast, api, files, confirm, auth, templateSync,
+    setTemplateStatus: (next: string) => { templateStatus = next; }, accepted: accepted.promise,
     setRole: async (next: string) => {
       role = next; effects.forEach((fn) => fn());
       await new Promise<void>((resolve) => setImmediate(resolve)); effects.forEach((fn) => fn());
@@ -963,5 +972,15 @@ describe('QuotationGeneratorComponent submission lifecycle integration', () => {
     expect(history).toHaveLength(2);
     expect(history.find((entry) => entry.quotationId === originalId)?.customerCompany).toBe('B existing record');
     expect(h.storage.getHistory('quotation:user:owner-A')).toHaveLength(1);
+  });
+
+  it('報價雲端保存成功時，常用資料同步失敗只反映自己的狀態', async () => {
+    const h = await harness();
+    h.setTemplateStatus('error');
+    await h.component.onSubmit();
+    expect(h.component.savedBusinessVersion()?.customerCompany).toBe('合成客戶');
+    expect(h.component.syncStatus()).toBe('synced');
+    expect(h.component.templateSyncLabel()).toContain('同步失敗');
+    expect(h.component.templateSync.error()).toBe('常用資料同步失敗');
   });
 });
