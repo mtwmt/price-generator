@@ -46,12 +46,14 @@ Thumbs.db
 # 制度檔靠 Synology Drive 同步與同目錄 *.bak-* 備份，不進 git
 .agent/
 .codex/
+docs/
 
 # Environment files
 src/environments/environment.ts
 
 /gas
-/docs/
+# Generated verification artifacts stay local; maintained Markdown under docs is versioned.
+/docs/verification/
 
 proxy.conf.json
 AGENTS.md

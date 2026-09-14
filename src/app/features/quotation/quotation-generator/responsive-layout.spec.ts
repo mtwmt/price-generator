@@ -101,7 +101,7 @@ describe('報價單窄螢幕版面結構', () => {
     expect(template).toContain(
       'class="flex min-w-0 flex-wrap items-center gap-3 border-b border-base-200 pb-3"'
     );
-    expect(template).toContain(
+    expect(template.replace(/\s+/g, ' ')).toContain(
       'hasHistory() || recoveryInfo()?.writeProtected || recoveryInfo()?.quarantinedRecordCount || legacyCandidates().length'
     );
     expect(template).toContain(
@@ -113,17 +113,29 @@ describe('報價單窄螢幕版面結構', () => {
 
   it('常用客戶與服務項目在手機可換行，並保留搜尋、套用、刪除操作入口', () => {
     const template = readTemplate('./quotation-generator.component.html');
+    const serviceItemsTemplate = readTemplate(
+      './service-items-section/service-items-section.component.html'
+    );
     const component = readTemplate('./quotation-generator.component.ts');
+    const searchableSelect = readTemplate(
+      '../../../shared/components/searchable-select/searchable-select.component.ts'
+    );
 
-    expect(template).toContain('placeholder="搜尋常用資料"');
-    expect(template).toContain('class="grid gap-3 md:grid-cols-2"');
-    expect(template).toContain('id="customer-template-select"');
-    expect(template).toContain('id="service-template-select"');
+    expect(template).toContain('searchPlaceholder="搜尋常用客戶..."');
+    expect(template).toContain('selectId="customer-template-select"');
     expect(template).toContain('(click)="applySelectedCustomerTemplate()"');
-    expect(template).toContain('(click)="applySelectedServiceItemTemplate()"');
     expect(template).toContain('aria-label="刪除選取的常用客戶"');
-    expect(template).toContain('aria-label="刪除選取的常用服務項目"');
+    expect(template).toContain(
+      'class="flex w-full min-w-0 items-center gap-2 sm:w-auto"'
+    );
     expect(component).toContain("window.confirm('套用常用客戶會取代目前客戶資訊，是否繼續？')");
+
+    expect(serviceItemsTemplate).toContain('selectId="service-template-select"');
+    expect(serviceItemsTemplate).toContain('(click)="onApplyServiceTemplate()"');
+    expect(serviceItemsTemplate).toContain('aria-label="刪除選取的常用服務項目"');
+    expect(serviceItemsTemplate).toContain('class="flex flex-wrap items-center gap-2"');
+
+    expect(searchableSelect).toContain('type="search"');
   });
 
   it('雲端同步狀態本身允許縮小與換行', () => {
@@ -180,7 +192,7 @@ describe('報價單窄螢幕版面結構', () => {
       'utf8'
     );
 
-    expect(template).toContain('hasHistory() || recoveryInfo()?.writeProtected');
+    expect(template.replace(/\s+/g, ' ')).toContain('hasHistory() || recoveryInfo()?.writeProtected');
     expect(template).not.toContain('historyEnabled()');
     expect(component).toContain('legacyImportEnabled');
     expect(component).toContain('const legacy = this.legacyImportEnabled()');

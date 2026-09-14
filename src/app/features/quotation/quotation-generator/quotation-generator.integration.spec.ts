@@ -27,6 +27,7 @@ jest.mock('./quoter-info-section/quoter-info-section.component', () => ({ Quoter
 jest.mock('./service-items-section/service-items-section.component', () => ({ ServiceItemsSection: class {} }));
 jest.mock('./pricing-section/pricing-section.component', () => ({ PricingSection: class {} }));
 jest.mock('./other-info-section/other-info-section.component', () => ({ OtherInfoSection: class {} }));
+jest.mock('@app/shared/components/searchable-select/searchable-select.component', () => ({ SearchableSelectComponent: class {} }));
 jest.mock('@app/core/services/auth.service', () => ({ AuthService: class {} }));
 jest.mock('@app/core/services/analytics.service', () => ({ AnalyticsService: class {} }));
 jest.mock('@app/shared/services/toast.service', () => ({ ToastService: class {} }));

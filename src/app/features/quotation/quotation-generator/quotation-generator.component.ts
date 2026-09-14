@@ -61,7 +61,9 @@ import { ServiceItemsSection } from './service-items-section/service-items-secti
 import { PricingSection } from './pricing-section/pricing-section.component';
 import { OtherInfoSection } from './other-info-section/other-info-section.component';
 import { QuotationInfoSection } from './quotation-info-section/quotation-info-section.component';
+import { SearchableSelectComponent } from '@app/shared/components/searchable-select/searchable-select.component';
 import {
+  LucideBookmarkPlus,
   LucideCheck,
   LucideCloudUpload,
   LucideCopy,
@@ -69,6 +71,8 @@ import {
   LucideFileText,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
+  LucidePencil,
+  LucideTrash2,
 } from '@lucide/angular';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
@@ -115,6 +119,8 @@ interface QuotationSubmission {
     PricingSection,
     OtherInfoSection,
     CloudSyncStatusComponent,
+    SearchableSelectComponent,
+    LucideBookmarkPlus,
     LucideCheck,
     LucideCloudUpload,
     LucideCopy,
@@ -122,6 +128,8 @@ interface QuotationSubmission {
     LucideFileText,
     LucidePanelLeftClose,
     LucidePanelLeftOpen,
+    LucidePencil,
+    LucideTrash2,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './quotation-generator.component.html',
@@ -670,10 +678,25 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.createServiceItem();
   }
 
-  onRemoveField(index: number) {
-    if (this.serviceItems.value.length > 1) {
-      this.serviceItems.removeAt(index);
+  async onRemoveField(index: number): Promise<void> {
+    if (this.serviceItems.value.length <= 1) return;
+    const itemValue = this.serviceItems.at(index)?.value;
+    const hasContent =
+      itemValue && (itemValue.item?.trim() || itemValue.price > 0);
+    if (hasContent) {
+      const itemName = itemValue.item?.trim()
+        ? `「${itemValue.item.trim()}」`
+        : '此項目';
+      const confirmed = await this.confirmDialog.confirm({
+        title: '確認刪除服務項目',
+        message: `確定要從報價單中刪除${itemName}嗎？`,
+        confirmText: '刪除',
+        confirmStyle: 'error',
+      });
+      if (!confirmed) return;
     }
+    this.serviceItems.removeAt(index);
+    this.form.markAsDirty();
   }
 
   /**
@@ -701,8 +724,16 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.selectedCustomerTemplateId.set(id);
   }
 
+  onCustomerTemplateSelectedById(id: string): void {
+    this.selectedCustomerTemplateId.set(id);
+  }
+
   onServiceItemTemplateSelected(event: Event): void {
     this.selectedServiceItemTemplateId.set((event.target as HTMLSelectElement).value);
+  }
+
+  onServiceItemTemplateSelectedById(id: string): void {
+    this.selectedServiceItemTemplateId.set(id);
   }
 
   applySelectedCustomerTemplate(): void {
@@ -720,11 +751,19 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     if (template) this.renameCustomerTemplate(template);
   }
 
-  deleteSelectedCustomerTemplate(): void {
+  async deleteSelectedCustomerTemplate(): Promise<void> {
     const template = this.selectedCustomerTemplate();
     if (!template) return;
+    const confirmed = await this.confirmDialog.confirm({
+      title: '確認刪除常用客戶',
+      message: `確定要刪除常用客戶「${template.name}」嗎？此動作無法復原。`,
+      confirmText: '刪除',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
     this.deleteCustomerTemplate(template.id);
     this.selectedCustomerTemplateId.set('');
+    this.toastService.success('已刪除常用客戶');
   }
 
   renameSelectedServiceItemTemplate(): void {
@@ -732,11 +771,19 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     if (template) this.renameServiceItemTemplate(template);
   }
 
-  deleteSelectedServiceItemTemplate(): void {
+  async deleteSelectedServiceItemTemplate(): Promise<void> {
     const template = this.selectedServiceItemTemplate();
     if (!template) return;
+    const confirmed = await this.confirmDialog.confirm({
+      title: '確認刪除常用服務項目',
+      message: `確定要刪除常用服務項目「${template.name}」嗎？此動作無法復原。`,
+      confirmText: '刪除',
+      confirmStyle: 'error',
+    });
+    if (!confirmed) return;
     this.deleteServiceItemTemplate(template.id);
     this.selectedServiceItemTemplateId.set('');
+    this.toastService.success('已刪除常用服務項目');
   }
 
   saveCurrentCustomerTemplate(): void {

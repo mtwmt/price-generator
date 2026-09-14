@@ -166,144 +166,80 @@
               基本資料
             </h2>
           </div>
+
           <!-- 客戶基本資料 -->
           <app-customer-info-section
             [form]="form"
             [customerLogo]="customerLogo()"
             (logoChange)="onLogoChange($event)"
             (logoRemove)="removeLogo()"
-          />
-          @if (showAdvancedFeatures()) {
-            <div class="rounded-sm bg-base-200 p-3 text-sm">
+          >
+            <!-- 常用客戶操作群（置於標題列右側） -->
+            @if (showAdvancedFeatures()) {
               <div
-                class="mb-2 flex flex-wrap items-center justify-between gap-2"
+                header-actions
+                class="flex w-full min-w-0 items-center gap-2 sm:w-auto"
               >
-                <strong>常用客戶與服務項目</strong>
+                <!-- 常用客戶膠囊群組（小版滿版伸展，大版自適應） -->
+                <div
+                  class="join items-stretch shadow-2xs flex-1 min-w-0 sm:flex-initial"
+                >
+                  <app-searchable-select
+                    selectId="customer-template-select"
+                    ariaLabel="常用客戶"
+                    placeholder="選擇常用客戶"
+                    searchPlaceholder="搜尋常用客戶..."
+                    [joinItem]="true"
+                    class="flex-1 min-w-0 sm:w-44 sm:flex-initial"
+                    [options]="customerTemplates()"
+                    [selectedId]="selectedCustomerTemplateId()"
+                    (selectionChange)="onCustomerTemplateSelectedById($event)"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary join-item shrink-0"
+                    aria-label="套用選取的常用客戶"
+                    [disabled]="!selectedCustomerTemplate()"
+                    (click)="applySelectedCustomerTemplate()"
+                  >
+                    套用
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm bg-base-100 hover:bg-base-200 border-base-300 join-item btn-square text-base-content/70 disabled:bg-base-200 disabled:text-base-content/30 disabled:border-base-300 shrink-0"
+                    aria-label="重新命名選取的常用客戶"
+                    title="重新命名"
+                    [disabled]="!selectedCustomerTemplate()"
+                    (click)="renameSelectedCustomerTemplate()"
+                  >
+                    <svg lucidePencil [size]="14" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm bg-base-100 hover:bg-error/10 hover:border-error border-base-300 join-item btn-square text-error/80 hover:text-error disabled:bg-base-200 disabled:text-base-content/30 disabled:border-base-300 shrink-0"
+                    aria-label="刪除選取的常用客戶"
+                    title="刪除"
+                    [disabled]="!selectedCustomerTemplate()"
+                    (click)="deleteSelectedCustomerTemplate()"
+                  >
+                    <svg lucideTrash2 [size]="14" />
+                  </button>
+                </div>
+
+                <!-- 儲存目前客戶按鈕（獨立於膠囊旁，清楚區別操作與建立） -->
                 <button
                   type="button"
-                  class="btn btn-xs"
+                  class="btn btn-sm btn-outline border-base-300 bg-base-100 hover:bg-base-200 hover:border-base-content/30 text-xs text-base-content/80 gap-1.5 shrink-0 shadow-2xs"
                   (click)="saveCurrentCustomerTemplate()"
+                  title="將目前填寫的客戶資料儲存為常用客戶"
                 >
-                  儲存目前客戶
+                  <svg lucideBookmarkPlus [size]="14" class="text-primary shrink-0" />
+                  <span class="hidden sm:inline">儲存目前客戶</span>
+                  <span class="sm:hidden">儲存</span>
                 </button>
               </div>
-              <label class="input input-sm mb-2 flex w-full items-center">
-                <input
-                  type="search"
-                  class="grow"
-                  placeholder="搜尋常用資料"
-                  [value]="templateSearch()"
-                  (input)="onTemplateSearch($event)"
-                />
-              </label>
-              <div class="grid gap-3 md:grid-cols-2">
-                <div class="min-w-0">
-                  <label class="label py-0" for="customer-template-select"
-                    ><span class="label-text font-medium">常用客戶</span></label
-                  >
-                  <div class="flex gap-1">
-                    <select
-                      id="customer-template-select"
-                      class="select select-sm min-w-0 flex-1"
-                      aria-label="常用客戶"
-                      [value]="selectedCustomerTemplateId()"
-                      (change)="onCustomerTemplateSelected($event)"
-                    >
-                      <option value="">選擇常用客戶</option>
-                      @for (
-                        template of customerTemplates();
-                        track template.id
-                      ) {
-                        <option [value]="template.id">
-                          {{ template.name }}
-                        </option>
-                      }
-                    </select>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary"
-                      aria-label="套用選取的常用客戶"
-                      [disabled]="!selectedCustomerTemplate()"
-                      (click)="applySelectedCustomerTemplate()"
-                    >
-                      套用
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost"
-                      aria-label="重新命名選取的常用客戶"
-                      [disabled]="!selectedCustomerTemplate()"
-                      (click)="renameSelectedCustomerTemplate()"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost text-error"
-                      aria-label="刪除選取的常用客戶"
-                      [disabled]="!selectedCustomerTemplate()"
-                      (click)="deleteSelectedCustomerTemplate()"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <div class="min-w-0">
-                  <label class="label py-0" for="service-template-select"
-                    ><span class="label-text font-medium"
-                      >常用服務項目</span
-                    ></label
-                  >
-                  <div class="flex gap-1">
-                    <select
-                      id="service-template-select"
-                      class="select select-sm min-w-0 flex-1"
-                      aria-label="常用服務項目"
-                      [value]="selectedServiceItemTemplateId()"
-                      (change)="onServiceItemTemplateSelected($event)"
-                    >
-                      <option value="">選擇常用服務項目</option>
-                      @for (
-                        template of serviceItemTemplates();
-                        track template.id
-                      ) {
-                        <option [value]="template.id">
-                          {{ template.name }}
-                        </option>
-                      }
-                    </select>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary"
-                      aria-label="加入選取的常用服務項目"
-                      [disabled]="!selectedServiceItemTemplate()"
-                      (click)="applySelectedServiceItemTemplate()"
-                    >
-                      加入
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost"
-                      aria-label="重新命名選取的常用服務項目"
-                      [disabled]="!selectedServiceItemTemplate()"
-                      (click)="renameSelectedServiceItemTemplate()"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost text-error"
-                      aria-label="刪除選取的常用服務項目"
-                      [disabled]="!selectedServiceItemTemplate()"
-                      (click)="deleteSelectedServiceItemTemplate()"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
+            }
+          </app-customer-info-section>
 
           <!-- 報價人員基本資料 -->
           <app-quoter-info-section
@@ -322,6 +258,12 @@
       <app-service-items-section
         [form]="form"
         [advancedMode]="showAdvancedFeatures()"
+        [serviceItemTemplates]="serviceItemTemplates()"
+        [selectedServiceItemTemplateId]="selectedServiceItemTemplateId()"
+        (selectServiceItemTemplate)="onServiceItemTemplateSelectedById($event)"
+        (applyServiceItemTemplate)="applySelectedServiceItemTemplate()"
+        (renameServiceItemTemplate)="renameSelectedServiceItemTemplate()"
+        (deleteServiceItemTemplate)="deleteSelectedServiceItemTemplate()"
         (addField)="onAddField()"
         (removeField)="onRemoveField($event)"
         (copyField)="onCopyField($event)"
