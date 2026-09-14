@@ -116,7 +116,8 @@ async function harness(cloud = true, sharedFiles?: Map<string, CloudQuotationRev
   dependencies.set(StorageService, new StorageService());
   const storage = new QuotationStorageService();
   dependencies.set(QuotationStorageService, storage);
-  dependencies.set(QuotationTemplatesService, new QuotationTemplatesService());
+  const templates = new QuotationTemplatesService();
+  dependencies.set(QuotationTemplatesService, templates);
   const files = sharedFiles ?? new Map<string, CloudQuotationRevision<QuotationData>>();
   const accepted = deferred<void>();
   let loseNextResponse = false;
@@ -147,7 +148,7 @@ async function harness(cloud = true, sharedFiles?: Map<string, CloudQuotationRev
   dependencies.set(CloudQuotationSyncService, sync);
   let templateStatus = 'synced';
   const templateSync = {
-    configure: jest.fn(), notifyChanged: jest.fn(), retry: jest.fn(async () => undefined),
+    configure: jest.fn(), notifyChanged: jest.fn(), retry: jest.fn(async () => undefined), retryAll: jest.fn(async () => undefined),
     status: () => templateStatus, error: () => templateStatus === 'error' ? '常用資料同步失敗' : null,
   };
   dependencies.set(CloudTemplateSyncService, templateSync);
@@ -156,7 +157,7 @@ async function harness(cloud = true, sharedFiles?: Map<string, CloudQuotationRev
   effects.forEach((fn) => fn());
   await component.onCloudSyncToggle(cloud);
   effects.forEach((fn) => fn());
-  return { component, form, sync, storage, toast, api, files, confirm, auth, templateSync,
+  return { component, form, sync, storage, templates, toast, api, files, confirm, auth, templateSync,
     setTemplateStatus: (next: string) => { templateStatus = next; }, accepted: accepted.promise,
     setRole: async (next: string) => {
       role = next; effects.forEach((fn) => fn());
@@ -974,13 +975,75 @@ describe('QuotationGeneratorComponent submission lifecycle integration', () => {
     expect(h.storage.getHistory('quotation:user:owner-A')).toHaveLength(1);
   });
 
-  it('報價雲端保存成功時，常用資料同步失敗只反映自己的狀態', async () => {
+  it('常用資料同步失敗會成為唯一整體同步錯誤，且故障入口委派整體重試', async () => {
     const h = await harness();
     h.setTemplateStatus('error');
     await h.component.onSubmit();
     expect(h.component.savedBusinessVersion()?.customerCompany).toBe('合成客戶');
-    expect(h.component.syncStatus()).toBe('synced');
-    expect(h.component.templateSyncLabel()).toContain('同步失敗');
-    expect(h.component.templateSync.error()).toBe('常用資料同步失敗');
+    expect(h.component.syncStatus()).toBe('error');
+    expect(h.component.syncError()).toContain('常用資料同步失敗');
+    await h.component.onRetryCloudSync();
+    expect(h.templateSync.retryAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('本機常用資料錯誤不能遮蔽 Google Drive 重連入口', async () => {
+    const h = await harness();
+    h.templates.error.set('本機常用資料格式無效');
+    h.sync.syncStatus.set('reconnect');
+    h.sync.syncError.set('請重新連結 Google Drive');
+    expect(h.component.syncStatus()).toBe('reconnect');
+    expect(h.component.syncError()).toContain('本機常用資料格式無效');
+  });
+
+  it.each(['updated', 'deleted'] as const)('背景雲端 %s 後目前表單不會覆寫或復活舊 ID，但可另存新報價', async (change) => {
+    const h = await harness();
+    await h.component.onSubmit();
+    const baseline = h.sync.history()[0];
+    if (change === 'updated') {
+      await h.sync.save({ ...baseline.data, customerCompany: '其他裝置的新版本' }, baseline);
+    } else {
+      await h.sync.delete(baseline);
+    }
+    await h.sync.reloadHistory(); h.flushEffects();
+    h.form.patchValue({ customerCompany: '保留目前編輯' }); h.form.markAsDirty();
+    const beforeCount = h.api.createOperation.mock.calls.length;
+    await h.component.onSubmit();
+    expect(h.api.createOperation).toHaveBeenCalledTimes(beforeCount);
+    expect(h.form.value.customerCompany).toBe('保留目前編輯');
+    expect(h.toast.warning).toHaveBeenCalledWith(expect.stringContaining('其他裝置'));
+    expect(h.component.canSaveAsNew()).toBe(true);
+    if (change === 'deleted') {
+      expect(h.component.isEditingExisting()).toBe(false);
+      expect(h.component.selectedHistoryIndex()).toBeNull();
+    }
+    await h.component.onSaveAsNew();
+    expect(h.api.createOperation.mock.calls.length).toBe(beforeCount + 1);
+    expect(h.form.value.quotationId).not.toBe(baseline.quotationId);
+  });
+
+  it('載入 A 期間背景重新載入並插入較新的 B，完成後仍選取 A 的最新索引', async () => {
+    const h = await harness();
+    h.form.patchValue({ customerCompany: '報價 A' }); await h.component.onSubmit();
+    const aId = h.form.value.quotationId;
+    await h.component.onCreateNewForm();
+    const gate = deferred<CloudQuotationRevision<QuotationData> | undefined>();
+    h.api.getRevision.mockImplementationOnce(() => gate.promise);
+    const loading = h.component.onLoadHistory(0);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const original = [...h.files.values()].find((revision) => revision.quotationId === aId)!;
+    const remoteData = { ...quote(), quotationId: 'remote-newer', customerCompany: '報價 B' };
+    const remote = await createCloudQuotationRevision({
+      schemaVersion: 2, ownerSub: original.ownerSub, quotationId: 'remote-newer',
+      revisionId: 'remote-newer-r1', operationId: 'remote-newer-o1', kind: 'create',
+      parentRevisionIds: [], createdAt: '2030-01-01T00:00:00.000Z', payload: remoteData,
+      summary: createQuotationCloudSummary(remoteData),
+    }, new WebCryptoSha256HashProvider());
+    await h.api.createOperation(remote);
+    await h.sync.reloadHistory(); h.flushEffects();
+    gate.resolve([...h.files.values()].find((revision) => revision.quotationId === aId));
+    await loading;
+    expect(h.component.selectedHistoryId()).toBe(aId);
+    expect(h.component.selectedHistoryIndex()).not.toBe(0);
+    expect(h.form.value.customerCompany).toBe('報價 A');
   });
 });

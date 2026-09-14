@@ -23,6 +23,8 @@ describe('CloudSyncStatusComponent 顯示規則', () => {
     ['connecting', '連線中', false],
     ['syncing', '同步中', false],
     ['error', '同步失敗', false],
+    ['waiting', '等待同步', false],
+    ['conflict', '有衝突', false],
     ['reconnect', '需要 Google Drive 授權', true],
   ] as const)('狀態 %s 顯示安全短文', (status, text, canReconnect) => {
     expect(presentCloudSyncStatus(status, null)).toEqual({ text, canReconnect });
@@ -39,11 +41,13 @@ describe('CloudSyncStatusComponent 顯示規則', () => {
     expect(presentation.canReconnect).toBe(false);
   });
 
-  it('重新連線操作只 emit，交由父層處理授權流程', () => {
+  it('重新連線與全體同步操作只 emit，交由父層處理流程', () => {
     const component = new CloudSyncStatusComponent();
 
     component.requestReconnect();
+    component.requestRetry();
 
     expect(component.reconnect.emit).toHaveBeenCalledTimes(1);
+    expect(component.retry.emit).toHaveBeenCalledTimes(1);
   });
 });

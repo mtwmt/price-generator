@@ -27,6 +27,19 @@ async function main() {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || chromium.executablePath() });
   try {
+    async function waitStatus(page, text) {
+      await page.waitForFunction(expected => {
+        const nodes = document.querySelectorAll('app-cloud-sync-status');
+        return nodes.length === 1 && nodes[0].textContent?.includes(expected);
+      }, text);
+      const status = page.locator('app-cloud-sync-status');
+      assert.equal(await status.count(), 1, 'only one aggregate sync status is rendered');
+      assert.ok(!(await status.innerText()).includes('報價：'), 'no quotation sub-status label');
+      assert.ok(!(await status.innerText()).includes('常用客戶與項目：'), 'no template sub-status label');
+      if (['已同步', '等待同步', '本機儲存'].includes(text)) {
+        assert.equal(await page.getByRole('button', { name: '重試同步', exact: true }).count(), 0, 'normal and waiting states have no manual retry');
+      }
+    }
     async function device() {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
       await context.addInitScript(() => {
@@ -73,20 +86,20 @@ async function main() {
       const page = await context.newPage();
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(origin);
-      await page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+      await waitStatus(page, '已同步');
       return { context, page };
     }
     const a = await device();
     const b = await device();
     await a.page.locator('[formcontrolname="customerCompany"]').fill('合成跨裝置公司');
     await a.page.getByTitle('將目前填寫的客戶資料儲存為常用客戶', { exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await waitStatus(a.page, '已同步');
     await a.page.waitForFunction(() => {
       const store = JSON.parse(localStorage.getItem('quotation:templates:user:browser-synthetic-owner:v2'));
       return store?.operations.length > 0 && store.pendingIds.length === 0;
     });
-    await b.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await b.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await b.page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await waitStatus(b.page, '已同步');
     await b.page.locator('summary[aria-label="常用客戶"]').click();
     await b.page.getByRole('button', { name: '合成跨裝置公司', exact: true }).click();
     await b.page.getByRole('button', { name: '套用選取的常用客戶', exact: true }).click();
@@ -98,23 +111,23 @@ async function main() {
       const store = JSON.parse(localStorage.getItem('quotation:templates:user:browser-synthetic-owner:v2'));
       return store.operations.some(op => op.value?.name === '合成重新命名') && store.pendingIds.length === 0;
     });
-    await a.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await a.page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await waitStatus(a.page, '已同步');
     await a.page.locator('summary[aria-label="常用客戶"]').click();
     await a.page.getByRole('button', { name: '合成重新命名', exact: true }).click();
 
     templateFailure = true;
-    await a.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：同步失敗，保留本機資料與待送紀錄', { exact: true }).waitFor();
-    assert.ok((await a.page.locator('app-cloud-sync-status').innerText()).includes('已同步'), 'quotation remains independently synced');
+    await a.page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await waitStatus(a.page, '同步失敗');
+    assert.ok(!(await a.page.locator('app-cloud-sync-status').innerText()).includes('已同步'), 'aggregate failure cannot claim synced');
     templateFailure = false;
     await a.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await waitStatus(a.page, '已同步');
 
     // Both devices edit the version they saw while synchronization is disabled.
     for (const { page } of [a, b]) {
       await page.getByRole('checkbox', { name: '切換本機或雲端儲存', exact: true }).uncheck();
-      await page.getByText('常用客戶與項目：已存於本機', { exact: true }).waitFor();
+      await waitStatus(page, '本機儲存');
     }
     a.page.once('dialog', dialog => dialog.accept('合成分支 A'));
     await a.page.getByRole('button', { name: '重新命名選取的常用客戶', exact: true }).click();
@@ -124,36 +137,44 @@ async function main() {
       await page.waitForFunction(() => JSON.parse(localStorage.getItem('quotation:templates:user:browser-synthetic-owner:v2')).pendingIds.length > 0);
     }
     await a.page.getByRole('checkbox', { name: '切換本機或雲端儲存', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await waitStatus(a.page, '已同步');
     await b.page.getByRole('checkbox', { name: '切換本機或雲端儲存', exact: true }).click();
-    await b.page.getByText('常用客戶與項目：有衝突，請選擇保留內容', { exact: true }).waitFor();
+    await waitStatus(b.page, '有衝突');
     await b.page.getByRole('button', { name: '保留所有未刪除版本為不同資料', exact: true }).click();
-    await b.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
-    await a.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await waitStatus(b.page, '已同步');
+    await a.page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await waitStatus(a.page, '已同步');
     await a.page.locator('summary[aria-label="常用客戶"]').click();
     await a.page.getByRole('button', { name: '合成分支 B', exact: true }).waitFor();
     await a.page.getByRole('button', { name: '合成分支 A', exact: true }).click();
+    const beforeDelete = await a.page.evaluate(() =>
+      JSON.parse(localStorage.getItem('quotation:templates:user:browser-synthetic-owner:v2')).operations.length
+    );
     await a.page.getByRole('button', { name: '刪除選取的常用客戶', exact: true }).click();
     await a.page.getByRole('dialog').getByRole('button', { name: '刪除', exact: true }).click();
-    await a.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
-    await b.page.getByRole('button', { name: '重試同步', exact: true }).click();
-    await b.page.getByText('常用客戶與項目：已同步', { exact: true }).waitFor();
+    await a.page.waitForFunction(before => {
+      const envelope = JSON.parse(localStorage.getItem('quotation:templates:user:browser-synthetic-owner:v2'));
+      return envelope?.operations.length > before && envelope.pendingIds.length === 0;
+    }, beforeDelete);
+    await waitStatus(a.page, '已同步');
+    await b.page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await waitStatus(b.page, '已同步');
     await b.page.locator('summary[aria-label="常用客戶"]').click();
     await b.page.getByRole('button', { name: '合成分支 B', exact: true }).waitFor();
     assert.equal(await b.page.getByRole('button', { name: '合成分支 A', exact: true }).count(), 0, 'deletion propagated');
 
     await a.page.getByRole('checkbox', { name: '切換本機或雲端儲存', exact: true }).uncheck();
-    await a.page.getByText('常用客戶與項目：已存於本機', { exact: true }).waitFor();
+    await waitStatus(a.page, '本機儲存');
     const before = templateRequests;
     await a.page.evaluate(() => window.dispatchEvent(new Event('online')));
-    await a.page.waitForTimeout(150);
     assert.equal(templateRequests, before, 'disabled sync sends no template requests');
+    await a.page.getByRole('checkbox', { name: '切換本機或雲端儲存', exact: true }).click();
+    await waitStatus(a.page, '已同步');
     await a.page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await a.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'mobile has no horizontal overflow');
     await a.page.screenshot({ path: '/tmp/price-template-sync-mobile.png', fullPage: false });
     assert.deepEqual(errors, [], 'no browser runtime errors');
-    console.log(JSON.stringify({ passed: true, logicalOperations: files.size, templateRequests, checks: ['two isolated devices', 'create/search/apply', 'rename', 'separate failure status', 'manual retry', 'offline concurrent edits', 'keep both conflict resolution', 'delete propagation', 'disable guards', 'mobile layout', 'no runtime errors'] }));
+    console.log(JSON.stringify({ passed: true, logicalOperations: files.size, templateRequests, checks: ['two isolated devices', 'create/search/apply', 'rename', 'one aggregate status', 'automatic background sync', 'retry only on failure', 'offline concurrent edits', 'keep both conflict resolution', 'delete propagation', 'disable guards', 'mobile layout', 'no runtime errors'] }));
   } finally {
     await browser.close();
   }

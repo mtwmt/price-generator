@@ -22,6 +22,7 @@ export class CloudTemplateSyncService {
   private connected = false;
   private generation = 0;
   private flight: Promise<void> | null = null;
+  private allFlight: Promise<void> | null = null;
   private repeat = false;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private retryDelay = 5000;
@@ -29,11 +30,11 @@ export class CloudTemplateSyncService {
 
   constructor() {
     if (typeof window === 'undefined') return;
-    const online = () => { void this.retry(); };
+    const online = () => { void this.retryAll(); };
     const focus = () => {
       if (Date.now() - this.lastFocus < 30_000) return;
       this.lastFocus = Date.now();
-      void this.retry();
+      void this.retryAll();
     };
     const storage = (event: StorageEvent) => {
       if (event.key !== null && event.key !== `quotation:templates:${this.templates.currentScope()}:v2`) return;
@@ -59,6 +60,7 @@ export class CloudTemplateSyncService {
     this.enabled = enabled;
     this.connected = connected;
     this.flight = null;
+    this.allFlight = null;
     this.repeat = false;
     this.clearRetry();
     this.error.set(null);
@@ -76,6 +78,21 @@ export class CloudTemplateSyncService {
     } else if (!this.flight && (this.status() === 'synced' || this.status() === 'conflict')) {
       this.status.set(this.templates.getConflicts().length ? 'conflict' : 'synced');
     }
+  }
+
+  /** Connection recovery/focus refresh all cloud data through the same entry. */
+  retryAll(): Promise<void> {
+    if (!this.owner || !this.enabled || !this.connected ||
+        this.auth.userId() !== this.owner || !this.quotations.isEligible() ||
+        !this.quotations.isSyncEnabled() || !this.quotations.isCloudStorage() ||
+        this.templates.currentScope() !== `user:${this.owner}`) return Promise.resolve();
+    if (this.allFlight) return this.allFlight;
+    const work = Promise.allSettled([this.quotations.reloadHistory(), this.retry()]).then(() => undefined);
+    this.allFlight = work;
+    void work.finally(() => {
+      if (this.allFlight === work) this.allFlight = null;
+    });
+    return work;
   }
 
   retry(): Promise<void> {

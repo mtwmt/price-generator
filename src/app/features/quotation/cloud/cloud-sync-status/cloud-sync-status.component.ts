@@ -5,7 +5,7 @@ import {
   input,
   output,
 } from '@angular/core';
-import type { CloudSyncStatus } from '../cloud-quotation-sync.service';
+import type { UnifiedCloudSyncStatus } from '../unified-sync-status';
 
 export interface CloudSyncStatusPresentation {
   readonly text: string;
@@ -13,7 +13,7 @@ export interface CloudSyncStatusPresentation {
 }
 
 export function presentCloudSyncStatus(
-  status: CloudSyncStatus,
+  status: UnifiedCloudSyncStatus,
   lastSyncedAt: number | null
 ): CloudSyncStatusPresentation {
   switch (status) {
@@ -21,6 +21,10 @@ export function presentCloudSyncStatus(
       return { text: '連線中', canReconnect: false };
     case 'syncing':
       return { text: '同步中', canReconnect: false };
+    case 'waiting':
+      return { text: '等待同步', canReconnect: false };
+    case 'conflict':
+      return { text: '有衝突', canReconnect: false };
     case 'synced':
       return {
         text: lastSyncedAt
@@ -47,10 +51,12 @@ export function presentCloudSyncStatus(
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CloudSyncStatusComponent {
-  readonly status = input.required<CloudSyncStatus>();
+  readonly status = input.required<UnifiedCloudSyncStatus>();
   readonly lastSyncedAt = input<number | null>(null);
   readonly errorMessage = input<string | null>(null);
   readonly reconnect = output<void>();
+  readonly canRetry = input(false);
+  readonly retry = output<void>();
 
   readonly presentation = computed(() =>
     presentCloudSyncStatus(this.status(), this.lastSyncedAt())
@@ -58,5 +64,9 @@ export class CloudSyncStatusComponent {
 
   requestReconnect(): void {
     this.reconnect.emit();
+  }
+
+  requestRetry(): void {
+    this.retry.emit();
   }
 }

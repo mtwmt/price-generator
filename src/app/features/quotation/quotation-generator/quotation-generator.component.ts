@@ -54,6 +54,7 @@ import {
 import { CloudQuotationSyncService, CloudSaveIntent } from '@app/features/quotation/cloud/cloud-quotation-sync.service';
 import { CloudTemplateSyncService } from '@app/features/quotation/cloud/cloud-template-sync.service';
 import { TemplateEntity, TemplateOperation } from '@app/features/quotation/cloud/template-sync-domain';
+import { combineCloudSyncStatus } from '@app/features/quotation/cloud/unified-sync-status';
 import { StorageRouteCoordinator } from './storage-route-coordinator';
 import { restoreRecoveryFileForCurrentScope } from './recovery-restore';
 import { CloudSyncStatusComponent } from '@app/features/quotation/cloud/cloud-sync-status/cloud-sync-status.component';
@@ -161,6 +162,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private activeUserId: string | null | undefined;
   private documentEpoch = 0;
   private documentScope: string | null = null;
+  private loadedCloudHeads: readonly string[] | null = null;
   private viewingBusinessSnapshot = false;
   private snapshotViewRequest = 0;
   private historyLoadRequest = 0;
@@ -212,6 +214,18 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   private templateChangesEffect = effect(() => {
     this.quotationTemplates.revision();
     untracked(() => this.templateSync.notifyChanged());
+  });
+  private cloudHistoryChangesEffect = effect(() => {
+    const entries = this.cloudQuotationSync.history();
+    const cloud = this.cloudQuotationSync.isCloudStorage();
+    const owner = this.authService.userId();
+    untracked(() => {
+      if (!cloud || !owner || this.activeUserId !== owner) return;
+      this.historyData.set(entries.map(entry => entry.data));
+      const selected = this.selectedHistoryId();
+      const index = selected ? entries.findIndex(entry => entry.quotationId === selected) : -1;
+      this.selectedHistoryIndex.set(index < 0 ? null : index);
+    });
   });
 
   /** Commit identity changes only when the actual logical repository changed. */
@@ -279,20 +293,31 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     () => this.cloudEligible() && this.advancedMode()
   );
   readonly cloudSyncEnabled = this.cloudQuotationSync.isSyncEnabled;
-  readonly syncStatus = this.cloudQuotationSync.syncStatus;
-  readonly lastSyncedAt = this.cloudQuotationSync.lastSyncedAt;
-  readonly syncError = this.cloudQuotationSync.syncError;
   readonly templateStorageError = this.quotationTemplates.error;
   readonly resolvingTemplateConflict = signal(false);
   readonly templateConflicts = computed(() => {
     this.quotationTemplates.revision();
     return this.quotationTemplates.getConflicts();
   });
-  readonly templateSyncLabel = computed(() => ({
-    local: '已存於本機', waiting: '已存於本機，等待同步', syncing: '同步中',
-    synced: '已同步', error: '同步失敗，保留本機資料與待送紀錄',
-    reconnect: '需重新連結 Google Drive', conflict: '有衝突，請選擇保留內容',
-  }[this.templateSync.status()]));
+  readonly syncStatus = computed(() => {
+    this.quotationTemplates.revision();
+    let templates = this.templateSync.status();
+    if (templates === 'synced') {
+      if (this.templateConflicts().length) templates = 'conflict';
+      else if (this.quotationTemplates.snapshot().pendingIds.length) templates = 'waiting';
+    }
+    const combined = combineCloudSyncStatus(this.cloudQuotationSync.syncStatus(), templates,
+      this.cloudSyncEnabled() && this.cloudEligible());
+    // A local storage failure must not hide the action needed to restore Drive.
+    return this.templateStorageError() && combined !== 'reconnect' ? 'error' : combined;
+  });
+  readonly syncError = computed(() => {
+    const messages = [this.templateStorageError()];
+    if (this.cloudSyncEnabled() && this.cloudEligible()) {
+      messages.push(this.cloudQuotationSync.syncError(), this.templateSync.error());
+    }
+    return [...new Set(messages.filter(Boolean))].join(' ') || null;
+  });
 
   // Computed
   hasHistory = computed(() => this.historyData().length > 0);
@@ -363,6 +388,8 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
   isEditingExisting = computed(() =>
     this.coordinator.isEditingExisting(this.historyData().length)
   );
+  readonly canSaveAsNew = computed(() => this.isEditingExisting() ||
+    (this.isCloudStorage() && this.selectedHistoryId() !== null && this.savedBusinessVersion() !== null));
 
   get serviceItems() {
     return this.form?.get('serviceItems') as FormArray;
@@ -480,6 +507,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     this.observedRepository = this.isCloudStorage();
     this.viewingBusinessSnapshot = false;
     this.documentScope = null;
+    this.loadedCloudHeads = null;
     this.pendingSubmission = null;
     this.submissionFlight = null;
     this.isSubmitting.set(false);
@@ -837,7 +865,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     }
     if (scope !== this.localStorageScope()) return;
     this.refreshTemplates();
-    this.toastService.success('已儲存常用客戶於本機' + (this.cloudSyncEnabled() ? '，等待同步' : ''));
+    this.toastService.success('已儲存常用客戶');
   }
 
   applyCustomerTemplate(template: CustomerTemplate): void {
@@ -887,7 +915,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     }
     if (scope !== this.localStorageScope()) return;
     this.refreshTemplates();
-    this.toastService.success('已儲存常用服務項目於本機' + (this.cloudSyncEnabled() ? '，等待同步' : ''));
+    this.toastService.success('已儲存常用服務項目');
   }
 
   async renameCustomerTemplate(template: CustomerTemplate): Promise<void> {
@@ -1073,13 +1101,18 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
         return;
       }
     }
-    this.selectedHistoryIndex.set(index);
-    this.selectedHistoryId.set(normalizeQuotationLifecycle(data).quotationId || null);
+    const loadedId = normalizeQuotationLifecycle(data).quotationId || null;
+    const currentIndex = repository
+      ? this.cloudQuotationSync.history().findIndex(item => item.quotationId === loadedId)
+      : this.historyData().findIndex(item => normalizeQuotationLifecycle(item).quotationId === loadedId);
+    this.selectedHistoryIndex.set(currentIndex >= 0 ? currentIndex : null);
+    this.selectedHistoryId.set(loadedId);
     this.coordinator.setSelectedStorage(
       repository ? 'cloud' : 'local'
     );
     this.loadQuotationData(data);
     this.markFormPristine();
+    this.loadedCloudHeads = entry ? [...entry.headRevisionIds] : null;
   }
 
   async onDeleteHistory(index: number): Promise<void> {
@@ -1290,6 +1323,10 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
     }
   }
 
+  async onRetryCloudSync(): Promise<void> {
+    await this.templateSync.retryAll();
+  }
+
   async onCloudSyncToggleChange(event: Event): Promise<void> {
     const control = event.currentTarget as HTMLInputElement;
     const enabled = control.checked;
@@ -1445,6 +1482,12 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
       const existing = !forceCreate && this.coordinator.getSelectedStorage() === 'cloud'
         ? this.cloudQuotationSync.history().find((entry) => entry.quotationId === this.selectedHistoryId())
         : undefined;
+      if (repository === 'cloud' && !forceCreate && this.coordinator.getSelectedStorage() === 'cloud' &&
+          (!existing || (this.loadedCloudHeads &&
+            JSON.stringify([...this.loadedCloudHeads].sort()) !== JSON.stringify([...existing.headRevisionIds].sort())))) {
+        this.toastService.warning('這筆報價已在其他裝置更新或刪除，請重新載入，或將目前內容另存為新報價');
+        return Promise.resolve();
+      }
       try {
         this.pendingSubmission = {
           epoch: this.documentEpoch, scope: this.localStorageScope(), repository,
@@ -1498,6 +1541,7 @@ export class QuotationGeneratorComponent implements OnInit, OnDestroy {
         this.loadCloudHistory();
         const index = this.cloudQuotationSync.history().findIndex((entry) => entry.revisionId === saved.revisionId);
         this.applySavedQuotationState(saved.data, 'cloud', index);
+        this.loadedCloudHeads = [...saved.headRevisionIds];
         // Preserve edits made while awaiting/retrying, including user-edited
         // metadata, while the verified saved baseline advances independently.
         if (edited) {

@@ -172,7 +172,8 @@ function createHarness(owner = 'owner-A', files = new Map<string, TemplateOperat
   };
   const templates = new TemplateStore(); templates.setScope(`user:${owner}`);
   const auth = { userId: () => activeOwner };
-  const quotations = { isEligible: () => true, isSyncEnabled: () => true, isCloudStorage: () => true };
+  const quotations = { isEligible: () => true, isSyncEnabled: () => true, isCloudStorage: () => true,
+    reloadHistory: jest.fn(async (): Promise<void> => undefined) };
   const destroy = { onDestroy: jest.fn() };
   dependencies.set(AuthService, auth); dependencies.set(DriveCloudApiService, api);
   dependencies.set(CloudQuotationSyncService, quotations); dependencies.set(QuotationTemplatesService, templates);
@@ -181,7 +182,7 @@ function createHarness(owner = 'owner-A', files = new Map<string, TemplateOperat
   liveSyncs.push(service);
   service.configure(owner, true, true);
   return {
-    service, templates, api, files, calls,
+    service, templates, api, files, calls, quotations,
     offline: (next: boolean) => { offline = next; },
     invalidateRemote: () => { invalidRemote = true; },
     loseReceipt: () => { loseReceipt = true; },
@@ -191,6 +192,34 @@ function createHarness(owner = 'owner-A', files = new Map<string, TemplateOperat
 }
 
 describe('CloudTemplateSyncService → in-memory Drive cross-device integration', () => {
+  it('網路恢復的共用入口同時同步歷史與常用資料，重複事件共用同一批工作', async () => {
+    const h = createHarness(); await h.service.retry();
+    const history = deferred<void>();
+    h.quotations.reloadHistory.mockImplementationOnce(() => history.promise);
+    const before = h.calls.list;
+    const first = h.service.retryAll();
+    expect(h.service.retryAll()).toBe(first);
+    await h.service.retry();
+    expect(h.calls.list).toBe(before + 1);
+    expect(h.quotations.reloadHistory).toHaveBeenCalledTimes(1);
+    let complete = false;
+    void first.then(() => { complete = true; });
+    await Promise.resolve();
+    expect(complete).toBe(false);
+    history.resolve();
+    await first;
+    expect(complete).toBe(true);
+  });
+
+  it('停用後共用背景入口不再向歷史或常用資料發出請求', async () => {
+    const h = createHarness(); await h.service.retry();
+    h.service.configure('owner-A', false, false);
+    const before = h.calls.list;
+    await h.service.retryAll();
+    expect(h.calls.list).toBe(before);
+    expect(h.quotations.reloadHistory).not.toHaveBeenCalled();
+  });
+
   it('實際 TemplatesService 以兩個獨立本機封套同步新增、更新與刪除', async () => {
     installLockSerializer();
     const files = new Map<string, TemplateOperation>();
