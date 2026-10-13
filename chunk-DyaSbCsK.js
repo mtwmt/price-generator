@@ -1,1 +1,0 @@
-import{Lt as b,b as E,mr as xh,zt as be}from"./chunk-BDy-9e0J.js";function w(t){t||(t=E(be));let i=new b(e=>{if(t.destroyed){e.next();return}return t.onDestroy(e.next.bind(e))});return e=>e.pipe(xh(i))}export{w as t};
